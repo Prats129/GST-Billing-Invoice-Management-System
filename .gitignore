@@ -1,0 +1,16 @@
+PHASE_1_CODEX_PROMPT.md
+PROJECT_CONTEXT.md
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+.cache/
+.local/
+*.log
+*.tsbuildinfo
+*.key
+*.pem
+*.pfx
+*.p12

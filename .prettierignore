@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+node_modules
+dist
+.cache
+.local
+coverage
+PROJECT_CONTEXT.md
+PHASE_1_CODEX_PROMPT.md
+LICENSE
+apps/windows-installer

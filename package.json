@@ -1,0 +1,48 @@
+{
+  "name": "gst-billing-platform",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22.12.0 <23 || >=24 <25"
+  },
+  "scripts": {
+    "setup:env": "node scripts/setup-env.mjs",
+    "smoke": "node --env-file=.env scripts/smoke.mjs",
+    "dev": "pnpm build:packages && concurrently -k -n api,web \"pnpm --filter @gst/api dev\" \"pnpm --filter @gst/web dev\"",
+    "build:packages": "pnpm --filter @gst/contracts --filter @gst/database --filter @gst/billing-engine -r build",
+    "build": "pnpm build:packages && pnpm --filter @gst/api --filter @gst/web -r build",
+    "start": "node apps/api/dist/main.js",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm build:packages && pnpm -r typecheck && tsc -p tsconfig.tests.json",
+    "test": "pnpm build:packages && vitest run --project unit",
+    "test:integration": "pnpm build:packages && vitest run --project integration",
+    "db:generate": "pnpm --filter @gst/database db:generate",
+    "db:migrate": "pnpm --filter @gst/database db:migrate",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "^22.19.0",
+    "@types/supertest": "^6.0.3",
+    "concurrently": "^9.2.1",
+    "eslint": "10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "supertest": "^7.1.4",
+    "tsx": "^4.20.6",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.1",
+    "vitest": "5.0.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "@nestjs/core"
+    ]
+  }
+}

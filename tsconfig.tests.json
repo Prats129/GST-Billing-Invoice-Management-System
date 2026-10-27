@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "jsx": "react-jsx",
+    "types": ["node"]
+  },
+  "include": ["apps/**/*.test.ts", "packages/**/*.test.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "**/dist"]
+}
