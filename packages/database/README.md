@@ -28,3 +28,9 @@ CREATEDB privilege on a disposable cluster. They create and drop only a randomiz
 and rollback behavior, and close connections. Never point this at production.
 Interrupted tests may leave databases with this prefix: inspect before manual
 cleanup. No shared development database is truncated.
+
+0002_business_catalog.sql adds business/registration/customer/catalog master data,
+tenant-safe classification revisions/reviews and new permission definitions.
+It preserves existing memberships/grants and installs append-only classification
+guards and a deferred requirement for an initial catalog classification.
+New Phase 3 runtime privileges and local setup steps are documented in docs/phase-3.md.

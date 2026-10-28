@@ -225,7 +225,7 @@ export class IdentityService {
           eq(memberships.status, 'active'),
           eq(organizations.status, 'active'),
           eq(organizations.edition, this.config.DEPLOYMENT_EDITION),
-          sql`(${memberships.isOwner} or exists (select 1 from membership_roles mr join role_permissions rp on rp.organization_id=mr.organization_id and rp.role_id=mr.role_id where mr.organization_id=${memberships.organizationId} and mr.membership_id=${memberships.id} and rp.permission_key in ('members.manage','roles.manage','audit.read','organization.manage')))`,
+          sql`(${memberships.isOwner} or exists (select 1 from membership_roles mr join role_permissions rp on rp.organization_id=mr.organization_id and rp.role_id=mr.role_id where mr.organization_id=${memberships.organizationId} and mr.membership_id=${memberships.id} and rp.permission_key in ('members.manage','roles.manage','audit.read','organization.manage','customers.manage','catalog.manage','catalog.tax.verify')))`,
         ),
       )
       .limit(1);

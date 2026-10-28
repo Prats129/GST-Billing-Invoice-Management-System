@@ -22,6 +22,11 @@ import {
 } from './security/controllers.js';
 import { IdentityService } from './security/identity.service.js';
 import { OrganizationsService } from './security/organizations.service.js';
+import {
+  BUSINESS,
+  BusinessController,
+} from './business/business.controller.js';
+import { BusinessService } from './business/business.service.js';
 
 export async function createApp(
   config: Config,
@@ -40,10 +45,15 @@ export async function createApp(
       HealthController,
       IdentityController,
       OrganizationsController,
+      BusinessController,
     ],
     providers: [
       { provide: DATABASE, useValue: database },
       { provide: SECURITY, useValue: security },
+      {
+        provide: BUSINESS,
+        useValue: security ? new BusinessService(security.organizations) : null,
+      },
       {
         provide: 'DATABASE_LIFECYCLE',
         useValue: { onApplicationShutdown: () => database.close() },
@@ -92,7 +102,7 @@ export async function createApp(
     new DocumentBuilder()
       .setTitle('GST Platform API')
       .setDescription(
-        'Identity, tenant authorization and operations. Billing remains unavailable.',
+        'Identity, tenant authorization, business setup, customers and catalog. Invoice issuance remains unavailable.',
       )
       .setVersion('1')
       .addCookieAuth('__Host-gst_session')

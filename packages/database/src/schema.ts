@@ -5,12 +5,15 @@ import {
   foreignKey,
   index,
   integer,
+  date,
+  numeric,
   jsonb,
   pgTable,
   primaryKey,
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -36,6 +39,225 @@ export const organizations = pgTable(
     check(
       'organizations_status_valid',
       sql`${table.status} in ('active', 'suspended', 'archived')`,
+    ),
+  ],
+);
+
+export const businessProfiles = pgTable(
+  'business_profiles',
+  {
+    organizationId: uuid('organization_id')
+      .primaryKey()
+      .references(() => organizations.id),
+    legalName: varchar('legal_name', { length: 200 }).notNull(),
+    tradeName: varchar('trade_name', { length: 200 }).notNull().default(''),
+    address: jsonb('address')
+      .$type<{
+        line1: string;
+        line2: string;
+        city: string;
+        stateCode: string;
+        postalCode: string;
+      }>()
+      .notNull(),
+    email: varchar('email', { length: 254 }).notNull().default(''),
+    phone: varchar('phone', { length: 25 }).notNull().default(''),
+    eInvoiceApplicability: varchar('e_invoice_applicability', { length: 16 })
+      .notNull()
+      .default('unknown'),
+    bankName: varchar('bank_name', { length: 120 }).notNull().default(''),
+    bankAccountName: varchar('bank_account_name', { length: 120 })
+      .notNull()
+      .default(''),
+    bankAccountNumber: varchar('bank_account_number', { length: 34 })
+      .notNull()
+      .default(''),
+    bankIfsc: varchar('bank_ifsc', { length: 11 }).notNull().default(''),
+    version: integer('version').notNull().default(1),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      'business_profile_valid',
+      sql`length(trim(${t.legalName})) > 0 and ${t.version} > 0 and jsonb_typeof(${t.address}) = 'object' and ${t.eInvoiceApplicability} in ('unknown','required','not_required')`,
+    ),
+  ],
+);
+
+export const gstRegistrations = pgTable(
+  'gst_registrations',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    gstin: varchar('gstin', { length: 15 }).notNull(),
+    stateCode: varchar('state_code', { length: 2 }).notNull(),
+    taxpayerType: varchar('taxpayer_type', { length: 16 })
+      .notNull()
+      .default('regular'),
+    active: boolean('active').notNull().default(true),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+    confirmedBy: uuid('confirmed_by').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('gst_registrations_org_id_unique').on(t.organizationId, t.id),
+    unique('gst_registrations_org_gstin_unique').on(t.organizationId, t.gstin),
+    uniqueIndex('gst_registration_one_active')
+      .on(t.organizationId)
+      .where(sql`${t.active}`),
+    check(
+      'gst_registration_valid',
+      sql`${t.taxpayerType} = 'regular' and ${t.gstin} ~ '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$' and left(${t.gstin},2) = ${t.stateCode} and (${t.confirmedAt} is null) = (${t.confirmedBy} is null)`,
+    ),
+  ],
+);
+
+export const customers = pgTable(
+  'customers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    code: varchar('code', { length: 40 }).notNull(),
+    name: varchar('name', { length: 200 }).notNull(),
+    email: varchar('email', { length: 254 }).notNull().default(''),
+    phone: varchar('phone', { length: 25 }).notNull().default(''),
+    address: jsonb('address')
+      .$type<{
+        line1: string;
+        line2: string;
+        city: string;
+        stateCode: string;
+        postalCode: string;
+      }>()
+      .notNull(),
+    gstin: varchar('gstin', { length: 15 }).notNull().default(''),
+    notes: varchar('notes', { length: 1000 }).notNull().default(''),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    version: integer('version').notNull().default(1),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('customers_org_id_unique').on(t.organizationId, t.id),
+    unique('customers_org_code_unique').on(t.organizationId, t.code),
+    index('customers_org_archive_name_idx').on(
+      t.organizationId,
+      t.archivedAt,
+      t.name,
+      t.id,
+    ),
+    check(
+      'customers_valid',
+      sql`${t.version} > 0 and length(trim(${t.name})) > 0 and ${t.code} ~ '^[A-Z0-9][A-Z0-9._/-]*$' and jsonb_typeof(${t.address}) = 'object' and (${t.gstin} = '' or ${t.gstin} ~ '^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$')`,
+    ),
+  ],
+);
+
+export const catalogItems = pgTable(
+  'catalog_items',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    code: varchar('code', { length: 40 }).notNull(),
+    name: varchar('name', { length: 200 }).notNull(),
+    description: varchar('description', { length: 1000 }).notNull().default(''),
+    kind: varchar('kind', { length: 8 }).notNull(),
+    unitCode: varchar('unit_code', { length: 3 }).notNull(),
+    price: numeric('price', { precision: 18, scale: 4 }).notNull(),
+    priceIncludesGst: boolean('price_includes_gst').notNull().default(false),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    version: integer('version').notNull().default(1),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('catalog_items_org_id_unique').on(t.organizationId, t.id),
+    unique('catalog_items_org_code_unique').on(t.organizationId, t.code),
+    index('catalog_items_org_archive_name_idx').on(
+      t.organizationId,
+      t.archivedAt,
+      t.name,
+      t.id,
+    ),
+    check(
+      'catalog_items_valid',
+      sql`${t.version} > 0 and length(trim(${t.name})) > 0 and ${t.code} ~ '^[A-Z0-9][A-Z0-9._/-]*$' and ${t.kind} in ('goods','service') and ${t.price} between 0 and 99999999999999.9999 and ${t.unitCode} in ('NOS','KGS','LTR','MTR','HRS','DAY','OTH')`,
+    ),
+  ],
+);
+
+export const catalogTaxRevisions = pgTable(
+  'catalog_tax_revisions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id').notNull(),
+    itemId: uuid('item_id').notNull(),
+    revision: integer('revision').notNull(),
+    hsnSac: varchar('hsn_sac', { length: 8 }).notNull(),
+    category: varchar('category', { length: 8 }).notNull(),
+    gstPercent: numeric('gst_percent', { precision: 5, scale: 2 }).notNull(),
+    effectiveFrom: date('effective_from').notNull(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('catalog_tax_org_id_unique').on(t.organizationId, t.id),
+    unique('catalog_tax_org_item_revision_unique').on(
+      t.organizationId,
+      t.itemId,
+      t.revision,
+    ),
+    foreignKey({
+      columns: [t.organizationId, t.itemId],
+      foreignColumns: [catalogItems.organizationId, catalogItems.id],
+    }),
+    check(
+      'catalog_tax_valid',
+      sql`${t.revision} > 0 and ${t.hsnSac} ~ '^([0-9]{4}|[0-9]{6}|[0-9]{8})$' and ${t.gstPercent} between 0 and 100 and ((${t.category} = 'taxable' and ${t.gstPercent} > 0) or (${t.category} in ('nil','exempt') and ${t.gstPercent} = 0))`,
+    ),
+  ],
+);
+
+export const catalogTaxReviews = pgTable(
+  'catalog_tax_reviews',
+  {
+    revisionId: uuid('revision_id').primaryKey(),
+    organizationId: uuid('organization_id').notNull(),
+    verifiedBy: uuid('verified_by')
+      .notNull()
+      .references(() => users.id),
+    verifiedAt: timestamp('verified_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    reference: varchar('reference', { length: 300 }).notNull(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.organizationId, t.revisionId],
+      foreignColumns: [
+        catalogTaxRevisions.organizationId,
+        catalogTaxRevisions.id,
+      ],
+    }),
+    check(
+      'catalog_tax_review_reference_nonempty',
+      sql`length(trim(${t.reference})) >= 5`,
     ),
   ],
 );

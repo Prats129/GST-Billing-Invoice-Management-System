@@ -344,6 +344,187 @@ test('owner manages roles and employees; employee changes password; suspension r
     await context.close();
   }
 });
+test('business setup, customer archive/restore and catalog classification review work on desktop and mobile', async ({
+  page,
+}) => {
+  await signIn(page, ownerEmail, ownerPassword);
+  await page.getByRole('link', { name: 'Business setup', exact: true }).click();
+  await page
+    .getByLabel('Legal business name', { exact: true })
+    .fill('Browser trading business');
+  await page
+    .getByLabel('Address line 1', { exact: true })
+    .fill('12 Market Road');
+  await page.getByLabel('City', { exact: true }).fill('Mumbai');
+  await page
+    .getByLabel('State / territory', { exact: true })
+    .selectOption('27');
+  await page.getByLabel('PIN code', { exact: true }).fill('400001');
+  await page.getByLabel('GSTIN', { exact: true }).fill('27AAPFU0939F1ZV');
+  await page
+    .getByRole('checkbox', { name: /I have checked the registration status/ })
+    .check();
+  await page
+    .getByRole('button', { name: 'Save business details', exact: true })
+    .click();
+  await expect(
+    page.getByText('Business details saved.', { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByLabel('Legal business name', { exact: true }),
+  ).toHaveValue('Browser trading business');
+  await page.screenshot({
+    path: 'test-results/ui-phase3-business-desktop.png',
+    fullPage: true,
+  });
+  await page.getByRole('link', { name: 'Customers', exact: true }).click();
+  await page.getByRole('button', { name: 'Add customer', exact: true }).click();
+  const editor = page.getByRole('dialog');
+  await editor
+    .getByLabel('Customer name', { exact: true })
+    .fill('Browser customer');
+  await editor.getByLabel('Customer code', { exact: true }).fill('CUST-001');
+  await editor
+    .getByLabel('Address line 1', { exact: true })
+    .fill('35 Buyer Street');
+  await editor.getByLabel('City', { exact: true }).fill('Mumbai');
+  await editor
+    .getByLabel('State / territory', { exact: true })
+    .selectOption('27');
+  await editor.getByLabel('PIN code', { exact: true }).fill('400002');
+  await editor
+    .getByRole('button', { name: 'Create customer', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Edit customer', exact: true })
+    .click();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await editor
+    .getByRole('button', { name: 'Archive customer', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page
+    .getByLabel('Record status', { exact: true })
+    .selectOption('archived');
+  await page
+    .getByRole('button', { name: 'View customer', exact: true })
+    .click();
+  await editor
+    .getByRole('button', { name: 'Restore customer', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page
+    .getByLabel('Record status', { exact: true })
+    .selectOption('active');
+  await expect(
+    page.getByText('Browser customer', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Catalog', exact: true }).click();
+  await page.getByRole('button', { name: 'Add item', exact: true }).click();
+  await editor.getByLabel('Item name', { exact: true }).fill('Browser product');
+  await editor.getByLabel('Item code', { exact: true }).fill('PROD-001');
+  await editor.getByLabel('Unit', { exact: true }).selectOption('KGS');
+  await editor
+    .getByLabel('Unit price (INR)', { exact: true })
+    .fill('1234.5678');
+  await editor.getByLabel('HSN / SAC', { exact: true }).fill('100630');
+  await editor.getByLabel('GST rate (%)', { exact: true }).fill('5');
+  await editor.getByLabel('Effective from', { exact: true }).fill('2026-10-28');
+  await editor
+    .getByRole('button', { name: 'Create item', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('₹1,234.5678', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Edit item', exact: true }).click();
+  await editor
+    .getByLabel('Review reference', { exact: true })
+    .fill('Browser-only classification test source');
+  await editor
+    .getByRole('button', { name: 'Confirm classification review', exact: true })
+    .click();
+  await expect(editor.getByText('Reviewed', { exact: true })).toBeVisible();
+  await editor
+    .getByRole('button', { name: 'View classification history' })
+    .click();
+  await expect(editor.getByText(/Revision 1 · 100630/)).toBeVisible();
+  await editor
+    .getByRole('button', { name: 'Close dialog', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Edit item', exact: true }).click();
+  await editor.getByLabel('GST rate (%)', { exact: true }).fill('12');
+  await expect(
+    editor.getByRole('button', {
+      name: 'Confirm classification review',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await editor.getByRole('button', { name: 'Save item', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('Needs review', { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: 'test-results/ui-phase3-catalog-desktop.png',
+    fullPage: true,
+  });
+  const catalogRoute = `**/api/v1/organizations/${organizationId}/catalog?*`;
+  await page.route(catalogRoute, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { message: 'Service unavailable' } }),
+    }),
+  );
+  await page
+    .getByRole('button', { name: 'Refresh catalog', exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      'Could not load these records. Refresh the list or your workspace access.',
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(page.getByText('Browser product', { exact: true })).toHaveCount(
+    0,
+  );
+  await page.unroute(catalogRoute);
+  await page
+    .getByRole('button', { name: 'Refresh catalog', exact: true })
+    .click();
+  await expect(
+    page.getByText('Browser product', { exact: true }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: 'test-results/ui-phase3-catalog-mobile.png',
+    fullPage: true,
+  });
+  await page.getByRole('button', { name: 'Edit item', exact: true }).click();
+  await expect(editor).toBeVisible();
+  expect(
+    await editor.evaluate((node) => node.scrollWidth <= node.clientWidth),
+  ).toBe(true);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('link', { name: 'Business setup', exact: true })
+    .click();
+  await expect(
+    page.getByLabel('Legal business name', { exact: true }),
+  ).toHaveValue('Browser trading business');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
 test('authenticator enrollment, recovery-code display and MFA challenge work in browser', async ({
   page,
 }) => {

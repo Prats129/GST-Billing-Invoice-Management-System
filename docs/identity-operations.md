@@ -85,7 +85,7 @@ SameSite=Strict with __Host- prefix. Loopback HTTP development uses a separately
 named non-Secure cookie; never expose that mode to LAN. Mutations require exact
 Origin and a session-bound CSRF header. No credentials enter localStorage.
 
-SaaS owners, organization/member/role managers and audit readers must complete
+SaaS owners, organization/member/role/customer/catalog managers, tax reviewers and audit readers must complete
 TOTP before tenant access. Anyone with MFA enabled completes a challenge at login.
 Account security provides authenticator enrollment and ten single-use recovery
 codes. Save them offline. TOTP codes cannot be replayed. Replacing recovery codes

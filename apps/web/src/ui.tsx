@@ -142,8 +142,38 @@ export const permissionText: Record<
     label: 'View activity log',
     description: 'Read security and access changes for the organization.',
   },
+  'customers.read': {
+    label: 'View customers',
+    description: 'View customer details and addresses.',
+  },
+  'customers.manage': {
+    label: 'Manage customers',
+    description: 'Create, edit, archive and restore customers.',
+  },
+  'catalog.read': {
+    label: 'View catalog',
+    description: 'View products, services, prices and classification history.',
+  },
+  'catalog.manage': {
+    label: 'Manage catalog',
+    description: 'Create, edit, archive and restore products and services.',
+  },
+  'catalog.tax.verify': {
+    label: 'Review tax classifications',
+    description: 'Record a review of saved HSN/SAC and GST classifications.',
+  },
 };
 export const permissionGroups: { name: string; keys: Permission[] }[] = [
+  {
+    name: 'Customers & catalog',
+    keys: [
+      'customers.read',
+      'customers.manage',
+      'catalog.read',
+      'catalog.manage',
+      'catalog.tax.verify',
+    ],
+  },
   { name: 'Organization', keys: ['organization.read', 'organization.manage'] },
   { name: 'Team', keys: ['members.read', 'members.manage'] },
   {

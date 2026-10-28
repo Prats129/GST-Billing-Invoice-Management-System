@@ -477,3 +477,104 @@ catalog, after review/commit of this phase.
 - Phase 2 implementation/local acceptance remains complete with the redesigned
   UI. Native Windows service/LAN HTTPS/firewall/reboot and remote CI release gates
   described in phase-2.md remain outstanding; loopback browser tests do not prove them.
+
+## Phase 3 / batch 1 — requirements and architecture review (2026-10-28)
+
+- Read PROJECT_CONTEXT.md completely and reviewed current schema, identity/RBAC,
+  controllers, API error handling, workspace UI, tests, migrations and CI.
+- Working tree was clean after the Phase 2 commit. No credentials were read/output.
+- Defined Phase 3 scope/acceptance in phase-3.md and checked official GST taxpayer,
+  HSN and NIC state references. No statutory rates or invoice compliance invented.
+- Next: shared contracts, tenant business schema and reviewed migration; then API,
+  responsive screens and isolated integration/browser verification.
+
+## Phase 3 / batch 2 — contracts, schema and API implementation
+
+- Added shared strict validation for domestic addresses, structural GSTIN/state,
+  customer/catalog inputs, decimal-string prices/rates, units and versioned writes.
+- Added business profiles, one-active GST registration/history, customers, catalog,
+  immutable dated tax revisions and review attestations with tenant-safe FKs.
+- Generated/reviewed migration 0002_business_catalog; added new permission seeds,
+  append-only tax guards and deferred requirement for a catalog tax revision.
+  Earlier migrations remain unchanged; no existing non-owner privileges expanded.
+- API reuses session/CSRF/MFA/current tenant authorization and organization locks,
+  bounded searches/pages, optimistic versions, archives and transactional audit.
+  Extended mandatory SaaS MFA to customer/catalog managers and tax reviewers.
+- Package compilation passed; API declaration checking found a non-portable inferred
+  database getter type and it was given an explicit shared Database type. Next:
+  integration tests, responsive UI and full regression checks. No migration has
+  been applied to the user's development database in this batch.
+
+## Phase 3 / batch 3 — UI and first regression pass
+
+- Added business/GST setup, customer and catalog screens in the existing sidebar.
+  Includes server-side search, archive filters, pagination, versioned saves,
+  archive/restore, tax-review reference/history and responsive dialogs/member cards.
+- Registration confirmation is an explicit fresh attestation on each save; no
+  automatic portal verification or e-invoice eligibility determination is claimed.
+- API/customer/catalog/profile reads validate transport contracts. Catalog reads
+  use repeatable-read transactions so prices and classification revisions agree.
+- First complete integration rerun passed 23/23 and unit tests passed 24/24.
+  Fixed empty-profile transport to return a JSON envelope, and corrected the
+  Drizzle read-only transaction option after compiler feedback.
+- Added further tests for 51-record pagination, finite DB prices, mandatory catalog
+  classification, stale tax review and new SaaS manager/reviewer MFA requirements.
+- Next: rerun expanded integration suite, build and browser workflows; inspect UI,
+  then migrate the local development DB and document upgrade/deployment privileges.
+
+## Phase 3 / batch 4 — integration/browser acceptance and local upgrade
+
+- Expanded integration suite passed 25/25, covering tenant boundaries, customer
+  concurrency, archive/restore, literal search, 51-row pagination, exact prices,
+  stale reviews, immutable history, audit rollback, DB guards and SaaS manager MFA.
+- Chrome passed all 3 browser workflows: existing identity/RBAC/MFA plus business
+  persistence, customer archive/restore, catalog review/invalidation/history and
+  390px mobile layout/dialog/navigation checks. Inspected desktop/mobile catalog
+  screenshots; all captured data is disposable fixture data.
+- Added OpenAPI request/response contracts and bounded directory query descriptions.
+- Applied reviewed migration 0002 to the development DB and reran it. Readiness
+  passed. Before/after in-process hashes confirmed existing organizations/users/
+  memberships/roles/grants/MFA/owner-recovery records were unchanged; no credentials
+  or hash values were printed. Existing .env and owner files were preserved.
+- Improved sidebar spacing so Phase 3 navigation fits without hiding settings.
+  Next: final Edge/Chrome smoke/regression, types/lint/format/drift checks and docs.
+
+## Phase 3 / batch 5 — final checks and directory error handling
+
+- Final full workflows passed 3/3 in Edge and 3/3 in Chrome. Edge headless startup
+  smoke passed against the migrated development database; final unit suite 24/24.
+- Full workspace/test TypeScript and lint passed. Formatting found one newly
+  extended test file; formatted it and reran formatting successfully.
+- Drizzle generation reported no schema changes; checked-in 0002 snapshot and
+  reviewed SQL match the current declarative schema. Prior migration files unchanged.
+- Final review tightened failed-directory reloads to clear stale rows and permit
+  retry, and prevents Next from exceeding the documented 10000 offset bound.
+  Added a browser failure/retry regression; rerunning only the affected business
+  workflow in both browsers plus frontend build/lint/format.
+- Development frontend was not listening when checked. Checking service ports
+  before starting the updated workspace without replacing existing processes.
+
+## Phase 3 / batch 6 — final local acceptance (2026-10-28)
+
+- Complete: business/GST setup; customer/catalog CRUD with archive/restore; exact
+  prices; one-active registration; versioned classification/review history; explicit
+  permissions/MFA; optimistic concurrency; transactional audits; responsive UI.
+- Final evidence: production build; full workspace and test TypeScript; lint;
+  24/24 unit tests; 25/25 isolated DB/HTTP tests; 3/3 full workflows in Chrome and
+  Edge. Latest directory failure/retry workflow passed again in both browsers.
+  Final formatting and whitespace checks passed after this documentation update.
+- Drizzle generation found no schema drift. Development migration applied twice;
+  existing identity/organization/grant/MFA/recovery fingerprints remained unchanged.
+- Edge compiled-app smoke passed. Existing API on port3000 was preserved. Started
+  Vite on port5173 (PID19828), with timestamped ignored .local logs/PID file. HTTP
+  checks verified live readiness, frontend proxy and unauthenticated rejection of
+  the new business endpoint. Real Chrome verified localhost:5173 sign-in and healthy
+  API/database status without accessing private owner input or creating a session.
+- PowerShell's localhost probe did not connect; direct loopback HTTP checks and
+  real Chrome at localhost passed. Browser behavior is verified independently of
+  that PowerShell probe.
+- No new dependencies, invoice calculations/issuance/printing, payment/inventory
+  features or production GST compliance claims. Earlier migrations, .env, existing
+  owner input/recovery files and user's Git staging were not overwritten.
+- Still unverified: remote GitHub CI and native Windows service/ACL/LAN HTTPS/
+  firewall/reboot deployment behavior. Phase 4 covers the legally reviewed GST engine.

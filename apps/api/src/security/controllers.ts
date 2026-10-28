@@ -42,16 +42,24 @@ export interface SecurityServices {
   identity: IdentityService;
   organizations: OrganizationsService;
 }
-function input<T>(schema: z.ZodType<T>, value: unknown): T {
+export function input<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value);
   return result.success ? result.data : deny('INVALID_INPUT');
 }
-const uuid = (value: string) => input(z.string().uuid(), value);
-const contractBody = (schema: z.ZodType) =>
+export const uuid = (value: string) => input(z.string().uuid(), value);
+export const contractBody = (schema: z.ZodType) =>
   ApiBody({
     schema: z.toJSONSchema(schema, {
       target: 'openapi-3.0',
       io: 'input',
+      unrepresentable: 'any',
+    }) as SchemaObject,
+  });
+export const contractResponse = (schema: z.ZodType, status = 200) =>
+  ApiResponse({
+    status,
+    schema: z.toJSONSchema(schema, {
+      target: 'openapi-3.0',
       unrepresentable: 'any',
     }) as SchemaObject,
   });
@@ -75,7 +83,7 @@ export function readCookie(request: Request, name: string): string | undefined {
     .filter((v) => v.startsWith(`${name}=`));
   return values.length === 1 ? values[0]!.slice(name.length + 1) : undefined;
 }
-class SecurityController {
+export class SecurityController {
   constructor(readonly services: SecurityServices | null) {}
   get security() {
     return this.services ?? deny('SECURITY_UNAVAILABLE');

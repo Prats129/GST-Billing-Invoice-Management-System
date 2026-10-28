@@ -32,4 +32,11 @@ shared contracts and enforce cookie/CSRF/Origin boundaries. Permission changes a
 audits commit together; protected access reads current grants without a stale cache.
 The React workspace offers login/MFA/security and permission-gated administration.
 Provisioning/recovery is host CLI only. See phase-2.md and identity-operations.md.
+Business master data lives in apps/api/src/business. Reads enforce current tenant
+permissions; writes share the organization lock and atomic audit transaction.
+Master-data versions reject stale saves. Catalog price/rate transport uses decimal
+strings, with PostgreSQL NUMERIC storage; catalog reads use repeatable-read snapshots.
+Tax classification revisions/reviews are immutable and tenant-linked. Semantic
+item/classification changes create new unreviewed revisions. Browser business
+screens validate shared contracts and use bounded server search/pagination.
 Customer billing remains unavailable.

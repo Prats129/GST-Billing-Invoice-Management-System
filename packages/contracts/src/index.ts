@@ -20,6 +20,11 @@ export const permissionKeys = [
   'roles.read',
   'roles.manage',
   'audit.read',
+  'customers.read',
+  'customers.manage',
+  'catalog.read',
+  'catalog.manage',
+  'catalog.tax.verify',
 ] as const;
 export const permissionSchema = z.enum(permissionKeys);
 export type Permission = z.infer<typeof permissionSchema>;
@@ -127,3 +132,4 @@ export interface MemberView {
   acceptedAt: string | null;
   effectivePermissions: Permission[];
 }
+export * from './business.js';

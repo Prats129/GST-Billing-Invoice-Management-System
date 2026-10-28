@@ -16,5 +16,10 @@ memberships, default-deny RBAC, explicit delegation and owner concurrency invari
 Phase 2 local acceptance is complete; see phase-2.md and review-coverage.md for
 commands/results and outstanding deployment/release validation.
 
-Later: business profile/catalog; legally reviewed decimal GST engine; transactional
+Phase 3 implementation and local acceptance are complete: business/GST profile,
+customer and product/service master data, archives, versioned classification review
+and responsive workspace screens.
+Acceptance and evidence are in phase-3.md and review-coverage.md.
+
+Later: legally reviewed decimal GST engine; transactional
 invoice lifecycle/renderer/corrections; commercial deployment and recovery hardening.

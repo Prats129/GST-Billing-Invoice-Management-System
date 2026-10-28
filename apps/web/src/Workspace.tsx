@@ -19,6 +19,9 @@ import type { Mutate } from './security-forms.js';
 import { MembersPanel } from './MembersPanel.js';
 import { RolesPanel } from './RolesPanel.js';
 import { SecurityPanel } from './SecurityPanel.js';
+import { BusinessProfileScreen } from './business/BusinessProfileScreen.js';
+import { CustomersScreen } from './business/CustomersScreen.js';
+import { CatalogScreen } from './business/CatalogScreen.js';
 import {
   Avatar,
   Badge,
@@ -35,6 +38,9 @@ import type { ConnectionState } from './connection.js';
 
 const views = [
   'overview',
+  'business',
+  'customers',
+  'catalog',
   'members',
   'roles',
   'security',
@@ -46,6 +52,21 @@ const viewInfo: Record<
   View,
   { title: string; description: string; icon: IconName }
 > = {
+  business: {
+    title: 'Business setup',
+    description: 'Your business identity, registration and contact details.',
+    icon: 'building',
+  },
+  customers: {
+    title: 'Customers',
+    description: 'A home for your customer details and addresses.',
+    icon: 'users',
+  },
+  catalog: {
+    title: 'Catalog',
+    description: 'Products, services, pricing and tax classifications.',
+    icon: 'roles',
+  },
   overview: {
     title: 'Workspace overview',
     description: 'A clear view of your organization and its access.',
@@ -291,14 +312,28 @@ export function Workspace({
     ),
   );
   const canAudit = Boolean(context?.access.permissions.includes('audit.read'));
+  const canCustomers = Boolean(
+    context?.access.permissions.some(
+      (p) => p === 'customers.read' || p === 'customers.manage',
+    ),
+  );
+  const canCatalog = Boolean(
+    context?.access.permissions.some(
+      (p) => p === 'catalog.read' || p === 'catalog.manage',
+    ),
+  );
   const allowed =
-    view === 'members'
-      ? canMembers
-      : view === 'roles'
-        ? canRoles
-        : view === 'activity'
-          ? canAudit
-          : true;
+    view === 'customers'
+      ? canCustomers
+      : view === 'catalog'
+        ? canCatalog
+        : view === 'members'
+          ? canMembers
+          : view === 'roles'
+            ? canRoles
+            : view === 'activity'
+              ? canAudit
+              : true;
   const activeView = !tenantLoading && context && !allowed ? 'overview' : view;
   useEffect(() => {
     let active = true;
@@ -347,6 +382,15 @@ export function Workspace({
   }
   const mutate: Mutate = (path, body, method = 'POST') =>
     securityRequest(path, info?.csrfToken, method, body);
+  const businessProps = {
+    basePath: `/organizations/${selected}`,
+    permissions: context?.access.permissions ?? [],
+    busy,
+    error,
+    run,
+    mutate,
+    onClearError: () => setError(''),
+  };
   async function reloadTenant() {
     if (!selected) return;
     const ctx = await securityRequest<OrganizationAccess>(
@@ -612,6 +656,9 @@ export function Workspace({
         {(
           [
             'overview',
+            'business',
+            ...(canCustomers ? ['customers'] : []),
+            ...(canCatalog ? ['catalog'] : []),
             ...(canMembers ? ['members'] : []),
             ...(canRoles ? ['roles'] : []),
             ...(canAudit ? ['activity'] : []),
@@ -999,6 +1046,15 @@ export function Workspace({
                   onClearError={() => setError('')}
                 />
               )}
+              {activeView === 'business' && (
+                <BusinessProfileScreen key={selected} {...businessProps} />
+              )}
+              {activeView === 'customers' && canCustomers && (
+                <CustomersScreen key={selected} {...businessProps} />
+              )}
+              {activeView === 'catalog' && canCatalog && (
+                <CatalogScreen key={selected} {...businessProps} />
+              )}
               {activeView === 'roles' && canRoles && (
                 <RolesPanel
                   roles={roles}
@@ -1082,7 +1138,7 @@ export function Workspace({
           )}
           <footer className="workspace-footer">
             <span>GST Billing</span>
-            <span>Access management workspace</span>
+            <span>Business workspace</span>
           </footer>
         </main>
       </div>

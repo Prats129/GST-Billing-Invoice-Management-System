@@ -9,6 +9,11 @@ const errors = {
   PASSWORD_CHANGE_REQUIRED: [403, 'Change your temporary password'],
   INVALID_INPUT: [400, 'Invalid input'],
   CONFLICT: [409, 'Operation conflicts with the current state'],
+  VERSION_CONFLICT: [
+    409,
+    'This record changed. Close the form and reload before saving.',
+  ],
+  NOT_FOUND: [404, 'Record not found'],
   RATE_LIMITED: [429, 'Too many attempts; try again later'],
   SECURITY_UNAVAILABLE: [503, 'Security configuration unavailable'],
 } as const;

@@ -27,3 +27,8 @@ Phase 2 adds the identity, MFA, session and tenant authorization requirements in
 phase-2.md. Admin UI includes roles/delegation, assignments and effective permissions.
 First-owner setup/recovery is host-only; no default account. Existing-user joins
 require explicit acceptance. Financial features and subscription charging stay deferred.
+
+Phase 3 adds the business/registration, customer and catalog requirements in phase-3.md.
+GSTIN/state/HSN syntax checks and operator review do not certify tax treatment or
+e-invoice eligibility. Catalog values remain decimal strings; archive/version/audit
+and tenant authorization boundaries apply to every master-data mutation.

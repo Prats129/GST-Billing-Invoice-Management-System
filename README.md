@@ -2,7 +2,8 @@
 
 Shared Windows offline and SaaS billing platform under development. Phase 1 provides
 the technical foundation; Phase 2 adds login, sessions, MFA, organization memberships
-and permission-based administration. Billing/GST calculations remain unimplemented;
+and permission-based administration. Phase 3 adds business/GST setup, customers
+and a product/service catalog with classification review. Billing/GST calculations remain unimplemented;
 no legal-compliance or production-readiness claim is made.
 
 ## Prerequisites
@@ -143,7 +144,8 @@ remote workflow execution is separate from locally observed results.
 `apps/api` owns transport/operations, `apps/web` the React shell,
 `packages/database` schema/migrations/pool, `packages/contracts` runtime transport
 validation, and `packages/billing-engine` an explicitly unimplemented version
-boundary. Identity/admin screens are implemented; financial features remain deferred.
+boundary. Identity/admin and business/customer/catalog screens are implemented;
+invoice calculations, issuance and printing remain deferred.
 
 Read [architecture](docs/architecture.md), [requirements](docs/requirements.md),
 [decisions](docs/decisions.md), [execution plan](docs/development-plan.md), and
@@ -151,6 +153,8 @@ Read [architecture](docs/architecture.md), [requirements](docs/requirements.md),
 See [Phase 2 scope](docs/phase-2.md) and
 [identity operations](docs/identity-operations.md) for provisioning/recovery,
 delegation, session defaults and deployment limitations.
+See [Phase 3 scope and setup](docs/phase-3.md) for business setup, catalog review,
+upgrade permissions and the boundaries of local GST validation.
 
 [Windows spike runbook](docs/windows-offline-spike.md) provides executable PoC
 scripts for a dedicated PostgreSQL instance, checksum-verified Windows API service,

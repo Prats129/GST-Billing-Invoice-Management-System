@@ -1909,3 +1909,262 @@ legend {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Business setup and master-data screens use the existing workspace foundation. */
+.sidebar nav {
+  min-height: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+.sidebar-brand {
+  padding-bottom: 20px;
+}
+.sidebar-workspace {
+  margin-bottom: 18px;
+}
+.sidebar nav a {
+  padding-block: 9px;
+  margin-block: 3px;
+}
+.nav-label-settings {
+  margin-top: 20px;
+}
+.sidebar-workspace,
+.sidebar-brand,
+.sidebar-bottom {
+  flex-shrink: 0;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.status-field > label {
+  margin-bottom: 7px;
+}
+textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #dce3e9;
+  border-radius: 6px;
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 12px;
+  color: #304a59;
+  background: white;
+}
+.form-section {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.form-section > legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.form-section > label,
+.form-section > .form-grid {
+  margin-bottom: 18px;
+}
+.form-section:disabled {
+  opacity: 0.8;
+}
+.form-section:disabled input,
+.form-section:disabled select,
+.form-section:disabled textarea {
+  color: #415969;
+  background: #f8fafb;
+}
+.business-profile {
+  max-width: 1000px;
+}
+.business-profile .section-heading {
+  align-items: flex-start;
+}
+.address-fields > label {
+  margin-bottom: 14px;
+}
+.address-fields .form-grid {
+  align-items: start;
+}
+.bank-settings {
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.bank-settings summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #587080;
+}
+.bank-settings .form-grid {
+  margin-top: 20px;
+}
+.info-note a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.success-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ecf7f0;
+  padding: 12px;
+  border-radius: 7px;
+  color: #247d60;
+  margin-bottom: 22px;
+  font-size: 12px;
+}
+.directory-tools {
+  padding: 0 24px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.directory-tools > form {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.directory-filters {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.directory-filters select {
+  min-width: 140px;
+  padding: 9px;
+  font-size: 11px;
+}
+.directory-filters .icon-button {
+  color: #5c7584;
+}
+.directory-loading {
+  padding: 45px 24px;
+  font-size: 12px;
+  text-align: center;
+}
+.table-detail {
+  font-size: 11px;
+  font-weight: 500;
+}
+.table-subdetail {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+}
+.business-directory > .error {
+  margin: 0 24px 20px;
+}
+.business-directory .person {
+  min-width: 200px;
+}
+.business-directory .person strong {
+  max-width: 260px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.price-tax-toggle {
+  align-self: center;
+  padding-top: 20px;
+}
+.tax-fields > small {
+  display: block;
+  margin-top: 15px;
+  line-height: 1.7;
+}
+.tax-review-section {
+  border-top: 1px solid var(--border);
+  margin-top: 26px;
+  padding-top: 22px;
+}
+.tax-review-section .section-heading {
+  margin-bottom: 15px;
+}
+.tax-review-section form {
+  display: grid;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.tax-review-section p,
+.tax-review-section small {
+  font-size: 11px;
+}
+.tax-review-section form button {
+  justify-self: start;
+}
+.tax-review-section .review-reference {
+  padding: 12px;
+  background: #f2f7f5;
+  border-radius: 6px;
+  margin-bottom: 17px;
+  overflow-wrap: anywhere;
+}
+.tax-history {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.tax-history li {
+  padding: 15px 0;
+  border-top: 1px solid var(--border);
+}
+.tax-history strong {
+  font-size: 11px;
+}
+.tax-history p {
+  margin: 5px 0;
+}
+.tax-history small {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .directory-tools {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 0 18px 20px;
+  }
+  .directory-tools .search-field {
+    flex: 1;
+  }
+  .directory-tools > form > button {
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  .directory-filters {
+    justify-content: space-between;
+  }
+  .directory-filters select {
+    width: auto;
+  }
+  .business-profile .section-heading {
+    flex-direction: column;
+  }
+  .business-profile .card-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .business-profile .card-footer > button {
+    width: 100%;
+  }
+  .business-directory .person {
+    min-width: 0;
+  }
+  .business-directory td:nth-child(3) {
+    text-align: right;
+  }
+  .price-tax-toggle {
+    padding-top: 0;
+  }
+  .tax-review-section .section-heading {
+    align-items: flex-start;
+  }
+}
