@@ -11,7 +11,16 @@ release the lock and connection. Drizzle records applied migrations transactiona
 Back up before release migrations; forward fixes or tested restore are preferred
 to assuming schema downgrade is safe. PostgreSQL schema ownership remains with
 the migration role. Grant runtime only schema usage and required table operations.
-Phase 1 readiness needs SELECT on public.organizations only.
+Phase 2 readiness checks identity/session tables and owner-guard availability too.
+Runtime needs the limited DML privileges described in docs/identity-operations.md;
+never table ownership/DDL. Audit rows reject UPDATE/DELETE/TRUNCATE. Global identity
+audit events have no organization; tenant events and reads always use organization_id.
+
+0001_identity_authorization.sql adds identities, sessions, permissions and tenant-safe
+links; reviewed SQL also installs deferred owner constraints and parent-row locking.
+The corresponding snapshot represents declarative tables; custom trigger behavior
+is maintained explicitly in SQL. Existing Phase 1 rows are not deleted or silently
+assigned an owner. Explicit host provisioning can adopt an ownerless legacy org.
 
 Integration tests require an explicitly supplied `TEST_DATABASE_ADMIN_URL` with
 CREATEDB privilege on a disposable cluster. They create and drop only a randomized

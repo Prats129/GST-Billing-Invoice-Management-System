@@ -19,6 +19,17 @@ const schema = z.object({
   TLS_CERT_PATH: z.string().min(1).optional(),
   WEB_ROOT: z.string().min(1).optional(),
   DEPLOYMENT_EDITION: z.enum(['offline', 'saas']).default('offline'),
+  SESSION_IDLE_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
+  SESSION_ABSOLUTE_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(30)
+    .max(1440)
+    .default(720),
+  AUTH_DATA_KEY: z
+    .string()
+    .regex(/^[a-fA-F0-9]{64}$/)
+    .optional(),
 });
 export type Config = z.infer<typeof schema>;
 
@@ -29,6 +40,10 @@ export function parseConfig(env: NodeJS.ProcessEnv): Config {
       `Invalid configuration fields: ${result.error.issues.map((i) => i.path.join('.')).join(', ')}`,
     );
   const config = result.data;
+  if (config.SESSION_IDLE_MINUTES > config.SESSION_ABSOLUTE_MINUTES)
+    throw new Error('Idle session lifetime must not exceed absolute lifetime');
+  if (config.DEPLOYMENT_EDITION === 'saas' && !config.AUTH_DATA_KEY)
+    throw new Error('SaaS requires AUTH_DATA_KEY for MFA encryption');
   if (!isIP(config.HOST) && config.HOST !== 'localhost')
     throw new Error('HOST must be an explicit IP address or localhost');
   if (Boolean(config.TLS_KEY_PATH) !== Boolean(config.TLS_CERT_PATH))

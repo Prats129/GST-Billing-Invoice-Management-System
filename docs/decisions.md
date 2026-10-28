@@ -9,11 +9,14 @@ reversible foundation details without changing those decisions.
 - PostgreSQL 18 development target; database not exposed beyond loopback.
 - Drizzle migrations run explicitly using a migration credential. Application startup
   never pushes schema. Integration tests create/drop only random dedicated databases.
-- Organizations is the only initial business entity; speculative financial/auth schema
-  is deferred. Billing engine is a version-only boundary, not a calculation engine.
+- Phase 1 starts with organizations; Phase 2 adds identity/authorization schema.
+  Financial schema remains deferred. Billing engine has no calculations yet.
 - JSON operational logs omit raw errors, URLs, headers and environment values.
 - Loopback development HTTP only; non-loopback bindings require TLS. Host authority
   allowlist is exact including port. Same-origin browser calls need no CORS wildcard.
+- Phase 2 security decisions/defaults are recorded in phase-2.md and
+  identity-operations.md: explicit delegation, consent-based existing-user
+  invitations, protected-owner checks and host-only recovery.
 
 Unresolved: legal calculation/rounding rules, GST/e-invoice scope, exact session/MFA
 policies, Windows compatibility matrix, installer redistribution and signing,

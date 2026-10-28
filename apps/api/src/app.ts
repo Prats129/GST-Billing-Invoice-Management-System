@@ -8,22 +8,42 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import express from 'express';
 import { createDatabase } from '@gst/database';
 import type { Database } from '@gst/database';
 import type { Config } from './config.js';
 import { ApiExceptionFilter } from './errors.js';
 import { DATABASE, HealthController } from './health.js';
 import { safeLogger } from './logging.js';
+import {
+  IdentityController,
+  OrganizationsController,
+  SECURITY,
+} from './security/controllers.js';
+import { IdentityService } from './security/identity.service.js';
+import { OrganizationsService } from './security/organizations.service.js';
 
 export async function createApp(
   config: Config,
-  suppliedDatabase?: Pick<Database, 'ready' | 'close'>,
+  suppliedDatabase?: Pick<Database, 'ready' | 'close'> &
+    Partial<Pick<Database, 'db'>>,
 ) {
   const database = suppliedDatabase ?? createDatabase(config.DATABASE_URL);
+  const identity = database.db
+    ? new IdentityService(database as Database, config)
+    : undefined;
+  const security = identity
+    ? { identity, organizations: new OrganizationsService(identity) }
+    : null;
   @Module({
-    controllers: [HealthController],
+    controllers: [
+      HealthController,
+      IdentityController,
+      OrganizationsController,
+    ],
     providers: [
       { provide: DATABASE, useValue: database },
+      { provide: SECURITY, useValue: security },
       {
         provide: 'DATABASE_LIFECYCLE',
         useValue: { onApplicationShutdown: () => database.close() },
@@ -50,6 +70,8 @@ export async function createApp(
     config.ALLOWED_HOSTS.split(',').map((v) => v.trim()),
   );
   app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith('/api/'))
+      res.setHeader('Cache-Control', 'no-store');
     if (
       !req.headers.host ||
       !allowedHosts.has(req.headers.host) ||
@@ -62,16 +84,18 @@ export async function createApp(
     }
     next();
   });
+  app.use(express.json({ limit: '16kb', strict: true }));
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ApiExceptionFilter());
   const document = SwaggerModule.createDocument(
     app,
     new DocumentBuilder()
-      .setTitle('GST Platform Foundation')
+      .setTitle('GST Platform API')
       .setDescription(
-        'Phase 1 operations only; no billing or legal compliance claim.',
+        'Identity, tenant authorization and operations. Billing remains unavailable.',
       )
       .setVersion('1')
+      .addCookieAuth('__Host-gst_session')
       .build(),
   );
   // JSON OpenAPI avoids relaxing CSP to support a docs UI.

@@ -42,9 +42,9 @@ test('clean migration is repeatable, schema ready, and organizations persist', a
   await database!.ready();
   const [row] = await database!.db
     .insert(organizations)
-    .values({ name: 'Foundation smoke' })
+    .values({ name: 'Foundation smoke', status: 'suspended' })
     .returning();
-  expect(row).toMatchObject({ name: 'Foundation smoke', status: 'active' });
+  expect(row).toMatchObject({ name: 'Foundation smoke', status: 'suspended' });
   expect(row?.id).toMatch(/^[0-9a-f-]{36}$/);
 });
 test('database rejects invalid organization states and blank names', async () => {

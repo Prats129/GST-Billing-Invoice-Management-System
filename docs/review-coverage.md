@@ -224,3 +224,256 @@ invariants. No GST compliance or customer billing readiness is claimed.
   validation remain UNVERIFIED as before; see windows-offline-spike.md.
 - No Phase 2 features, resets, staging replacements, credential regeneration,
   volume deletion or changes to historical migration files were performed.
+
+## Phase 2 / batch 1 — scope and threat boundary
+
+- User authorized Phase 2 implementation. Re-read the full project context and
+  current code/schema/configuration. Working tree clean; Phase 1 is committed.
+- Defined acceptance and reversible choices in phase-2.md. Consulted official
+  OWASP and dependency documentation for password/session/CSRF/TOTP behavior.
+- Existing health API, migrations and Windows spike will be preserved; additive
+  security modules/schema follow, with tenant/privilege/concurrency tests.
+- Next: identity/authorization schema, reviewed migration and security primitives.
+- Untested at this checkpoint: all new Phase 2 functionality.
+
+## Phase 2 / batch 2 — schema, services and executable security tests
+
+- Added identities, edition-separated memberships/sessions, tenant-scoped roles,
+  permission/delegation grants, hashed sessions/recovery credentials, encrypted
+  MFA secrets, persistent throttles and audit events. Existing migration0000 intact.
+- Generated additive migrations0001/0002. Review caught Drizzle emitting composite
+  FKs before their referenced unique constraints; reordered the new unapplied SQL.
+  Added serialized owner/edition integrity and append-only audit triggers.
+- Added session/CSRF/password/TOTP/recovery services and REST controllers. Global
+  shared-user password resets are forbidden across tenant boundaries.
+- Installed Argon2id/OTPAuth; first install needed a non-interactive dependency-link
+  refresh. Fixed query typing; compiler caught inferred-export type annotations.
+- Added isolated HTTP/DB security tests (tenant attacks, delegation, concurrency,
+  session expiration/revocation, MFA replay/recovery and audit immutability) and
+  cryptographic behavior tests. Not yet run at this checkpoint.
+- Next: execute tests/migrations, fix failures, implement identity/admin UI and host
+  provisioning/recovery runbook. Phase 2 is not yet complete.
+
+## Phase 2 / batch 3 — first execution and browser-facing flows
+
+- Strict TypeScript passed for security services/controllers. First isolated DB/HTTP
+  run PASS (12 tests total), including tenant constraints, ownership concurrency,
+  session revocation/expiry, TOTP replay, single-use recovery and audit protection.
+- Added acceptance-based invitations for existing identities, MFA rotation/disable
+  rules, mandatory SaaS gating and host recovery credentials persisted before commit.
+- Added React login, forced password change, MFA enrollment/challenge, organization
+  switching, member/role/delegation administration, audit and session management.
+  Paginated role editing retains unseen assignments rather than silently removing them.
+- Added Playwright end-to-end tests using disposable databases and actual browser
+  accounts. Dependency install/types/browser execution pending at this checkpoint.
+- Next: run expanded tests, UI/browser verification and migration upgrade; finish
+  operator/setup documentation and resolve any failures. Phase 2 remains in progress.
+
+## Phase 2 / batch 4 — completed scope and regression checkpoint
+
+- Added consent persistence preventing invite→suspend→activate bypass, safe member
+  removal, effective-permission views, bounded password work/throttle cleanup and
+  employee-reset/shared-account protections.
+- Consolidated only the new, untracked/unapplied migration drafts into reviewed
+  0001_identity_authorization.sql with final snapshot. Saved drafts under ignored
+  .local for recovery; Phase 1 SQL/snapshot are untouched. New migration still
+  requires fresh/upgrade execution after consolidation.
+- Split React identity/admin forms into focused member, role and account-security
+  components. Added private host CLI provisioning/recovery test and operator guide.
+- First full lint run caught cleanup throwing inside finally in the new CLI test;
+  fixed it to preserve original failures. Expanded full check/browser run underway.
+- CI now includes the actual browser workflows on disposable databases. Remote
+  workflow execution remains unverified. Next: fix any runtime/browser failures,
+  verify upgrade and finish final evidence. Phase 2 is not yet marked complete.
+
+## Phase 2 / batch 5 — regression fixes and unit verification
+
+- Lint and strict types PASS after fixing the CLI's exact-optional-field typing.
+  OpenAPI bodies now derive from the shared runtime contracts; login is explicitly
+  documented without a pre-existing authentication requirement.
+- Unit tests PASS (20/20). Initial Argon2 assertion assumed PHC parameter order;
+  corrected it to assert algorithm/version and exact costs independently of order.
+- Added MFA mandatory-disable/recovery-code-rotation assertions and full host CLI
+  tests; expanded isolated integration/browser run is now executing.
+- React member/role/account-security components are separate, preserve paginated
+  assignments and display effective permissions. Operator guide documents no default
+  login, existing-user consent, protected recovery and limited runtime DB privileges.
+- Next: complete runtime/browser run, fix failures, apply reviewed upgrade locally,
+  verify migration drift and update final acceptance evidence.
+
+## Phase 2 / batch 6 — resumed verification (2026-10-28)
+
+- Resumed the existing uncommitted Phase 2 changes after the session limit. No
+  reset, dependency/schema recreation or change to Phase 1 history.
+- Previous run completed 20 unit tests and 18 DB/HTTP integration tests. Browser
+  run failed waiting for the organization selector after login; second scenario
+  did not run. Those browser flows were not claimed as passing.
+- Corrected select labels to explicitly reference their controls rather than
+  include option text in the label. Added an explicit browser login-response
+  assertion so an authentication failure is distinguished from selector failure.
+- Next: run browser workflows, resolve failures, verify the additive local upgrade,
+  finish regression checks and record final Phase 2 status. No new feature scope.
+
+## Phase 2 / batch 7 — resumed browser verification and upgrade preparation
+
+- Rebuilt the existing implementation; both Chrome Playwright workflows now PASS
+  (2/2): owner role/member administration, employee forced password change,
+  suspension revocation, authenticator enrollment and recovery-code login.
+- One intermediate run hit the test server's cold-start deadline. Added a bounded
+  startup allowance and sanitized startup-event/status diagnostics; no raw server
+  stderr or credential payloads are echoed. Browser authentication now has an
+  explicit status assertion instead of timing out on a later control.
+- Verified Phase 1 SQL/snapshot have no changes. Development DB still has one
+  migration and zero organizations. Created/inspected a pg_dump custom archive in
+  ignored .local/backups before applying the pending upgrade. This was archive
+  inspection, not a restore rehearsal.
+- Windows spike guide now points to Phase 2 runtime privileges instead of implying
+  the original organization-only grants are sufficient for the current checkout.
+- Next: apply/repeat the upgrade, verify drift/credentials, run final regression
+  and Edge workflows, then update acceptance and remaining deployment limitations.
+
+## Phase 2 / batch 8 — local upgrade and setup-command correction
+
+- setup:env added only the missing MFA encryption key; hashed comparisons confirm
+  existing DB credentials/settings were preserved. Applied the reviewed upgrade
+  twice successfully; db:generate reports no schema changes. Frozen offline install
+  PASS without lockfile changes. Final regression run continues.
+- Reviewed the documented first-owner command and found its filtered package
+  invocation changed working directory, breaking root-relative private file paths.
+  Kept the root CLI entry in the root directory and extended the existing isolated
+  CLI test to run that exact pnpm command with relative paths. This fixes the setup
+  workflow; it introduces no new feature or credential defaults.
+- Next: finish regression/Edge verification, confirm no temporary test DB/processes
+  remain, and record final acceptance/operational limitations.
+
+## Phase 2 / batch 9 — complete browser run and final consent-boundary fix
+
+- Final regression run PASS: 20 unit tests, 18 isolated integration tests, Edge
+  browser workflows (2/2) and compiled HTTP/browser health smoke. Chrome workflows
+  also passed (2/2) in batch7. New root-relative host CLI regression passed.
+- Format check caught the newly edited CLI test's formatting; corrected it and
+  lint passed. No dependency or product feature scope added.
+- Final review found pending invitations were included in password-reset authority:
+  an invite could block the real tenant's reset, or authorize a reset of an orphan
+  identity without consent. Restricted reset authority/shared-account checks to
+  accepted memberships and extended the existing consent regression for both cases.
+- Next: verify this focused security correction, rerun required checks, confirm
+  preserved migration history and clean test-resource teardown, then final acceptance.
+
+## Phase 2 / batch 10 — final local acceptance (2026-10-28)
+
+- Consent/reset correction verified: 18/18 isolated integration tests PASS, including
+  the actual root pnpm provisioning command with relative private input paths.
+  New regressions prove unaccepted invitations neither grant password-reset
+  authority over an orphan identity nor block the actual tenant's authorized reset.
+- Lint/strict typecheck PASS; API rebuilt. Chrome workflows PASS (2/2) after that
+  correction, with compiled HTTP/browser health smoke PASS. Edge workflows also
+  PASS (2/2) in the final regression run. Unit suite PASS (20/20).
+- Frozen offline install PASS, reviewed migration applied/repeated successfully,
+  schema generation reports no drift. Formatting checks PASS after formatting
+  the latest regression test. Root DB credentials preserved; missing MFA key added
+  without replacing existing values.
+- Development PostgreSQL18.6 remains healthy at 127.0.0.1:5432; migration count=2,
+  organization/user counts=0, leftover gst_test_* databases=0. No temporary API/Vite
+  listeners remain. Existing customer/development records were not replaced; no
+  default owner account was created. First owner is an explicit operator setup.
+- Original Phase 1 SQL/snapshot have no differences from HEAD. Retained the inspected
+  pre-upgrade custom archive under ignored .local/backups (not a restore rehearsal).
+  Existing Git staging was preserved; final fixes are in the working tree for review
+  and must be staged before committing the completed changes.
+- Final post-fix unit run PASS (20/20); formatting and working-tree/staged Git
+  whitespace checks PASS. Repeating setup:env preserved the entire configured .env
+  byte-for-byte, including the existing MFA key.
+
+Phase 2 implementation/local acceptance is complete. Remaining release gates:
+remote GitHub CI execution; real Windows service/ACL/LAN HTTPS/firewall/reboot tests;
+reviewed SaaS all-factors-lost platform recovery. These are not claimed as verified.
+No catalog, GST math, invoicing, licensing, payments or other later-phase features
+were added. Next implementation phase is business/GST registration, customers and
+catalog, after review/commit of this phase.
+
+## Local owner setup assistance (2026-10-28)
+
+- User requested completion of setup using their existing private provisioning file.
+  Validated field/JSON correctness without printing credentials. Confirmed no
+  matching account/organization existed, avoiding duplicate provisioning.
+- Existing database healthy; environment preserved and migrations current. Created
+  the requested owner via the documented root command. Recovery output is in an
+  NTFS-restricted .local/identity directory; input file permissions restricted too.
+- Existing frontend was running but its API proxy returned502 because backend was
+  absent. Started only the backend development watcher; preserved the user's frontend.
+- Actual browser login, owner organization, member/role screens and logout PASS.
+  Verification session was signed out; app processes remain running for the user.
+- Found Vite's workspace file serving allowed a HEAD request to the private setup
+  file. Added .local to fs.deny while retaining the default secret/Git exclusions.
+  Verified403 for setup/recovery files, .env and .git/config; browser login still PASS.
+- No passwords, recovery credentials or session tokens printed to chat/logs. No
+  existing credential file, recovery output or database volume was overwritten.
+
+## UI redesign / batch 1 — review and layout direction (2026-10-28)
+
+- User requested a substantial UI correction. Reviewed the existing React panels,
+  session/authorization flows, CSS, browser tests and smoke checks before editing.
+- Identified the main problems: narrow stacked layout, always-visible forms,
+  technical permission labels, weak hierarchy and developer diagnostics in the
+  main workflow.
+- Implementing separate overview/member/role/security/activity views, responsive
+  navigation, readable tables/cards and accessible dialogs. Scope is presentation
+  and interaction; existing authentication/API/tenant rules remain authoritative.
+- Next: implement the visual foundation and screens, update browser tests for
+  explicit navigation/dialogs, then verify desktop/mobile appearance and workflows.
+
+## UI redesign / batch 2 — implementation (2026-10-28)
+
+- Replaced the long stacked page with a responsive sidebar workspace, separate
+  overview, members, roles, activity, account-security and system-status views.
+- Added a team table with page-local search, role cards, readable permission
+  groups, focused native dialogs, keyboard dismissal/focus restoration, and a
+  dedicated sign-in layout. No external fonts, assets or dependencies added.
+- Preserved existing API contracts, tenant permissions, owner protections,
+  password/MFA/recovery and session operations. Role sharing remains a subset
+  of selected permissions; server authorization remains authoritative.
+- Frontend TypeScript check passed. Browser workflows updated for navigation,
+  dialogs and responsive overflow checks; build/lint/browser verification underway.
+- Existing staged changes and local credentials were preserved.
+
+## UI redesign / batch 3 — regression fixes and verification (2026-10-28)
+
+- Production build, lint, 20 unit tests and full workspace/test TypeScript checks
+  passed. Desktop overview/role/member screenshots inspected using test-only data.
+- Browser checks found that reselecting the already-selected organization could
+  clear its context without fetching again. Added an equality guard and retained
+  the regression scenario in the browser workflow.
+- Mobile overflow/search-layout checks caught presentation issues. Replaced the
+  phone member table with compact member cards and fixed search-field direction.
+- Keyboard dialog opening, initial focus, Escape dismissal/focus return, role
+  creation and member creation passed before the responsive assertion. Full
+  workflows are being rerun after those fixes.
+- API/static smoke checks passed. The optional Chrome command-line DOM smoke
+  process exited with no output; this is not a passed browser smoke check.
+- Edge's headless DOM smoke passed: built sign-in screen and healthy service
+  status rendered against the migrated development database. No business rows
+  were changed by that smoke check.
+- Phone member cards, mobile navigation, overflow checks, forced password change,
+  employee access restrictions and HttpOnly cookie checks passed in Chrome.
+  Membership status labeling was made explicit before rerunning the complete flow.
+
+## UI redesign / batch 4 — final local acceptance (2026-10-28)
+
+- Both complete browser workflows passed in Chrome (2/2) and Edge (2/2), using
+  disposable databases. Verified role/member creation, membership suspension,
+  forced password change, employee authorization, HttpOnly cookies, authenticator
+  enrollment, recovery-code display/use and MFA sign-in.
+- Also verified desktop/390px phone overflow, mobile navigation, separate screens,
+  and dialog initial focus/Escape/focus restoration. Inspected screenshots of
+  desktop overview/roles/members and phone members; captures use fixture data only.
+- Production build, full TypeScript, lint, formatting and 20 unit tests passed.
+  Edge browser startup smoke passed, including live API/database connectivity.
+  The earlier optional Chrome CLI DOM launch failure remains recorded above;
+  Chrome Playwright workflows passed after the fixes.
+- UI changes add no dependencies or backend/schema changes. Existing credentials,
+  business data and staging were preserved. Automated checks provide local
+  regression evidence, not a performance benchmark or an exhaustive audit.
+- Phase 2 implementation/local acceptance remains complete with the redesigned
+  UI. Native Windows service/LAN HTTPS/firewall/reboot and remote CI release gates
+  described in phase-2.md remain outstanding; loopback browser tests do not prove them.

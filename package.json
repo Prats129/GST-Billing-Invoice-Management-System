@@ -8,6 +8,7 @@
   },
   "scripts": {
     "setup:env": "node scripts/setup-env.mjs",
+    "identity:host": "pnpm build:packages && tsx apps/api/src/security/host-cli.ts",
     "smoke": "node --env-file=.env scripts/smoke.mjs",
     "dev": "pnpm build:packages && concurrently -k -n api,web \"pnpm --filter @gst/api dev\" \"pnpm --filter @gst/web dev\"",
     "build:packages": "pnpm --filter @gst/contracts --filter @gst/database --filter @gst/billing-engine -r build",
@@ -19,6 +20,7 @@
     "typecheck": "pnpm build:packages && pnpm -r typecheck && tsc -p tsconfig.tests.json",
     "test": "pnpm build:packages && vitest run --project unit",
     "test:integration": "pnpm build:packages && vitest run --project integration",
+    "test:e2e": "playwright test",
     "db:generate": "pnpm --filter @gst/database db:generate",
     "db:migrate": "pnpm --filter @gst/database db:migrate",
     "db:up": "docker compose up -d --wait",
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
     "@types/node": "^22.19.0",
     "@types/supertest": "^6.0.3",
     "concurrently": "^9.2.1",
@@ -42,6 +45,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "esbuild",
+      "argon2",
       "@nestjs/core"
     ]
   }

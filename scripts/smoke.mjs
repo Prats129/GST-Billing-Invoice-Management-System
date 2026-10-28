@@ -100,14 +100,18 @@ try {
       ],
       { windowsHide: true, timeout: 30000, maxBuffer: 2 * 1024 * 1024 },
     );
-    assert.match(stdout, /<dd>Connected<\/dd>/, 'browser frontend reaches API');
     assert.match(
       stdout,
-      /<dd>Ready<\/dd>/,
-      'browser frontend reaches migrated database',
+      /Sign in to your workspace/,
+      'browser renders sign-in',
+    );
+    assert.match(
+      stdout,
+      /All systems operational/,
+      'browser frontend reaches API and migrated database',
     );
     console.log(
-      'PASS: headless browser rendered API Connected and PostgreSQL Ready.',
+      'PASS: headless browser rendered sign-in and healthy service status.',
     );
   }
 } finally {

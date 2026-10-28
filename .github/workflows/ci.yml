@@ -1,4 +1,4 @@
-name: Foundation CI
+name: Platform CI
 on:
   push:
   pull_request:
@@ -37,6 +37,8 @@ jobs:
       - run: pnpm test
       - run: pnpm test:integration
       - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
       - run: pnpm db:migrate
       - run: node scripts/smoke.mjs
   windows-script-syntax:

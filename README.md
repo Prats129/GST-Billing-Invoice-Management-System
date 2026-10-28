@@ -1,8 +1,9 @@
-# GST billing platform — Phase 1
+# GST billing platform
 
-Foundation for a shared Windows offline and SaaS billing platform. This phase
-provides connectivity and development infrastructure. It does not issue invoices,
-calculate GST, authenticate users, or claim legal compliance/production readiness.
+Shared Windows offline and SaaS billing platform under development. Phase 1 provides
+the technical foundation; Phase 2 adds login, sessions, MFA, organization memberships
+and permission-based administration. Billing/GST calculations remain unimplemented;
+no legal-compliance or production-readiness claim is made.
 
 ## Prerequisites
 
@@ -34,8 +35,9 @@ pnpm db:migrate
 pnpm dev
 ```
 
-`setup:env` generates a private `.env` with a random local password and never
-overwrites an existing file. Alternatively copy `.env.example` and replace every
+`setup:env` generates `.env` with a random local password and MFA encryption key.
+For an existing file, it adds only a missing AUTH_DATA_KEY and preserves existing
+settings/credentials. Alternatively copy `.env.example` and replace every
 password placeholder consistently. For an existing PostgreSQL instance, adjust
 both URLs to a dedicated development database and the correct loopback port.
 URL-encode reserved password characters. Docker bootstrap credentials have
@@ -49,6 +51,9 @@ Open **http://localhost:5173**. The shell requests `/api/v1/health` and
 `/api/v1/health/ready` through Vite's same-origin proxy. API listens on
 127.0.0.1:3000; Vite on 127.0.0.1:5173. No LAN development HTTP exposure.
 The UI shows API connected and PostgreSQL ready only when each check succeeds.
+There is no default login or public administrator setup. Follow
+[first-owner setup](docs/identity-operations.md#first-owner-no-default-account)
+to provision your organization using a private input file, then sign in.
 Ctrl+C stops dev processes. `pnpm db:down` stops containers while retaining data.
 Do not use `docker compose down -v` unless deliberately destroying local data.
 
@@ -57,6 +62,9 @@ API routes:
 - `GET /api/v1/health`: liveness, independent of DB.
 - `GET /api/v1/health/ready`: 200 with migrated database, otherwise sanitized 503.
 - `GET /api/openapi.json`: OpenAPI document; no Swagger UI/CSP relaxation.
+- `/api/v1/auth/*`: sessions, passwords, TOTP and recovery-code management.
+- `/api/v1/organizations/*`: invitations, memberships, roles, owner changes,
+  effective permissions and scoped audits (server-enforced authorization).
 
 ## Checks and migrations
 
@@ -95,16 +103,19 @@ pnpm start
 Open http://localhost:3000 for this loopback-only compiled smoke test.
 Production/LAN requires TLS key/cert paths, HTTPS APP_ORIGIN, exact ALLOWED_HOSTS
 authorities (including port), and an explicitly chosen HOST. The API never trusts
-forwarded Host/Origin or enables wildcard CORS. Authentication and sensitive
-business operations are deferred; expose this foundation only in development.
+forwarded Host/Origin or enables wildcard CORS. Customer billing remains deferred;
+complete the documented deployment/security validation before production use.
 
-Integration tests use a separate random database per run and deliberately fail
+Integration and browser tests use separate random databases and deliberately fail
 when no admin URL is supplied. With the development container running, PowerShell:
 
 ```powershell
 # Read the generated local values without printing credentials.
 $env:TEST_DATABASE_ADMIN_URL = node --env-file=.env -e "process.stdout.write(process.env.MIGRATION_DATABASE_URL)"
 pnpm test:integration
+# After pnpm build, verify actual browser workflows:
+$env:BROWSER_PATH = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+pnpm test:e2e
 Remove-Item Env:TEST_DATABASE_ADMIN_URL
 ```
 
@@ -116,6 +127,12 @@ pnpm test:integration
 unset TEST_DATABASE_ADMIN_URL
 ```
 
+Playwright uses installed Chrome/Edge via BROWSER_PATH, or install its Chromium
+once with `pnpm exec playwright install chromium`. Browser tests provision only
+temporary isolated accounts, verify login/MFA/admin flows and remove their DB.
+No default dev user is silently created. Traces/videos/screenshots are disabled
+to avoid storing credential-bearing screens.
+
 Only use a disposable local/CI cluster with CREATEDB privilege. Tests migrate a
 new `gst_test_<uuid>` database twice, check constraints/transaction rollback and
 drop that test database in cleanup. CI runs these checks with PostgreSQL 18.6;
@@ -126,11 +143,14 @@ remote workflow execution is separate from locally observed results.
 `apps/api` owns transport/operations, `apps/web` the React shell,
 `packages/database` schema/migrations/pool, `packages/contracts` runtime transport
 validation, and `packages/billing-engine` an explicitly unimplemented version
-boundary. No speculative financial schema or feature UI is included.
+boundary. Identity/admin screens are implemented; financial features remain deferred.
 
 Read [architecture](docs/architecture.md), [requirements](docs/requirements.md),
 [decisions](docs/decisions.md), [execution plan](docs/development-plan.md), and
 [review evidence](docs/review-coverage.md).
+See [Phase 2 scope](docs/phase-2.md) and
+[identity operations](docs/identity-operations.md) for provisioning/recovery,
+delegation, session defaults and deployment limitations.
 
 [Windows spike runbook](docs/windows-offline-spike.md) provides executable PoC
 scripts for a dedicated PostgreSQL instance, checksum-verified Windows API service,

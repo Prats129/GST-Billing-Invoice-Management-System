@@ -22,3 +22,8 @@ built-in PDF/DOCX, return filing and broad integrations except legal necessities
 Acceptance: documented local startup; browser health connection; API database
 readiness; reproducible checked-in migration; build/lint/typecheck/tests; explicit
 blockers with evidence; no secrets/public DB exposure; current review coverage.
+
+Phase 2 adds the identity, MFA, session and tenant authorization requirements in
+phase-2.md. Admin UI includes roles/delegation, assignments and effective permissions.
+First-owner setup/recovery is host-only; no default account. Existing-user joins
+require explicit acceptance. Financial features and subscription charging stay deferred.

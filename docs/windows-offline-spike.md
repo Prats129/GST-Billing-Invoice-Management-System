@@ -70,6 +70,12 @@ GRANT USAGE ON SCHEMA public TO gst_runtime;
 GRANT SELECT ON TABLE public.organizations TO gst_runtime;
 ```
 
+Those minimal grants describe the original Phase 1 checkpoint only. The current
+Phase 2 checkout also reads/writes identity, session and authorization tables;
+apply the restricted runtime privilege guidance in [identity operations](identity-operations.md)
+after its migration. Keep provisioning/recovery on the operator connection, and
+do not grant runtime DDL, table ownership or audit UPDATE/DELETE/TRUNCATE privileges.
+
 The readiness query checks the migrated table and column shape without returning business records. These grants do not allow application writes, schema changes, ownership or superuser access; future modules must add reviewed privileges as needed. Keep the bootstrap superuser out of the API environment. URI-encode generated passwords in database connection URLs and keep the environment file ACL restricted. This PoC does not implement role provisioning for the eventual installer.
 
 Confirm from SQL: `SHOW listen_addresses; SHOW port; SHOW password_encryption;`. From the host, `Get-NetTCPConnection -LocalPort 55432 -State Listen` must show only `127.0.0.1`. From a second PC, `Test-NetConnection gst-host -Port 55432` must fail. Do not add a PostgreSQL firewall allow rule.

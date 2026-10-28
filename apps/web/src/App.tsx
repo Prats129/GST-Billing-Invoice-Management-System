@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchHealth, fetchReadiness } from './api.js';
+import { Workspace } from './Workspace.js';
 
 export function App() {
   const [api, setApi] = useState('Checking…');
@@ -41,32 +42,9 @@ export function App() {
     };
   }, [attempt]);
   return (
-    <main>
-      <p className="eyebrow">GST BILLING PLATFORM</p>
-      <h1>A reliable foundation.</h1>
-      <p className="intro">
-        The shared platform for local Windows installations and online
-        businesses.
-      </p>
-      <section aria-labelledby="connection-title">
-        <h2 id="connection-title">Development connectivity</h2>
-        <dl aria-live="polite">
-          <div>
-            <dt>API · v1</dt>
-            <dd>{api}</dd>
-          </div>
-          <div>
-            <dt>PostgreSQL</dt>
-            <dd>{database}</dd>
-          </div>
-        </dl>
-        <button onClick={() => setAttempt((value) => value + 1)}>
-          Check again
-        </button>
-      </section>
-      <p className="notice">
-        Phase 1 foundation. Billing and GST calculation are not available.
-      </p>
-    </main>
+    <Workspace
+      connection={{ api, database }}
+      onCheck={() => setAttempt((value) => value + 1)}
+    />
   );
 }

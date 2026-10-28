@@ -9,3 +9,5 @@ node_modules
 **/*.pem
 **/*.pfx
 **/*.p12
+test-results
+playwright-report

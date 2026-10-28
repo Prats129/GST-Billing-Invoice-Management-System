@@ -4,6 +4,8 @@ dist
 .cache
 .local
 coverage
+test-results
+playwright-report
 PROJECT_CONTEXT.md
 PHASE_1_CODEX_PROMPT.md
 LICENSE
