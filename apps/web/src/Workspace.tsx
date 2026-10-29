@@ -22,6 +22,7 @@ import { SecurityPanel } from './SecurityPanel.js';
 import { BusinessProfileScreen } from './business/BusinessProfileScreen.js';
 import { CustomersScreen } from './business/CustomersScreen.js';
 import { CatalogScreen } from './business/CatalogScreen.js';
+import { InvoicesScreen } from './billing/InvoicesScreen.js';
 import {
   Avatar,
   Badge,
@@ -41,6 +42,7 @@ const views = [
   'business',
   'customers',
   'catalog',
+  'invoices',
   'members',
   'roles',
   'security',
@@ -52,6 +54,12 @@ const viewInfo: Record<
   View,
   { title: string; description: string; icon: IconName }
 > = {
+  invoices: {
+    title: 'Invoices',
+    description:
+      'Create drafts, review totals and prepare your billing documents.',
+    icon: 'roles',
+  },
   business: {
     title: 'Business setup',
     description: 'Your business identity, registration and contact details.',
@@ -323,17 +331,19 @@ export function Workspace({
     ),
   );
   const allowed =
-    view === 'customers'
-      ? canCustomers
-      : view === 'catalog'
-        ? canCatalog
-        : view === 'members'
-          ? canMembers
-          : view === 'roles'
-            ? canRoles
-            : view === 'activity'
-              ? canAudit
-              : true;
+    view === 'invoices'
+      ? Boolean(context?.access.permissions.includes('invoices.read'))
+      : view === 'customers'
+        ? canCustomers
+        : view === 'catalog'
+          ? canCatalog
+          : view === 'members'
+            ? canMembers
+            : view === 'roles'
+              ? canRoles
+              : view === 'activity'
+                ? canAudit
+                : true;
   const activeView = !tenantLoading && context && !allowed ? 'overview' : view;
   useEffect(() => {
     let active = true;
@@ -659,6 +669,9 @@ export function Workspace({
             'business',
             ...(canCustomers ? ['customers'] : []),
             ...(canCatalog ? ['catalog'] : []),
+            ...(context?.access.permissions.includes('invoices.read')
+              ? ['invoices']
+              : []),
             ...(canMembers ? ['members'] : []),
             ...(canRoles ? ['roles'] : []),
             ...(canAudit ? ['activity'] : []),
@@ -1054,6 +1067,9 @@ export function Workspace({
               )}
               {activeView === 'catalog' && canCatalog && (
                 <CatalogScreen key={selected} {...businessProps} />
+              )}
+              {activeView === 'invoices' && (
+                <InvoicesScreen key={selected} {...businessProps} />
               )}
               {activeView === 'roles' && canRoles && (
                 <RolesPanel

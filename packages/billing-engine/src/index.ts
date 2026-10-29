@@ -1,4 +1,8 @@
 export const BILLING_ENGINE_STATUS = 'calculation-preview' as const;
+export {
+  calculateValueCorrection,
+  CORRECTION_POLICY_VERSION,
+} from './corrections.js';
 export { calculateInvoice } from './calculate.js';
 export { selectTaxRevision } from './classification.js';
 export { roundToNearestRupee } from './money.js';

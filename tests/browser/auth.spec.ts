@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
@@ -361,6 +361,23 @@ test('business setup, customer archive/restore and catalog classification review
     .selectOption('27');
   await page.getByLabel('PIN code', { exact: true }).fill('400001');
   await page.getByLabel('GSTIN', { exact: true }).fill('27AAPFU0939F1ZV');
+  const logo = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 32;
+    c.height = 32;
+    const ctx = c.getContext('2d')!;
+    ctx.fillStyle = '#13796d';
+    ctx.fillRect(0, 0, 32, 32);
+    return c.toDataURL('image/png');
+  });
+  await page.getByLabel('Business logo (PNG)', { exact: true }).setInputFiles({
+    name: 'logo.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(logo.split(',')[1]!, 'base64'),
+  });
+  await expect(
+    page.getByRole('img', { name: 'Business logo preview' }),
+  ).toBeVisible();
   await page
     .getByRole('checkbox', { name: /I have checked the registration status/ })
     .check();
@@ -523,6 +540,349 @@ test('business setup, customer archive/restore and catalog classification review
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test('invoice builder saves drafts, calculates discounts and GST, and prints a marked preview on desktop and mobile', async ({
+  page,
+}) => {
+  await signIn(page, ownerEmail, ownerPassword);
+  const session = await (
+    await page.request.get(`${origin}/api/v1/auth/session`)
+  ).json();
+  const base = `${origin}/api/v1/organizations/${organizationId}`;
+  const headers = {
+    Origin: origin,
+    'x-csrf-token': session.csrfToken as string,
+  };
+  const address = {
+    line1: '22 Buyer Road',
+    line2: '',
+    city: 'Mumbai',
+    stateCode: '27',
+    postalCode: '400001',
+  };
+  const customer = await page.request.post(`${base}/customers`, {
+    headers,
+    data: {
+      version: 0,
+      code: 'BILL-C1',
+      name: 'Invoice browser buyer',
+      address,
+    },
+  });
+  expect(customer.status()).toBe(201);
+  const item = await page.request.post(`${base}/catalog`, {
+    headers,
+    data: {
+      version: 0,
+      code: 'BILL-P1',
+      name: 'Invoice browser product',
+      kind: 'goods',
+      unitCode: 'KGS',
+      price: '100',
+      priceIncludesGst: false,
+      tax: {
+        hsnSac: '100630',
+        category: 'taxable',
+        gstPercent: '18',
+        effectiveFrom: '2026-10-29',
+      },
+    },
+  });
+  expect(item.status()).toBe(201);
+  const savedItem = await item.json();
+  expect(
+    (
+      await page.request.post(`${base}/catalog/${savedItem.id}/tax-review`, {
+        headers,
+        data: {
+          version: savedItem.version,
+          reference: 'Browser synthetic calculation fixture only',
+        },
+      })
+    ).status(),
+  ).toBe(201);
+  await page.getByRole('link', { name: 'Invoices', exact: true }).click();
+  await page.getByRole('button', { name: 'New invoice', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Choose customer', exact: true })
+    .click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Select Invoice browser buyer', exact: true })
+    .click();
+  await page.getByLabel('Issue date', { exact: true }).fill('2026-10-29');
+  await page.getByLabel('Supply date', { exact: true }).fill('2026-10-29');
+  await page
+    .getByRole('checkbox', { name: /I confirm ordinary domestic/ })
+    .check();
+  await page.getByRole('button', { name: 'Add item', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', {
+      name: 'Select Invoice browser product',
+      exact: true,
+    })
+    .click();
+  await page.getByLabel('Quantity 1', { exact: true }).fill('2.5');
+  await page
+    .getByLabel('Line 1 discount', { exact: true })
+    .selectOption('percent');
+  await page.getByLabel('Line 1 discount value', { exact: true }).fill('10');
+  await page
+    .getByLabel('Invoice discount', { exact: true })
+    .selectOption('amount');
+  await page.getByLabel('Invoice discount value', { exact: true }).fill('5');
+  await page
+    .getByLabel('Notes', { exact: true })
+    .fill('Browser draft <script> is plain text');
+  await page
+    .getByRole('button', { name: 'Calculate & preview', exact: true })
+    .click();
+  await expect(page.locator('.invoice-grand-total')).toContainText('₹259.60');
+  const frame = page.frameLocator('iframe[title="Invoice A4 preview"]');
+  await expect(
+    frame.getByRole('img', { name: 'Business logo', exact: true }),
+  ).toBeVisible();
+  expect(
+    await frame
+      .getByRole('img', { name: 'Business logo', exact: true })
+      .evaluate((node) => (node as HTMLImageElement).naturalWidth),
+  ).toBe(32);
+  await expect(
+    frame.getByRole('heading', {
+      name: 'DRAFT — NOT A TAX INVOICE',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    frame.getByText('Browser draft <script> is plain text', { exact: true }),
+  ).toBeVisible();
+  expect(
+    await frame
+      .locator('thead')
+      .evaluate((node) => getComputedStyle(node).display),
+  ).toBe('table-header-group');
+  await page.screenshot({
+    path: 'test-results/ui-phase5-invoice-desktop.png',
+    fullPage: true,
+  });
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.getByText('Unsaved changes', { exact: true })).toHaveCount(
+    0,
+  );
+  await page
+    .getByRole('button', { name: 'Calculate & preview', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Finalize invoice', exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: 'Print draft', exact: true }),
+  ).toBeEnabled();
+  await frame.locator('body').evaluate(() => {
+    window.print = () => {
+      document.body.dataset.printRequested = 'yes';
+    };
+  });
+  await page.getByRole('button', { name: 'Print draft', exact: true }).click();
+  await expect(frame.locator('body')).toHaveAttribute(
+    'data-print-requested',
+    'yes',
+  );
+  // Use Chromium's test-only PDF capture to verify actual A4 pagination. The
+  // application still uses browser printing and has no PDF-generation service.
+  const printTab = await page.context().newPage();
+  try {
+    await printTab.goto(origin);
+    const html = await frame.locator('html').evaluate((node) => node.outerHTML);
+    await printTab.setContent(`<!doctype html>${html}`);
+    await printTab.locator('tbody').evaluate((body) => {
+      const row = body.querySelector('tr')!;
+      for (let i = 1; i < 100; i++) body.append(row.cloneNode(true));
+    });
+    await printTab.emulateMedia({ media: 'print' });
+    const pdf = await printTab.pdf({
+      format: 'A4',
+      preferCSSPageSize: true,
+      printBackground: true,
+      path: 'test-results/ui-phase5-a4-pagination.pdf',
+    });
+    expect(pdf.subarray(0, 4).toString()).toBe('%PDF');
+    expect(
+      [...pdf.toString('latin1').matchAll(/\/Type\s*\/Page\b/g)].length,
+    ).toBeGreaterThan(1);
+    expect(
+      await printTab
+        .locator('thead')
+        .evaluate((node) => getComputedStyle(node).display),
+    ).toBe('table-header-group');
+  } finally {
+    await printTab.close();
+  }
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Open document', exact: true })
+    .click();
+  await expect(page.getByLabel('Quantity 1', { exact: true })).toHaveValue(
+    '2.500000',
+  );
+  await expect(page.getByLabel('Notes', { exact: true })).toHaveValue(
+    'Browser draft <script> is plain text',
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByRole('button', { name: 'Calculate & preview', exact: true })
+    .click();
+  await expect(page.locator('.invoice-grand-total')).toContainText('₹259.60');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: 'test-results/ui-phase5-invoice-mobile.png',
+    fullPage: true,
+  });
+  await page
+    .getByRole('button', { name: 'Discard draft', exact: true })
+    .click();
+  const cancellation = page.getByRole('dialog', {
+    name: 'Discard draft',
+    exact: true,
+  });
+  await cancellation
+    .getByLabel('Cancellation reason', { exact: true })
+    .fill('Duplicate draft created by mistake');
+  await cancellation
+    .getByRole('checkbox', { name: 'No supply occurred under this document.' })
+    .check();
+  await cancellation
+    .getByRole('checkbox', {
+      name: 'This document has not been reported or registered with an IRP.',
+    })
+    .check();
+  await cancellation
+    .getByRole('button', { name: 'Discard draft', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('Cancelled', { exact: true })).toBeVisible();
+  await page.reload();
+  await page
+    .getByRole('button', { name: 'Open document', exact: true })
+    .click();
+  await expect(
+    page.getByText(/Cancelled: Duplicate draft created by mistake/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Save draft', exact: true }),
+  ).toHaveCount(0);
+});
+
+test('correction dialogs submit and edit versioned original-line value adjustments', async ({
+  page,
+}) => {
+  await signIn(page, ownerEmail, ownerPassword);
+  const session = await (
+    await page.request.get(`${origin}/api/v1/auth/session`)
+  ).json();
+  const base = `${origin}/api/v1/organizations/${organizationId}/invoices`;
+  const headers = {
+    Origin: origin,
+    'x-csrf-token': session.csrfToken as string,
+  };
+  const list = await (await page.request.get(base)).json();
+  const previous = await (
+    await page.request.get(`${base}/${list.items[0].id}`)
+  ).json();
+  const created = await page.request.post(base, {
+    headers,
+    data: { ...previous.draft, version: 0, requestKey: randomUUID() },
+  });
+  expect(created.status()).toBe(201);
+  const draft = await created.json();
+  const calculated = await (
+    await page.request.post(`${base}/${draft.id}/preview`, { headers })
+  ).json();
+  // Read-only browser fixture makes issued-document controls reachable without
+  // issuing anything or introducing an application release-gate bypass. The real
+  // API transaction/race behavior is covered by isolated integration tests.
+  const issued = {
+    ...draft,
+    status: 'finalized',
+    version: 2,
+    number: 'INV/2627/999999',
+    snapshot: { ...calculated.print, number: 'INV/2627/999999' },
+  };
+  await page.route(`${base}?*`, (route) =>
+    route.fulfill({ json: { items: [issued], hasMore: false } }),
+  );
+  await page.route(`${base}/${draft.id}`, (route) =>
+    route.fulfill({ json: issued }),
+  );
+  const correctionId = randomUUID();
+  let correction: typeof issued | undefined;
+  await page.route(`${base}/${draft.id}/corrections`, async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.documentType).toBe('debit_note');
+    expect(body.lines[0].supplyValue).toBe('10.00');
+    correction = {
+      ...draft,
+      id: correctionId,
+      status: 'draft',
+      version: 1,
+      documentType: 'debit_note',
+      number: null,
+      snapshot: null,
+      originalId: draft.id,
+      correctionReason: body.reason,
+      correction: body,
+    };
+    await route.fulfill({ status: 201, json: correction });
+  });
+  await page.route(`${base}/${correctionId}/correction`, async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.version).toBe(1);
+    expect(body.lines[0].supplyValue).toBe('15.00');
+    correction = {
+      ...correction!,
+      version: 2,
+      correction: body,
+      correctionReason: body.reason,
+    };
+    await route.fulfill({ json: correction });
+  });
+  await page.getByRole('link', { name: 'Invoices', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Open document', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Create credit / debit note', exact: true })
+    .click();
+  let dialog = page.getByRole('dialog');
+  await dialog
+    .getByLabel('Document type', { exact: true })
+    .selectOption('debit_note');
+  await dialog
+    .getByLabel('Correction reason', { exact: true })
+    .fill('Additional value agreed with buyer');
+  await dialog.getByLabel('Adjustment amount 1', { exact: true }).fill('10');
+  await dialog
+    .getByRole('button', { name: 'Create correction draft', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Debit note', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Edit correction draft', exact: true })
+    .click();
+  dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Adjustment amount 1', { exact: true }).fill('15');
+  await dialog
+    .getByRole('button', { name: 'Save correction draft', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText('₹15.00', { exact: true })).toBeVisible();
 });
 
 test('authenticator enrollment, recovery-code display and MFA challenge work in browser', async ({

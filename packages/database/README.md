@@ -34,3 +34,20 @@ tenant-safe classification revisions/reviews and new permission definitions.
 It preserves existing memberships/grants and installs append-only classification
 guards and a deferred requirement for an initial catalog classification.
 New Phase 3 runtime privileges and local setup steps are documented in docs/phase-3.md.
+
+0003_serious_paibok.sql adds invoices, counters, financial lines/components and
+immutable snapshots. Reviewed triggers protect finalized rows, reject financial
+mutation/truncation and enforce deferred snapshot/line/component reconciliation.
+Never reset/delete issued counters. New permission definitions do not expand
+existing grants. Runtime needs SELECT/INSERT/UPDATE on invoices and invoice_series,
+SELECT/INSERT on invoice_lines, invoice_tax_components and invoice_snapshots, plus
+existing identity/master-data/audit privileges; no DDL, ownership, DELETE or
+TRUNCATE. Commercial issuance remains blocked in the service release policy.
+
+0004_mute_vapor.sql extends existing storage with PNG logos, correction drafts and
+append-only invoice_cancellations. It replaces the single-reversal index with a
+tenant/original index, adds debit series support and deferred cumulative correction
+balance checks. Cancellation guards preserve original rows, prevent later mutation
+and reject unsupported issued-note cancellation. Runtime additionally needs SELECT/
+INSERT on invoice_cancellations; no UPDATE/DELETE/TRUNCATE. The migration inserts
+invoices.cancel without granting it to existing non-owners. Never rewrite 0003.

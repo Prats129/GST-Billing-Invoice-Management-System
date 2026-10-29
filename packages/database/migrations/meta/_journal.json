@@ -22,6 +22,20 @@
       "when": 1793210090286,
       "tag": "0002_business_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793252989574,
+      "tag": "0003_serious_paibok",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793264844920,
+      "tag": "0004_mute_vapor",
+      "breakpoints": true
     }
   ]
 }

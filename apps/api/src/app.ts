@@ -27,6 +27,11 @@ import {
   BusinessController,
 } from './business/business.controller.js';
 import { BusinessService } from './business/business.service.js';
+import {
+  INVOICING,
+  InvoicingController,
+} from './invoicing/invoicing.controller.js';
+import { InvoicingService } from './invoicing/invoicing.service.js';
 
 export async function createApp(
   config: Config,
@@ -46,10 +51,17 @@ export async function createApp(
       IdentityController,
       OrganizationsController,
       BusinessController,
+      InvoicingController,
     ],
     providers: [
       { provide: DATABASE, useValue: database },
       { provide: SECURITY, useValue: security },
+      {
+        provide: INVOICING,
+        useValue: security
+          ? new InvoicingService(security.organizations)
+          : null,
+      },
       {
         provide: BUSINESS,
         useValue: security ? new BusinessService(security.organizations) : null,
@@ -94,6 +106,16 @@ export async function createApp(
     }
     next();
   });
+  // Bounded 100-line invoice bodies need more room than identity forms. Keep
+  // the tighter parser on all other routes.
+  app.use(
+    '/api/v1/organizations/:orgId/invoices',
+    express.json({ limit: '256kb', strict: true }),
+  );
+  app.use(
+    '/api/v1/organizations/:orgId/business-profile',
+    express.json({ limit: '128kb', strict: true }),
+  );
   app.use(express.json({ limit: '16kb', strict: true }));
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ApiExceptionFilter());
@@ -102,7 +124,7 @@ export async function createApp(
     new DocumentBuilder()
       .setTitle('GST Platform API')
       .setDescription(
-        'Identity, tenant authorization, business setup, customers and catalog. Invoice issuance remains unavailable.',
+        'Identity, tenant authorization, master data and invoice drafts/calculation/printing. Commercial issuance remains gated.',
       )
       .setVersion('1')
       .addCookieAuth('__Host-gst_session')

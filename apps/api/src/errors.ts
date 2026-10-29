@@ -2,11 +2,18 @@ import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import { SecurityError } from './security/errors.js';
+import { BillingCalculationError } from '@gst/billing-engine';
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
   catch(error: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
+    if (error instanceof BillingCalculationError) {
+      response.status(400).json({
+        error: { statusCode: 400, code: error.code, message: error.message },
+      });
+      return;
+    }
     if (error instanceof SecurityError) {
       response.status(error.getStatus()).json({
         error: {

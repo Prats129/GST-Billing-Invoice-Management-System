@@ -38,3 +38,14 @@ inclusive/exclusive rates, line/invoice discounts, deterministic residual alloca
 guided jurisdiction, reviewed effective classifications and reconciled tax totals.
 Unsupported transactions/versions and unauthorized overrides fail explicitly.
 Calculation previews do not authorize invoice issuance or certify current law.
+
+Phase 5 adds tenant-scoped invoice drafts, server-derived calculations, optimistic
+versioning and idempotent create/finalize requests, transactional numbering,
+immutable normalized financial rows and checksummed rendering snapshots, linked
+full credit reversals and A4 browser printing. Existing grants stay unchanged.
+Sensitive SaaS billing access requires MFA. Draft printouts must be unmistakable;
+no client/API/environment switch can bypass professional issuance gates. Value-based
+partial credits/debits use original tax details and enforce cumulative balances;
+correction drafts are versioned. Cancellations are append-only and separately
+authorized. PNG logos are bounded and included in immutable print data. Tax-only,
+rate-changing or externally reported/IRP corrections require a reviewed wider scope.

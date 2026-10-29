@@ -114,6 +114,40 @@ export const permissionText: Record<
   Permission,
   { label: string; description: string }
 > = {
+  'invoices.read': {
+    label: 'View invoices',
+    description: 'View invoice drafts, calculations and historical copies.',
+  },
+  'invoices.manage': {
+    label: 'Manage invoice drafts',
+    description: 'Create and edit invoice drafts.',
+  },
+  'invoices.finalize': {
+    label: 'Finalize invoices',
+    description: 'Issue immutable documents when compliance gates allow.',
+  },
+  'invoices.correct': {
+    label: 'Create correction notes',
+    description: 'Create and edit linked credit/debit note drafts.',
+  },
+  'invoices.cancel': {
+    label: 'Cancel documents',
+    description:
+      'Discard drafts or cancel unreported documents when release gates allow.',
+  },
+  'price.override': {
+    label: 'Override prices',
+    description: 'Override catalog prices with a recorded reason.',
+  },
+  'tax.override': {
+    label: 'Override tax treatment',
+    description:
+      'Override reviewed tax classifications with a reason and source.',
+  },
+  'place_of_supply.override': {
+    label: 'Override place of supply',
+    description: 'Override guided supply location with a recorded reason.',
+  },
   'organization.read': {
     label: 'View organization',
     description: 'Open the organization workspace and view its details.',
@@ -164,6 +198,19 @@ export const permissionText: Record<
   },
 };
 export const permissionGroups: { name: string; keys: Permission[] }[] = [
+  {
+    name: 'Billing',
+    keys: [
+      'invoices.read',
+      'invoices.manage',
+      'invoices.finalize',
+      'invoices.correct',
+      'invoices.cancel',
+      'price.override',
+      'tax.override',
+      'place_of_supply.override',
+    ],
+  },
   {
     name: 'Customers & catalog',
     keys: [

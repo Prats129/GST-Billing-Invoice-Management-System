@@ -47,7 +47,7 @@ omitted database rows or authenticate a supplied review/authority snapshot.
 Overrides require a second, trusted `{actorId, permissions}` argument. Supported
 capabilities are `price.override`, `tax.override`, `place_of_supply.override`.
 Do not accept this argument or trusted catalog prices/reviews from an HTTP body.
-The future invoice API must load current tenant data/permissions itself and audit
+The invoice API loads current tenant data/permissions itself and audits
 the result in the finalization transaction. Overrides cannot enable unsupported
 scenarios or bypass the baseline classification review. Return values are previews,
 not permission to issue a document or a substitute for an IRP workflow.
@@ -59,3 +59,13 @@ and does not determine which statutory liability or document should be rounded.
 See [Phase 4 policy and source review](../../docs/phase-4.md) for supported scenarios,
 date/amount limits, allocation/rounding conventions and professional approval gates.
 Phase 5 implements authorized drafts/finalization/snapshots/corrections/printing.
+
+`calculateValueCorrection(original, correction, prior)` consumes trusted immutable
+original/prior outputs and a validated correction request. Under
+`original-value-adjustments.v1`, debits use original classification/rates; partial
+credits proportionally consume remaining original plus debit values and component
+paise after earlier credits. A final reversal consumes exact residuals. It never
+changes physical quantities, infers replacement rates or authorizes tax reduction.
+Server adapters must authorize, serialize, revalidate caps at finalization and retain
+the original/prior snapshot identities. Commercial issuance stays blocked by the
+same pending policy. See [Phase 5](../../docs/phase-5.md) for precise boundaries.

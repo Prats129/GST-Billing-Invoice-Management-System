@@ -50,6 +50,7 @@ export const businessProfiles = pgTable(
       .primaryKey()
       .references(() => organizations.id),
     legalName: varchar('legal_name', { length: 200 }).notNull(),
+    logoDataUrl: text('logo_data_url').notNull().default(''),
     tradeName: varchar('trade_name', { length: 200 }).notNull().default(''),
     address: jsonb('address')
       .$type<{
@@ -477,4 +478,208 @@ export const auditEvents = pgTable(
       .defaultNow(),
   },
   (t) => [index('audit_org_date_idx').on(t.organizationId, t.createdAt)],
+);
+
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    registrationId: uuid('registration_id').notNull(),
+    customerId: uuid('customer_id').notNull(),
+    customerName: varchar('customer_name', { length: 200 }).notNull(),
+    documentType: varchar('document_type', { length: 16 })
+      .notNull()
+      .default('invoice'),
+    originalId: uuid('original_id'),
+    correctionReason: varchar('correction_reason', { length: 300 })
+      .notNull()
+      .default(''),
+    correction: jsonb('correction').$type<unknown>(),
+    status: varchar('status', { length: 16 }).notNull().default('draft'),
+    issueDate: date('issue_date').notNull(),
+    financialYear: varchar('financial_year', { length: 4 }),
+    number: varchar('number', { length: 16 }),
+    version: integer('version').notNull().default(1),
+    draft: jsonb('draft').$type<unknown>().notNull(),
+    createKey: uuid('create_key').notNull(),
+    createDigest: varchar('create_digest', { length: 64 }).notNull(),
+    finalizeKey: uuid('finalize_key'),
+    finalizeDigest: varchar('finalize_digest', { length: 64 }),
+    finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    unique('invoices_org_id_unique').on(t.organizationId, t.id),
+    unique('invoices_create_key_unique').on(t.organizationId, t.createKey),
+    unique('invoices_finalize_key_unique').on(t.organizationId, t.finalizeKey),
+    unique('invoices_legal_number_unique').on(
+      t.registrationId,
+      t.financialYear,
+      t.number,
+    ),
+    index('invoices_original_idx').on(t.organizationId, t.originalId),
+    foreignKey({
+      columns: [t.organizationId, t.registrationId],
+      foreignColumns: [gstRegistrations.organizationId, gstRegistrations.id],
+    }),
+    foreignKey({
+      columns: [t.organizationId, t.customerId],
+      foreignColumns: [customers.organizationId, customers.id],
+    }),
+    foreignKey({
+      name: 'invoices_original_tenant_fk',
+      columns: [t.organizationId, t.originalId],
+      foreignColumns: [t.organizationId, t.id],
+    }),
+    index('invoices_org_date_idx').on(t.organizationId, t.issueDate, t.id),
+    check(
+      'invoices_state_valid',
+      sql`${t.version}>0 and jsonb_typeof(${t.draft})='object' and
+    ((${t.documentType}='invoice' and ${t.originalId} is null and ${t.correctionReason}='') or
+     (${t.documentType} in ('credit_note','debit_note') and ${t.originalId} is not null and length(trim(${t.correctionReason}))>=5)) and
+    (${t.correction} is null or (jsonb_typeof(${t.correction})='object' and ${t.originalId} is not null)) and
+    ((${t.status}='draft' and ${t.number} is null and ${t.financialYear} is null and ${t.finalizedAt} is null and ${t.finalizeKey} is null and ${t.finalizeDigest} is null) or
+     (${t.status}='finalized' and ${t.number} is not null and ${t.financialYear} is not null and ${t.number} ~ '^[A-Z0-9/-]{1,16}$' and ${t.financialYear} ~ '^[0-9]{4}$' and ${t.finalizedAt} is not null and ${t.finalizeKey} is not null and ${t.finalizeDigest} is not null))`,
+    ),
+  ],
+);
+
+export const invoiceSeries = pgTable(
+  'invoice_series',
+  {
+    organizationId: uuid('organization_id').notNull(),
+    registrationId: uuid('registration_id').notNull(),
+    financialYear: varchar('financial_year', { length: 4 }).notNull(),
+    documentType: varchar('document_type', { length: 16 }).notNull(),
+    nextCounter: integer('next_counter').notNull().default(1),
+  },
+  (t) => [
+    primaryKey({
+      columns: [
+        t.organizationId,
+        t.registrationId,
+        t.financialYear,
+        t.documentType,
+      ],
+    }),
+    foreignKey({
+      columns: [t.organizationId, t.registrationId],
+      foreignColumns: [gstRegistrations.organizationId, gstRegistrations.id],
+    }),
+    check(
+      'invoice_series_valid',
+      sql`${t.nextCounter} between 1 and 1000000 and ${t.financialYear} ~ '^[0-9]{4}$' and ${t.documentType} in ('invoice','credit_note','debit_note')`,
+    ),
+  ],
+);
+export const invoiceSnapshots = pgTable(
+  'invoice_snapshots',
+  {
+    invoiceId: uuid('invoice_id').primaryKey(),
+    organizationId: uuid('organization_id').notNull(),
+    schemaVersion: integer('schema_version').notNull().default(1),
+    digest: varchar('digest', { length: 64 }).notNull(),
+    payload: jsonb('payload').$type<unknown>().notNull(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.organizationId, t.invoiceId],
+      foreignColumns: [invoices.organizationId, invoices.id],
+    }),
+    check(
+      'invoice_snapshot_valid',
+      sql`${t.schemaVersion}=1 and ${t.digest} ~ '^[a-f0-9]{64}$' and jsonb_typeof(${t.payload})='object'`,
+    ),
+  ],
+);
+export const invoiceLines = pgTable(
+  'invoice_lines',
+  {
+    organizationId: uuid('organization_id').notNull(),
+    invoiceId: uuid('invoice_id').notNull(),
+    lineId: varchar('line_id', { length: 80 }).notNull(),
+    catalogItemId: uuid('catalog_item_id').notNull(),
+    description: varchar('description', { length: 1200 }).notNull(),
+    hsnSac: varchar('hsn_sac', { length: 8 }).notNull(),
+    quantity: numeric('quantity', { precision: 15, scale: 6 }).notNull(),
+    supplyValue: numeric('supply_value', { precision: 18, scale: 2 }).notNull(),
+    taxTotal: numeric('tax_total', { precision: 18, scale: 2 }).notNull(),
+    total: numeric('total', { precision: 18, scale: 2 }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.invoiceId, t.lineId] }),
+    foreignKey({
+      columns: [t.organizationId, t.invoiceId],
+      foreignColumns: [invoices.organizationId, invoices.id],
+    }),
+    foreignKey({
+      columns: [t.organizationId, t.catalogItemId],
+      foreignColumns: [catalogItems.organizationId, catalogItems.id],
+    }),
+    check(
+      'invoice_line_valid',
+      sql`${t.quantity}>0 and ${t.supplyValue}>=0 and ${t.taxTotal}>=0 and ${t.total}=${t.supplyValue}+${t.taxTotal}`,
+    ),
+  ],
+);
+export const invoiceTaxComponents = pgTable(
+  'invoice_tax_components',
+  {
+    organizationId: uuid('organization_id').notNull(),
+    invoiceId: uuid('invoice_id').notNull(),
+    lineId: varchar('line_id', { length: 80 }).notNull(),
+    kind: varchar('kind', { length: 8 }).notNull(),
+    ratePercent: numeric('rate_percent', { precision: 6, scale: 3 }).notNull(),
+    amount: numeric('amount', { precision: 18, scale: 2 }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.invoiceId, t.lineId, t.kind] }),
+    foreignKey({
+      columns: [t.organizationId, t.invoiceId, t.lineId],
+      foreignColumns: [
+        invoiceLines.organizationId,
+        invoiceLines.invoiceId,
+        invoiceLines.lineId,
+      ],
+    }),
+    check(
+      'invoice_component_valid',
+      sql`${t.kind} in ('CGST','SGST','UTGST','IGST') and ${t.ratePercent} between 0 and 100 and ${t.amount}>=0`,
+    ),
+  ],
+);
+export const invoiceCancellations = pgTable(
+  'invoice_cancellations',
+  {
+    invoiceId: uuid('invoice_id').primaryKey(),
+    organizationId: uuid('organization_id').notNull(),
+    requestKey: uuid('request_key').notNull(),
+    requestDigest: varchar('request_digest', { length: 64 }).notNull(),
+    reason: varchar('reason', { length: 300 }).notNull(),
+    actorId: uuid('actor_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    foreignKey({
+      columns: [t.organizationId, t.invoiceId],
+      foreignColumns: [invoices.organizationId, invoices.id],
+    }),
+    unique('invoice_cancellation_request_unique').on(
+      t.organizationId,
+      t.requestKey,
+    ),
+    check(
+      'invoice_cancellation_reason_valid',
+      sql`length(trim(${t.reason}))>=5 and ${t.requestDigest} ~ '^[a-f0-9]{64}$'`,
+    ),
+  ],
 );

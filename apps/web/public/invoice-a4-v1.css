@@ -1,0 +1,143 @@
+/* Immutable a4.v1 print layout. Add another file/version for future templates. */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font:
+    11px/1.5 Arial,
+    sans-serif;
+  color: #182826;
+  margin: 0 auto;
+  padding: 24px;
+  max-width: 1000px;
+  background: white;
+}
+header,
+.parties {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+header {
+  border-bottom: 2px solid #1d574a;
+  padding-bottom: 14px;
+}
+header > div,
+.parties > div {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+h1 {
+  font-size: 22px;
+  margin: 0;
+}
+h2 {
+  font-size: 16px;
+  margin: 0;
+}
+h3 {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #4e6962;
+}
+.document-heading {
+  text-align: right;
+}
+p {
+  margin: 6px 0;
+}
+.draft-warning {
+  padding: 10px;
+  border: 1px solid #967225;
+  background: #fff9e9;
+  font-weight: bold;
+}
+.parties {
+  padding: 14px 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10px;
+}
+thead {
+  display: table-header-group;
+}
+th,
+td {
+  padding: 8px 5px;
+  border-bottom: 1px solid #ccd8d3;
+  text-align: right;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+th {
+  background: #edf3f0;
+}
+th:first-child,
+td:first-child {
+  text-align: left;
+  width: 25%;
+}
+small {
+  display: block;
+  font-size: 9px;
+}
+tr {
+  break-inside: avoid;
+}
+.totals {
+  margin: 16px 0 16px auto;
+  width: 48%;
+  break-inside: avoid;
+}
+.totals p {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+}
+.grand-total {
+  font-size: 15px;
+  border-top: 2px solid #1d574a;
+}
+footer {
+  clear: both;
+  border-top: 1px solid #ccd8d3;
+  padding-top: 12px;
+  overflow-wrap: anywhere;
+}
+.multiline {
+  white-space: pre-wrap;
+}
+.template-version {
+  margin-top: 24px;
+  color: #657772;
+  font-size: 9px;
+}
+@media print {
+  body {
+    max-width: none;
+    padding: 0;
+  }
+}
+.business-logo {
+  display: block;
+  width: 100px;
+  height: 65px;
+  object-fit: contain;
+  object-position: left center;
+  margin-bottom: 10px;
+}
+.cancelled-warning {
+  border: 2px solid #983b33;
+  padding: 12px;
+  font-weight: bold;
+  color: #983b33;
+}

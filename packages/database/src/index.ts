@@ -38,6 +38,9 @@ export function createDatabase(connectionString: string) {
       await pool.query(
         'SELECT id, version, archived_at FROM public.customers LIMIT 0',
       );
+      await pool.query(
+        'SELECT i.id, i.correction, s.digest, c.reason FROM public.invoices i LEFT JOIN public.invoice_snapshots s ON s.organization_id=i.organization_id AND s.invoice_id=i.id LEFT JOIN public.invoice_cancellations c ON c.organization_id=i.organization_id AND c.invoice_id=i.id LIMIT 0',
+      );
     },
     async close(): Promise<void> {
       await pool.end();

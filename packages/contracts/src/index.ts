@@ -25,6 +25,14 @@ export const permissionKeys = [
   'catalog.read',
   'catalog.manage',
   'catalog.tax.verify',
+  'invoices.read',
+  'invoices.manage',
+  'invoices.finalize',
+  'invoices.correct',
+  'invoices.cancel',
+  'price.override',
+  'tax.override',
+  'place_of_supply.override',
 ] as const;
 export const permissionSchema = z.enum(permissionKeys);
 export type Permission = z.infer<typeof permissionSchema>;
@@ -134,3 +142,5 @@ export interface MemberView {
 }
 export * from './business.js';
 export * from './billing.js';
+export * from './invoicing.js';
+export * from './logo.js';

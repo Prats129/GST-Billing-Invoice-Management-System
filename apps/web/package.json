@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@gst/invoice-renderer": "workspace:*",
     "@gst/contracts": "workspace:*",
     "react": "19.3.1",
     "react-dom": "19.3.1"

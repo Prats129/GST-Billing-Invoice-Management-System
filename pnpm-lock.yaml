@@ -53,6 +53,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@gst/billing-engine':
+        specifier: workspace:*
+        version: link:../../packages/billing-engine
       '@gst/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -105,6 +108,9 @@ importers:
       '@gst/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@gst/invoice-renderer':
+        specifier: workspace:*
+        version: link:../../packages/invoice-renderer
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -155,6 +161,12 @@ importers:
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11
+
+  packages/invoice-renderer:
+    dependencies:
+      '@gst/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
 packages:
 

@@ -28,3 +28,10 @@ tax approval gates are in phase-4.md and review-coverage.md.
 
 Later: transactional invoice lifecycle/renderer/corrections; commercial deployment,
 professional compliance approval and recovery hardening.
+
+Phase 5 engineering includes invoice builder and persisted drafts, server calculation,
+reviewed-preview finalization machinery, immutable snapshots, full credit reversal
+and versioned A4 printing, editable partial credit/debit value adjustments, immutable
+cancellation records and PNG logos. See phase-5.md and review-coverage.md for evidence
+and exact scope. Commercial issuance remains blocked by professional compliance
+approval; production deployment and commercial hardening remain Phase 6/release work.

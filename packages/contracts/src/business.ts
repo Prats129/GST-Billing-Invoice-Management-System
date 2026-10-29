@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { logoDataSchema } from './logo.js';
 
 // NIC domestic state master. This is address metadata, never tax jurisdiction logic.
 export const indianStates = [
@@ -118,6 +119,7 @@ export const priceSchema = decimalStringSchema(4, 14);
 export const taxPercentSchema = decimalStringSchema(2, 3, 10000n);
 export const businessProfileInputSchema = z
   .object({
+    logoDataUrl: logoDataSchema.default(''),
     version,
     legalName: z.string().trim().min(1).max(200),
     tradeName: optionalText(200),

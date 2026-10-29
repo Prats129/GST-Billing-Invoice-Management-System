@@ -681,3 +681,208 @@ catalog, after review/commit of this phase.
   and local engineering acceptance are complete; source review is not professional
   tax certification. Professional approval, invoice issuance/e-invoice controls and
   native Windows deployment/remote CI release gates remain explicitly unverified.
+
+## Phase 5 � batch 1: scope and contracts (2026-10-29)
+
+Read project context, current architecture, requirements, decisions and existing
+business/identity/database/UI conventions. Phase 4 is committed; starting tree was
+clean. Defined bounded invoice draft/finalize/reversal contracts and presentation
+transport. Added granular invoice/override permission keys; existing grants will
+not be expanded. Recorded source review, numbering, immutable snapshots, and the
+non-bypassable pending professional issuance gate in phase-5.md. Verification:
+repository inspection only so far; compilation/integration follow with persistence.
+
+## Phase 5 � batch 2: persistence/API and billing workspace
+
+Added reviewed generated invoice/series/financial/snapshot schema plus custom DB
+immutability, rollback-safe counter and deferred reconciliation guards. Implemented
+server-derived calculation, versioned/idempotent drafts, reviewed-preview digest,
+atomic gated finalization and linked full-credit drafts. Added Invoices navigation,
+customer/catalog search, quantities, line/invoice discounts, authorized price override,
+server totals and escaped versioned A4 draft rendering with external print CSS.
+Commercial gate remains enforced; existing roles receive no automatic new grants.
+Compilation/tests are running; no claim of verified workflows yet. General partial
+credits/debit/cancellation and configurable logo remain outside the implemented boundary.
+
+## Phase 5 � batch 3: initial verification and corrections
+
+Unit checks passed 110/110. First isolated integration run passed all seven invoice
+cases and 24 existing cases; one host-CLI test rejected the invocation because direct
+`pnpm exec vitest` lacks the documented package-script context (`npm_execpath`).
+Rerun through `pnpm test:integration` is required; no production failure inferred.
+Fixed compiler-discovered JSX closure and portable DB getter annotation; internal
+renderer linkage was installed offline with no downloads. Existing development
+PostgreSQL container was checked healthy. Added real-gate, tenant/CSRF, stale-version,
+permission-revocation, rollback, immutable history and full-reversal integration tests.
+Only test-local module spies exercise issuance machinery; production has no bypass.
+Chrome/Edge browser invoice tests and final type/lint/build checks remain pending.
+
+## Phase 5 � batch 4: regression findings and hardening
+
+Documented integration command passed 32/32, including host CLI and all seven
+initial invoice cases; production API/frontend build passed. First Chrome run passed
+existing identity/business flows and exposed ambiguous wrapping labels on discount
+selectors; fixed explicit accessible names before rerunning. Preserved custom
+delivery addresses after save, exposed saved item names, added runtime response and
+OpenAPI schemas, and replaced per-line catalog/history queries with bounded batch
+reads. Added authorized tax/place override UI and provenance/baseline integration
+coverage. Strengthened draft/finalized non-null constraints and deferred financial
+reconciliation to compare individual lines/components with the snapshot. Added
+missing-snapshot/corrupt-row rollback tests. Final reruns pending; no hardware
+printer, LAN HTTPS/service install or professional compliance validation claimed.
+
+## Phase 5 � batch 5: browser acceptance and safe local migration
+
+TypeScript, lint, 110/110 unit tests and 34/34 integration tests passed; full production
+API/web build passed. Drizzle generation reports no schema changes. After fixing
+explicit labels for discount selectors and saved note/terms fields, all four browser
+workflows passed in Windows Chrome and Edge. Invoice workflow verifies exact INR259.60
+from quantities/line/invoice discounts, save/reopen, draft warning, escaped note text,
+print action and mobile width. A synthetic 100-row A4 document produced a multi-page
+browser-captured PDF in both browsers; repeated table-header CSS was checked. This
+is browser rendering proof, not hardware/spooler or statutory document certification.
+
+Before development migration, created ignored `.local/backups/gst-phase5-before-20261029.dump`
+(62,444 bytes) and checked its pg_restore archive list. No restore claim. Applied
+0003 explicitly through pnpm db:migrate; before/after aggregate organization/user/
+membership/role/grant/assignment/customer/catalog/profile/registration/classification/
+review/audit counts matched. New invoice tables remain empty, with no issued invoices.
+Credentials, customer records and existing grants were not changed. HTTP/assets/real
+readiness/OpenAPI/Origin smoke passed; final browser smoke result and final formatting/
+whitespace/test-type checks follow. Git index remains untouched.
+
+Full Phase 5 is not marked complete: real issuance remains blocked by professional
+calculation/document/compliance approval and e-invoice eligibility. Partial/debit
+corrections, cancellation policy and configurable logo remain unfinished. Implemented
+full-credit machinery is exercised only with synthetic test release spies. No runtime,
+HTTP, environment or UI bypass of the real issuance gate was introduced. Native
+Windows deployment, hardware printers and remote CI remain separate unverified gates.
+
+## Phase 5 � batch 6: final checkpoint
+
+Final test TypeScript compilation, lint, whole-repository formatting and Git whitespace
+checks passed. Compiled-app browser smoke also passed: sign-in rendered and live API/
+PostgreSQL status was healthy. Final Chrome and Edge runs each passed all four workflows,
+including multi-page A4 capture. No external dependency was added (lockfile changes
+only link internal billing/renderer workspaces). Development migration is applied;
+restart pnpm dev and open Invoices as owner. All source changes remain unstaged;
+no commit, index reset, credentials rewrite or existing-data deletion was performed.
+Phase 5 remains explicitly partial for the release/policy and logo gaps listed above.
+
+## Phase 5 continuation ? batch 7: resumed unfinished scope
+
+Preserved the user-staged Phase 5 work and resumed the in-progress contract/logo
+changes without altering the index. Added a pure original-value correction policy:
+partial credits consume remaining original/debit values and residual component paise;
+debits retain original classification and balanced group rounding. Added correction
+draft create/update, append-only cancellation records and idempotent server methods.
+All issued operations still enforce the existing release gate. Added bounded PNG
+logo validation/upload, snapshot data and safe renderer support. Generated additive
+0004; the applied 0003 migration is unchanged. Integration, UI and regression checks
+follow; no completion claims at this checkpoint.
+
+## Phase 5 continuation ? batch 8: verification and edge-case fixes
+
+Initial unit run passed 114/114, including 300 sequential partial credits conserving
+component paise, debit balance expansion and bounded PNG validation. Fixed one lint
+finding in the new arithmetic code. Compiler and lint then passed. Initial integration
+run passed 37/38; the remaining logo test incorrectly read the GET response wrapper
+as the profile input. Fixed the fixture to read body.profile (no weakened validation).
+Added cancellation/credit race, editing/version, current-release gate and frozen-logo
+integration coverage. UI now distinguishes value adjustments from physical quantities,
+shows debit-note labels, supports editable corrections and safe discard/cancellation,
+and tests browser PNG upload, preserved draft cancellation and correction dialogs.
+Tests for issued-document browser controls use explicit read/submit fixtures; real
+backend transactions are tested separately with test-local release spies.
+
+## Phase 5 continuation ? batch 9: engineering verification and permissions
+
+Fresh shared-package compilation, lint, 114 unit tests, 38 integration tests and the
+production build passed. A previous build caught a stale generated permission type
+while the new cancellation permission was being added; rebuilding shared packages
+resolved it. Cancellation now uses its own grant and privileged SaaS MFA boundary;
+existing role grants are not expanded. Added DB original/classification/cumulative
+balance guards and rejected issued-note cancellation in favor of a counter-adjustment.
+Correction snapshots retain original/prior-note digests for reconstructable balances.
+Chrome verification of all five workflows (including logo/discard and correction
+forms) is running; issued controls use explicit frontend fixtures, not real issuance.
+
+## Phase 5 continuation - batch 10: final acceptance and preservation
+
+Final unit run passed 115/115; integration passed 38/38. TypeScript, lint and full
+API/frontend production build passed. Chrome and Edge each passed all five workflows,
+including logo decode/print, draft discard/reopen, A4 pagination and versioned
+correction dialogs. Actual credit/debit/finalization/cancellation transaction behavior,
+residual balances, races, immutability and real gates are covered in isolated DB tests;
+issued UI controls use explicit test fixtures and never bypass production policy.
+
+Saved a new private custom-format backup in .local/backups (unique filename) before
+0004, validated its archive list, then applied the reviewed migration explicitly.
+Existing rows in business, financial, identity, credential, audit and grant tables
+matched their before/after counts and fingerprints; intended new schema fields were
+excluded from that comparison. No data/credentials/grants were rewritten. Applied
+0003 remains unchanged. New invoices.cancel is defined without granting non-owners.
+Compiled HTTP/assets/readiness/OpenAPI/Origin and Edge sign-in/health smoke passed.
+
+The final formatting run found two updated TS files needing formatting; both were
+formatted, and the final compiler, lint, repository formatting and Git whitespace
+checks passed. The previously unfinished correction/cancellation/
+logo engineering scope is complete within phase-5.md boundaries. Real issuance and
+issued cancellation stay disabled pending professional approval. Hardware printers,
+Windows service/ACL/LAN HTTPS/firewall/reboot, restore and remote CI remain unverified.
+User-staged work is preserved; continuation changes remain unstaged and no commit was made.
+
+## Local dependency repair: Windows Argon2 installation
+
+The system Node 22.13.0 process exited with Windows access-violation code
+-1073741819 when loading the installed Argon2 Windows prebuild. The same binary
+loaded successfully under the existing local Node 24.22.1 runtime. Completed
+`pnpm install --offline --frozen-lockfile` using local Node 24.22.1 and pnpm
+10.34.9 (exit 0), then `pnpm rebuild argon2` (exit 0). An in-memory Argon2id
+check passed native loading, hashing, correct-password verification and
+wrong-password rejection. No credentials, database data, dependency versions,
+lockfile or staging were changed. The system-default Node/pnpm were not upgraded;
+future terminals must select the working toolchain. API connectivity remains a
+separate follow-up and was not tested in this repair.
+
+## Local API connectivity verification after runtime repair
+
+Verified the already-running development services without restarting them:
+direct API and proxied frontend liveness returned 200. The existing private
+Chrome verification script passed proxied liveness (200), database readiness
+(200), anonymous session rejection (401), and rendered sign-in/operational
+indicators with no workspace connection error. No real account sign-in was
+attempted. No application code, configuration, credentials or staging changed.
+The earlier system-Node native-module crash explains why the API watcher could
+remain running without an API listener; connectivity now passes after selecting
+the working runtime. Automatic startup after terminal/Docker shutdown is not
+provided by the development setup.
+
+## Invoice validation: actionable customer registration mismatch
+
+A read-only aggregate check found the sole active local customer has a GSTIN
+state prefix different from its saved billing-address state. Invoice preparation
+already rejects this inconsistent master data, but previously returned only
+`INVALID_INPUT`. It now returns `CUSTOMER_REGISTRATION_MISMATCH` with guidance to
+correct the customer GSTIN or saved billing address, explicitly distinguishing
+the invoice delivery address. No local customer or invoice data was modified.
+
+All 14 invoice integration tests passed in a disposable database, including a new
+regression covering preview/save rejection, no persisted draft on rejection, and
+successful draft creation after correcting synthetic customer data with a
+different delivery state. The first test invocation lacked the explicit test
+database URL and ran no tests; the documented migration connection was then
+provided privately for the successful run. API type checking, targeted ESLint,
+and Git whitespace checks passed. Existing staged changes were preserved.
+
+## Invoice form: explain conflicting customer states before submission
+
+Selecting a customer whose GSTIN prefix conflicts with its saved billing-address
+state now shows an inline alert below Bill To naming both states and their codes.
+The alert directs the user to correct the customer registration details in
+Customers and reselect it, and explains that the invoice delivery address is
+separate. Preview/save also stop locally with this explanation instead of sending
+a known-invalid request. Existing server validation remains authoritative for
+saved drafts and concurrent master-data changes. No business data was rewritten.
+Web type checking, targeted ESLint and Git whitespace checks passed. This UI
+follow-up was not separately exercised in an authenticated browser session.

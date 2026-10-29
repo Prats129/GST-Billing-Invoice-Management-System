@@ -10,6 +10,7 @@
     "identity:host": "tsx src/security/host-cli.ts"
   },
   "dependencies": {
+    "@gst/billing-engine": "workspace:*",
     "@gst/contracts": "workspace:*",
     "@gst/database": "workspace:*",
     "@nestjs/common": "12.3.2",

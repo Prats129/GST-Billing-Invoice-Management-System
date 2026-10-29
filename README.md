@@ -4,8 +4,10 @@ Shared Windows offline and SaaS billing platform under development. Phase 1 prov
 the technical foundation; Phase 2 adds login, sessions, MFA, organization memberships
 and permission-based administration. Phase 3 adds business/GST setup, customers
 and a product/service catalog with classification review. Phase 4 adds a pure,
-decimal-safe GST calculation preview library. Invoice creation/issuance remains
-unimplemented; no legal-compliance or production-readiness claim is made.
+decimal-safe GST calculation preview library. Phase 5 adds the invoice workspace,
+saved drafts, server calculation, value corrections, cancellation, logos and A4
+printing, with gated finalization. Real issuance remains blocked; no legal-compliance or
+production-readiness claim is made.
 
 ## Prerequisites
 
@@ -105,7 +107,7 @@ pnpm start
 Open http://localhost:3000 for this loopback-only compiled smoke test.
 Production/LAN requires TLS key/cert paths, HTTPS APP_ORIGIN, exact ALLOWED_HOSTS
 authorities (including port), and an explicitly chosen HOST. The API never trusts
-forwarded Host/Origin or enables wildcard CORS. Customer billing remains deferred;
+forwarded Host/Origin or enables wildcard CORS. Commercial issuance remains gated;
 complete the documented deployment/security validation before production use.
 
 Integration and browser tests use separate random databases and deliberately fail
@@ -145,8 +147,9 @@ remote workflow execution is separate from locally observed results.
 `apps/api` owns transport/operations, `apps/web` the React shell,
 `packages/database` schema/migrations/pool, `packages/contracts` runtime transport
 validation, and `packages/billing-engine` the versioned exact GST preview engine.
-Identity/admin and business/customer/catalog screens are implemented; the invoice
-builder, transactional issuance, corrections and printing remain deferred.
+Identity/admin, master data and the invoice workspace are implemented. Invoices have
+transactional finalization infrastructure, immutable history, value corrections,
+cancellation and A4 printing; commercial issuance remains gated.
 
 Read [architecture](docs/architecture.md), [requirements](docs/requirements.md),
 [decisions](docs/decisions.md), [execution plan](docs/development-plan.md), and
@@ -165,6 +168,28 @@ scripts for a dedicated PostgreSQL instance, checksum-verified Windows API servi
 private-CA TLS and scoped firewall. Actual elevated service install, CA trust,
 LAN browsers and recovery require a disposable Windows VM. Parser checks are
 not deployment proof; the runbook labels each unverified item.
+
+## Invoice workspace (Phase 5)
+
+After updating dependencies, run `pnpm db:migrate` and restart `pnpm dev`. Sign in
+as the owner and open **Invoices → New invoice**. Choose a customer, add catalog
+items, enter quantities/discounts, confirm the supported supply facts and choose
+**Calculate & preview** or **Save draft**. Catalog tax classifications must be
+reviewed and business GST registration confirmed. **Print draft** opens browser
+printing with a prominent draft warning. Bank details come from Business setup;
+notes and terms belong to the draft.
+
+Owners receive the new permissions through their existing owner authority.
+Existing non-owner roles retain their grants: explicitly grant invoice permissions
+and customer/catalog read access as needed. Invoice access is MFA-sensitive on SaaS.
+Finalization is intentionally disabled while professional tax approval and the
+compliance release are pending; unknown/required e-invoicing also blocks issuance.
+Partial/full value credits and debit notes use original invoice tax details;
+correction drafts can be edited before finalization. Drafts can be discarded with a
+recorded reason. Issued cancellation remains compliance-gated and never reuses a
+number. Grant `invoices.cancel` separately; existing non-owner grants are unchanged.
+Upload a PNG logo in Business setup; new documents snapshot it for historical printing.
+See [Phase 5](docs/phase-5.md) for exact supported correction and cancellation boundaries.
 
 ## Troubleshooting
 

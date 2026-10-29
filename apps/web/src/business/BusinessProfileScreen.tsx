@@ -15,6 +15,7 @@ import {
   readAddress,
 } from './shared.js';
 import type { BusinessScreenProps } from './shared.js';
+import { LogoField } from './LogoField.js';
 export function BusinessProfileScreen({
   basePath,
   permissions,
@@ -94,6 +95,7 @@ export function BusinessProfileScreen({
             const values = Object.fromEntries(
               [
                 'legalName',
+                'logoDataUrl',
                 'tradeName',
                 'email',
                 'phone',
@@ -134,6 +136,10 @@ export function BusinessProfileScreen({
         >
           <fieldset className="form-section" disabled={!canManage || busy}>
             <legend>Business identity</legend>
+            <LogoField
+              key={profile?.version ?? 0}
+              initial={current?.logoDataUrl ?? ''}
+            />
             <div className="form-grid">
               <label>
                 Legal business name
