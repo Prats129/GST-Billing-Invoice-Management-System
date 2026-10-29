@@ -32,3 +32,9 @@ Phase 3 adds the business/registration, customer and catalog requirements in pha
 GSTIN/state/HSN syntax checks and operator review do not certify tax treatment or
 e-invoice eligibility. Catalog values remain decimal strings; archive/version/audit
 and tenant authorization boundaries apply to every master-data mutation.
+
+Phase 4 adds the pure calculation requirements in phase-4.md: exact quantities,
+inclusive/exclusive rates, line/invoice discounts, deterministic residual allocation,
+guided jurisdiction, reviewed effective classifications and reconciled tax totals.
+Unsupported transactions/versions and unauthorized overrides fail explicitly.
+Calculation previews do not authorize invoice issuance or certify current law.

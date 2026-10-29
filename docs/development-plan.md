@@ -21,5 +21,10 @@ customer and product/service master data, archives, versioned classification rev
 and responsive workspace screens.
 Acceptance and evidence are in phase-3.md and review-coverage.md.
 
-Later: legally reviewed decimal GST engine; transactional
-invoice lifecycle/renderer/corrections; commercial deployment and recovery hardening.
+Phase 4 engineering implementation and local acceptance are complete: the pure exact
+GST preview engine, source-reviewed scope and discount/rounding specification, with
+arithmetic/authority/jurisdiction/property tests. Evidence and pending professional
+tax approval gates are in phase-4.md and review-coverage.md.
+
+Later: transactional invoice lifecycle/renderer/corrections; commercial deployment,
+professional compliance approval and recovery hardening.

@@ -81,7 +81,7 @@ export const addressSchema = z
   })
   .strict();
 const version = z.number().int().min(0).max(2147483646);
-const isoDate = z
+export const calendarDateSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine((value) => {
@@ -92,7 +92,11 @@ const isoDate = z
       date.toISOString().slice(0, 10) === value
     );
   }, 'Enter a valid calendar date from 1900 onwards');
-function decimal(scale: number, whole: number, maximum?: bigint) {
+export function decimalStringSchema(
+  scale: number,
+  whole: number,
+  maximum?: bigint,
+) {
   return z
     .string()
     .trim()
@@ -110,8 +114,8 @@ function decimal(scale: number, whole: number, maximum?: bigint) {
       'Value exceeds the supported limit',
     );
 }
-export const priceSchema = decimal(4, 14);
-export const taxPercentSchema = decimal(2, 3, 10000n);
+export const priceSchema = decimalStringSchema(4, 14);
+export const taxPercentSchema = decimalStringSchema(2, 3, 10000n);
 export const businessProfileInputSchema = z
   .object({
     version,
@@ -206,7 +210,7 @@ export const catalogTaxSchema = z
       ),
     category: z.enum(['taxable', 'nil', 'exempt']),
     gstPercent: taxPercentSchema,
-    effectiveFrom: isoDate,
+    effectiveFrom: calendarDateSchema,
   })
   .strict()
   .refine(

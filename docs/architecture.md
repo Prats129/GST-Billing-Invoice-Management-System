@@ -19,9 +19,14 @@ was evaluated and deferred until safe request-scoped context is designed; it wil
 be defense in depth, never the only authorization boundary.
 
 Contracts contain runtime validation and transport types. Database owns schema,
-reviewed migrations and connection helpers. Billing-engine contains only a version
-boundary; no financial calculation or legal compliance is claimed. Renderer and
-other feature packages are deferred until useful.
+reviewed migrations and connection helpers. Billing-engine is a pure synchronous
+calculation preview package using exact BigInt scaled units, validated decimal
+strings, dated reviewed classifications and guided jurisdiction facts. It has no
+database/HTTP/clock dependency. Financial rules/rounding are versioned; every result
+includes provenance and reconciled lines/rate groups/totals. The package reuses
+contracts validation and adds no external financial dependencies. Renderer and other
+feature packages are deferred until useful. Professional tax approval and issuance
+gates remain separate from calculating a preview.
 
 Offline: dedicated Windows host, loopback PostgreSQL, Node Windows service, browser
 LAN clients over HTTPS with explicitly trusted private CA. SaaS: same code/schema,

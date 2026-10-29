@@ -3,8 +3,9 @@
 Shared Windows offline and SaaS billing platform under development. Phase 1 provides
 the technical foundation; Phase 2 adds login, sessions, MFA, organization memberships
 and permission-based administration. Phase 3 adds business/GST setup, customers
-and a product/service catalog with classification review. Billing/GST calculations remain unimplemented;
-no legal-compliance or production-readiness claim is made.
+and a product/service catalog with classification review. Phase 4 adds a pure,
+decimal-safe GST calculation preview library. Invoice creation/issuance remains
+unimplemented; no legal-compliance or production-readiness claim is made.
 
 ## Prerequisites
 
@@ -143,9 +144,9 @@ remote workflow execution is separate from locally observed results.
 
 `apps/api` owns transport/operations, `apps/web` the React shell,
 `packages/database` schema/migrations/pool, `packages/contracts` runtime transport
-validation, and `packages/billing-engine` an explicitly unimplemented version
-boundary. Identity/admin and business/customer/catalog screens are implemented;
-invoice calculations, issuance and printing remain deferred.
+validation, and `packages/billing-engine` the versioned exact GST preview engine.
+Identity/admin and business/customer/catalog screens are implemented; the invoice
+builder, transactional issuance, corrections and printing remain deferred.
 
 Read [architecture](docs/architecture.md), [requirements](docs/requirements.md),
 [decisions](docs/decisions.md), [execution plan](docs/development-plan.md), and
@@ -155,6 +156,9 @@ See [Phase 2 scope](docs/phase-2.md) and
 delegation, session defaults and deployment limitations.
 See [Phase 3 scope and setup](docs/phase-3.md) for business setup, catalog review,
 upgrade permissions and the boundaries of local GST validation.
+See [Phase 4 policy/source review](docs/phase-4.md) and the
+[engine example](packages/billing-engine/README.md) for supported arithmetic,
+discount bases, rounding and remaining professional approval gates.
 
 [Windows spike runbook](docs/windows-offline-spike.md) provides executable PoC
 scripts for a dedicated PostgreSQL instance, checksum-verified Windows API service,

@@ -1,0 +1,37 @@
+{
+  "ruleVersion": "in-domestic-gst-2026-10-29.v1",
+  "supplyDate": "2026-10-29",
+  "context": {
+    "supplierState": "27",
+    "supplierTaxpayerType": "regular",
+    "supplierRegistrationConfirmed": true,
+    "recipient": { "kind": "registered", "locationState": "27" },
+    "supplyScenario": "ordinary_domestic_forward_charge",
+    "valuation": "unrelated_sole_consideration",
+    "independentSupplies": true
+  },
+  "lines": [
+    {
+      "id": "example-line",
+      "kind": "goods",
+      "unitCode": "KGS",
+      "quantity": "2.5",
+      "catalogUnitPrice": "100.0000",
+      "priceIncludesGst": false,
+      "supply": { "kind": "goods_movement", "deliveryState": "27" },
+      "taxRevisions": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "revision": 1,
+          "hsnSac": "100630",
+          "category": "taxable",
+          "gstPercent": "18.00",
+          "effectiveFrom": "2026-10-29",
+          "verifiedAt": "2026-10-29T00:00:00.000Z",
+          "verifiedBy": "00000000-0000-4000-8000-000000000002",
+          "reference": "Synthetic arithmetic example, not a statutory classification"
+        }
+      ]
+    }
+  ]
+}

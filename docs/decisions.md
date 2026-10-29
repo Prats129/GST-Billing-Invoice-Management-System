@@ -11,7 +11,7 @@ reversible foundation details without changing those decisions.
   never pushes schema. Integration tests create/drop only random dedicated databases.
 - Phase 1 starts with organizations; Phase 2 adds identity/authorization schema.
   Phase 3 adds business/customer/catalog master data. Invoice schema remains deferred.
-  Billing engine has no calculations yet.
+  Phase 4 implements the pure calculation preview; invoice issuance remains deferred.
 - JSON operational logs omit raw errors, URLs, headers and environment values.
 - Loopback development HTTP only; non-loopback bindings require TLS. Host authority
   allowlist is exact including port. Same-origin browser calls need no CORS wildcard.
@@ -22,8 +22,15 @@ reversible foundation details without changing those decisions.
   structural-only GST validation, exact decimal strings, versioned writes, archives,
   immutable classification revisions and explicit operator review. Existing non-owner
   permissions are not silently expanded by an upgrade.
+- Phase 4 uses exact scaled BigInt quotients, half-up paise rounding and stable
+  largest-remainder allocation. Invoice discounts use eligible tax-exclusive values;
+  component totals reconcile by rate/category group. This is an explicitly versioned
+  engineering policy requiring professional tax approval before commercial issuance.
+- The engine consumes trusted master-data/permission snapshots; it does not authenticate
+  those snapshots. No HTTP calculation endpoint or invoice schema is added in Phase 4.
+  Supported scenarios, official-source review and preview boundaries are in phase-4.md.
 
-Unresolved: legal calculation/rounding rules, GST/e-invoice scope, exact session/MFA
+Unresolved: professional approval of calculation/rounding and commercial GST/e-invoice scope, exact session/MFA
 policies, Windows compatibility matrix, installer redistribution and signing,
 certificate renewal UX, commercial backup policy, SaaS provider and pricing.
 

@@ -578,3 +578,106 @@ catalog, after review/commit of this phase.
   owner input/recovery files and user's Git staging were not overwritten.
 - Still unverified: remote GitHub CI and native Windows service/ACL/LAN HTTPS/
   firewall/reboot deployment behavior. Phase 4 covers the legally reviewed GST engine.
+
+## Phase 4 / batch 1 — scope and official-source review (2026-10-29)
+
+- Working tree clean after Phase 3. Reviewed PROJECT_CONTEXT.md, architecture,
+  Phase 3 contracts/classification history and the reserved billing-engine package.
+- Checked official CGST valuation/discount/rounding, Rule 35, IGST place-of-supply,
+  2024 B2C goods clarification and UT/Ladakh sources; references in phase-4.md.
+- Recorded supported scenarios, exact rounding/discount/allocation policy and the
+  distinction between source review and professional tax approval. No rate seeds,
+  invoice issuance, API/UI endpoints or customer-data changes in this phase.
+- Added shared calculation contracts and an internal workspace dependency so the
+  pure engine can reuse validation/units/state/classification schemas.
+- Next: exact arithmetic, guided jurisdiction, effective-date selection, calculation
+  engine and comprehensive arithmetic/validation/property/regression tests.
+
+## Phase 4 / batch 2 — engine implementation and first tests
+
+- Added pure BigInt scaled arithmetic, half-up paise rounding, deterministic
+  largest-remainder allocation, balanced rate-group component reconciliation,
+  guided domestic POS/UTGST selection and reviewed effective-date selection.
+- Implemented inclusive/exclusive prices, exact quantity/line discounts, eligible
+  exclusive-value invoice discounts, bounds, safe errors, version metadata and
+  explicit trusted override authority/provenance. Results never authorize issuance.
+- Core shared packages compiled. Added synthetic golden fixtures, jurisdiction,
+  malformed-input/authority/history/bounds tests and 300 seeded-cart reconciliation,
+  immutability/permutation checks plus a maximum 1000-line cart. Tests underway.
+- Test fixtures kept outside production source/output. No new external package,
+  database migration, endpoint, UI or customer/credential edits.
+- Next: fix test/type/lint feedback, independently cross-check arithmetic and
+  execute the built package in actual browsers before application regressions.
+
+## Phase 4 / batch 3 — arithmetic verification and reviewable example
+
+- First unit run passed 101/102. The overflow fixture incorrectly used six decimal
+  quantity places with KGS (three allowed); corrected it to OTH (six allowed),
+  preserving the production precision guard. Full strict TypeScript and lint passed.
+- Independently cross-checked 400 synthetic price/quantity/rate/discount cases using
+  PowerShell System.Decimal (a separate decimal arithmetic implementation). All
+  supply values, taxes, component totals, discounts and final totals matched.
+- Added a runnable public synthetic example and package README documenting caller
+  trust, dated complete histories, discount bases, exact money and issuance limits.
+- Removed only stale generated fixture artifacts after moving helpers outside
+  production src. Next: rerun unit suite, browser bundle parity, full app regressions.
+
+## Phase 4 / batch 4 — resumed after usage-limit interruption
+
+- Resumed from existing files and batch 3; no reset, replacement of prior work,
+  credential access or staging changes. The earlier final-check command was not
+  executed because automatic approval review could not complete at the usage limit.
+- Source/example and earlier evidence retained: corrected suite 102/102, 400-case
+  independent Decimal agreement, 403-case Node/browser parity in Chrome and Edge.
+- Added tests already present at interruption: 600 allocation quota/capacity/
+  permutation cases and special-service/e-commerce/unreviewed-baseline boundaries.
+- Frozen offline installation passed without new external dependencies. Formatting
+  applied to the last two new test files; final expanded unit/types/lint checks running.
+- Next: application DB/browser/smoke regressions, example execution and final log.
+
+## Phase 4 / batch 5 — resumed checks and development-service recovery
+
+- Expanded unit suite passed 105/105. Full workspace/test TypeScript and lint passed.
+- Formatting detected the newly appended progress log; it will be formatted after
+  final evidence is recorded. No production-code formatting failure remains.
+- Integration setup could not connect to 127.0.0.1:5432; all 25 tests were skipped,
+  not passed. Docker Desktop's Linux engine was stopped (missing named pipe).
+- Starting the existing engine/container without changing compose settings, .env,
+  credentials, migrations or the persistent volume; then rerun the pending checks.
+
+## Phase 4 / batch 6 — recovered service and regression results
+
+- Docker Desktop engine started normally; the existing PostgreSQL18.6 container
+  and volume were reused and became healthy on loopback port5432.
+- Reran the previously skipped suites: all 25/25 isolated DB/HTTP integration tests
+  passed. This supersedes the setup failure above; no tests were treated as passed
+  while the database was unavailable.
+- Runnable example passed: 250.00 supply value, 22.50 CGST + 22.50 SGST, 295.00 total;
+  issuanceAllowed remained false. Production output contains only engine modules,
+  declarations/maps; synthetic fixtures/tests remain outside dist.
+- Confirmed no Phase 4 edits to API/web/database/migration/environment files and
+  no Git staging changes. Final application build/browser/startup checks underway.
+
+## Phase 4 / batch 7 — final engineering acceptance (2026-10-29)
+
+- Resumed all pending work after the usage-limit interruption and preserved the
+  implementation, test fixtures, existing files and Git staging. No code was reset.
+- Passed: frozen offline installation; 105/105 unit tests; full workspace/test
+  TypeScript; lint; production package/API/frontend build; 25/25 isolated DB/HTTP
+  tests; all 3 application workflows in Chrome and all 3 in Edge; compiled startup
+  smoke with healthy database/API, OpenAPI, assets and Origin rejection.
+- Earlier engine-specific verification remains valid: 400 independent Decimal
+  comparisons and 403 exact Node/bundled-browser parity cases in each browser.
+  Tests include 300 seeded cart reconciliations/permutations, 600 allocation quota
+  cases and a maximum 1000-line cart. No binary floating-point financial arithmetic.
+- Runnable example verified 250.00 supply value, 45.00 GST, 295.00 total and the
+  issuanceAllowed=false boundary. Production dist excludes tests/synthetic fixtures.
+- Docker Desktop/PostgreSQL stopped during the interruption; the existing engine,
+  container and persistent volume were started normally. Initial DB setup failures
+  and skipped tests are documented above and were superseded by a full passing rerun.
+- No new external packages, API/UI endpoints, business schema or migrations. Existing
+  .env/owner files/credentials/customer data were not changed; Git staging unchanged.
+- Final formatting and whitespace checks run after this log update. Phase 4 code
+  and local engineering acceptance are complete; source review is not professional
+  tax certification. Professional approval, invoice issuance/e-invoice controls and
+  native Windows deployment/remote CI release gates remain explicitly unverified.
