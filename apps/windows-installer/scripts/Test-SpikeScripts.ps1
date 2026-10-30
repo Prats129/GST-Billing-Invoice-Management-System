@@ -2,7 +2,7 @@
 param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$files = Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1'
+$files = @(Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1') + @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot '../../../scripts') -Filter '*.ps1')
 $failures = @()
 foreach ($file in $files) {
     $tokens = $null

@@ -59,3 +59,16 @@ rechecks cumulative balances, with deferred DB guards as defense in depth.
 Cancellation is separately authorized and never mutates an issued snapshot/number.
 Commercial issuance and unsupported correction cases remain gated as documented
 in phase-5.md.
+
+Phase 6 host operations live in packages/database backup modules and the Windows
+one-shot job scripts. Authenticated encrypted custom archives bind installation
+and migration identity; restore verification uses only a generated disposable DB.
+No tenant restore endpoint or automatic live cutover is exposed. Signed entitlement
+verification lives in apps/api/src/licensing, with operator-only installation,
+organization-scoped persisted sequences/clock markers and independent business-write
+checks after RBAC. Known expired state disables business editing in the workspace
+while preserving authorized reads and security administration. Production fails
+closed without trusted grants; unconfigured local development remains unlicensed.
+Release-package signature/file/version/path preflight is host-only in operations;
+it neither executes updates nor establishes Windows publisher trust. Commercial
+installer/update, issuer and SaaS-provider integration remain release dependencies.

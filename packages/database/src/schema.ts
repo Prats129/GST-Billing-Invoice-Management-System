@@ -43,6 +43,28 @@ export const organizations = pgTable(
   ],
 );
 
+// Operator-managed signed grants. Runtime must not receive INSERT/DELETE or
+// UPDATE privileges on the signed envelope/sequence; only the observed clock.
+export const organizationEntitlements = pgTable(
+  'organization_entitlements',
+  {
+    organizationId: uuid('organization_id')
+      .primaryKey()
+      .references(() => organizations.id),
+    signedGrant: jsonb('signed_grant').notNull(),
+    highestSequence: integer('highest_sequence').notNull(),
+    lastObservedAt: timestamp('last_observed_at', {
+      withTimezone: true,
+    }).notNull(),
+    installedAt: timestamp('installed_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check('entitlement_sequence_positive', sql`${t.highestSequence} >= 1`),
+  ],
+);
+
 export const businessProfiles = pgTable(
   'business_profiles',
   {

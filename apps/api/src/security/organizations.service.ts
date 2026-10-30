@@ -28,9 +28,17 @@ import { hashPassword, digest, token, verifyPassword } from './crypto.js';
 import { deny } from './errors.js';
 import type { IdentityService } from './identity.service.js';
 import type { IdentitySession, Store, TenantAccess } from './types.js';
+import { EntitlementsService } from '../licensing/entitlements.service.js';
 
 export class OrganizationsService {
-  constructor(readonly identity: IdentityService) {}
+  readonly entitlements: EntitlementsService;
+  constructor(
+    readonly identity: IdentityService,
+    entitlements?: EntitlementsService,
+  ) {
+    this.entitlements =
+      entitlements ?? new EntitlementsService(identity.config);
+  }
   get db(): Database['db'] {
     return this.identity.db;
   }
@@ -113,6 +121,7 @@ export class OrganizationsService {
       if (!organization) deny('FORBIDDEN');
       await this.identity.current(session, tx, true);
       const access = await this.access(session, orgId, permission, tx);
+      await this.entitlements.assertWritable(tx, orgId, permission);
       return action(tx, access);
     });
   }
@@ -224,7 +233,12 @@ export class OrganizationsService {
       .select({ id: organizations.id, name: organizations.name })
       .from(organizations)
       .where(eq(organizations.id, orgId));
-    return { organization, access, permissionCatalog: permissionKeys };
+    return {
+      organization,
+      access,
+      permissionCatalog: permissionKeys,
+      entitlement: await this.entitlements.describe(this.db, orgId),
+    };
   }
   async listRoles(session: IdentitySession, orgId: string, offset: number) {
     await this.access(session, orgId, 'roles.read', this.db);

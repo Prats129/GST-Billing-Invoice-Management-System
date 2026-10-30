@@ -21,6 +21,7 @@ import {
 } from './shared.js';
 import type { BusinessScreenProps } from './shared.js';
 export function CatalogScreen({
+  readOnly = false,
   basePath,
   permissions,
   busy,
@@ -30,8 +31,8 @@ export function CatalogScreen({
   onClearError,
 }: BusinessScreenProps) {
   const canRead = permissions.includes('catalog.read');
-  const canManage = permissions.includes('catalog.manage');
-  const canReview = permissions.includes('catalog.tax.verify');
+  const canManage = !readOnly && permissions.includes('catalog.manage');
+  const canReview = !readOnly && permissions.includes('catalog.tax.verify');
   const list = useDirectory<CatalogView>(
     `${basePath}/catalog`,
     catalogPageSchema,

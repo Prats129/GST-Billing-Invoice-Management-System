@@ -207,9 +207,17 @@ function PrintPreview({ data }: { data: InvoicePrintData }) {
   );
 }
 export function InvoicesScreen(props: BusinessScreenProps) {
-  const { basePath, permissions, run, mutate, busy, error, onClearError } =
-    props;
-  const canManage = permissions.includes('invoices.manage');
+  const {
+    basePath,
+    permissions,
+    run,
+    mutate,
+    busy,
+    error,
+    onClearError,
+    readOnly = false,
+  } = props;
+  const canManage = !readOnly && permissions.includes('invoices.manage');
   const [documentAction, setDocumentAction] = useState<
     'correction' | 'cancel' | null
   >(null);
@@ -241,6 +249,9 @@ export function InvoicesScreen(props: BusinessScreenProps) {
   const [createKey, setCreateKey] = useState(() => crypto.randomUUID());
   const [finalizeKey, setFinalizeKey] = useState(() => crypto.randomUUID());
   const form = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (readOnly) setDocumentAction(null);
+  }, [readOnly]);
   const reload = () => setAttempt((v) => v + 1);
   useEffect(() => {
     let active = true;
@@ -867,7 +878,11 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                     <button
                       className="button button-secondary"
                       value="calculate"
-                      disabled={busy || (!readonly && lines.length === 0)}
+                      disabled={
+                        busy ||
+                        (readOnly && !editor) ||
+                        (!readonly && lines.length === 0)
+                      }
                     >
                       Calculate & preview
                     </button>
@@ -880,51 +895,54 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                         Save draft
                       </button>
                     )}
-                    {editor && permissions.includes('invoices.finalize') && (
-                      <button
-                        type="button"
-                        className="button button-primary"
-                        disabled={
-                          busy ||
-                          dirty ||
-                          !preview ||
-                          preview.issuanceBlockers.length > 0
-                        }
-                        onClick={() =>
-                          void run(async () => {
-                            if (
-                              !preview ||
-                              !window.confirm(
-                                'Finalize this document? Issued records cannot be edited.',
+                    {editor &&
+                      !readOnly &&
+                      permissions.includes('invoices.finalize') && (
+                        <button
+                          type="button"
+                          className="button button-primary"
+                          disabled={
+                            busy ||
+                            dirty ||
+                            !preview ||
+                            preview.issuanceBlockers.length > 0
+                          }
+                          onClick={() =>
+                            void run(async () => {
+                              if (
+                                !preview ||
+                                !window.confirm(
+                                  'Finalize this document? Issued records cannot be edited.',
+                                )
                               )
-                            )
-                              return;
-                            open(
-                              await mutate<InvoiceRecord>(
-                                `${basePath}/invoices/${editor.id}/finalize`,
-                                {
-                                  version: editor.version,
-                                  requestKey: finalizeKey,
-                                  previewDigest: preview.digest,
-                                },
-                              ),
-                            );
-                            reload();
-                          })
-                        }
-                      >
-                        Finalize{' '}
-                        {editor.documentType === 'credit_note'
-                          ? 'credit note'
-                          : editor.documentType === 'debit_note'
-                            ? 'debit note'
-                            : 'invoice'}
-                      </button>
-                    )}
+                                return;
+                              open(
+                                await mutate<InvoiceRecord>(
+                                  `${basePath}/invoices/${editor.id}/finalize`,
+                                  {
+                                    version: editor.version,
+                                    requestKey: finalizeKey,
+                                    previewDigest: preview.digest,
+                                  },
+                                ),
+                              );
+                              reload();
+                            })
+                          }
+                        >
+                          Finalize{' '}
+                          {editor.documentType === 'credit_note'
+                            ? 'credit note'
+                            : editor.documentType === 'debit_note'
+                              ? 'debit note'
+                              : 'invoice'}
+                        </button>
+                      )}
                   </>
                 )}
                 {editor?.status === 'finalized' &&
                   editor.documentType === 'invoice' &&
+                  !readOnly &&
                   permissions.includes('invoices.correct') && (
                     <button
                       type="button"
@@ -966,6 +984,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                 ))}
                 {editor?.status === 'finalized' &&
                   editor.documentType === 'invoice' &&
+                  !readOnly &&
                   permissions.includes('invoices.correct') && (
                     <button
                       type="button"
@@ -980,6 +999,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                   )}
                 {editor?.status === 'draft' &&
                   editor.correction &&
+                  !readOnly &&
                   permissions.includes('invoices.correct') && (
                     <button
                       type="button"
@@ -994,6 +1014,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                   )}
                 {editor &&
                   editor.status !== 'cancelled' &&
+                  !readOnly &&
                   permissions.includes('invoices.cancel') && (
                     <button
                       type="button"

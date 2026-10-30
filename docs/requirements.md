@@ -49,3 +49,13 @@ partial credits/debits use original tax details and enforce cumulative balances;
 correction drafts are versioned. Cancellations are append-only and separately
 authorized. PNG logos are bounded and included in immutable print data. Tax-only,
 rate-changing or externally reported/IRP corrections require a reviewed wider scope.
+
+Phase 6 requires authenticated encrypted backups, operator-only disposable restore
+verification, visible backup failure reporting and signed commercial entitlements
+independent of RBAC. Confirmed 2026-10-30: trial/subscription expiry immediately
+blocks business writes, with no grace period; authorized historical reads/printing
+remain available. Optional maintenance expiry never ends a perpetual license.
+Signed package preflight must reject tampering, rollback and unsafe paths before
+any update. These checks do not complete the signed Windows installer, scheduling,
+live recovery cutover, online activation, SaaS onboarding/provider operations or
+professional tax approval; those remain release requirements.

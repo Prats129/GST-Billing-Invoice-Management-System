@@ -9,5 +9,7 @@ node_modules
 **/*.pem
 **/*.pfx
 **/*.p12
+**/*.gstbackup
+**/*.dump
 test-results
 playwright-report

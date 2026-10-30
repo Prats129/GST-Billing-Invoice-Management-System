@@ -17,6 +17,7 @@ import {
 import type { BusinessScreenProps } from './shared.js';
 import { LogoField } from './LogoField.js';
 export function BusinessProfileScreen({
+  readOnly = false,
   basePath,
   permissions,
   busy,
@@ -27,7 +28,7 @@ export function BusinessProfileScreen({
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [saved, setSaved] = useState(false);
-  const canManage = permissions.includes('organization.manage');
+  const canManage = !readOnly && permissions.includes('organization.manage');
   useEffect(() => {
     let active = true;
     setError('');

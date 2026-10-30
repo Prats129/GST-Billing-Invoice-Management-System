@@ -8,6 +8,10 @@ const errors = {
   MFA_REQUIRED: [403, 'Complete two-step verification'],
   PASSWORD_CHANGE_REQUIRED: [403, 'Change your temporary password'],
   INVALID_INPUT: [400, 'Invalid input'],
+  ENTITLEMENT_READ_ONLY: [
+    403,
+    'This organization is read-only because its license or subscription is missing, expired or cannot be verified. Existing authorized records and printing remain available. Contact the host/platform operator.',
+  ],
   CUSTOMER_REGISTRATION_MISMATCH: [
     400,
     'The customer GSTIN state does not match their saved billing-address state. Correct the customer GSTIN or billing address in Customers, then try again. The invoice delivery address may be different.',

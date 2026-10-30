@@ -382,7 +382,11 @@ export function Workspace({
             : e.message
           : 'This request could not be completed. Please try again.',
       );
-      if (e instanceof ApiError && [401, 403].includes(e.status)) {
+      if (
+        e instanceof ApiError &&
+        [401, 403].includes(e.status) &&
+        e.code !== 'ENTITLEMENT_READ_ONLY'
+      ) {
         clearTenant();
         await refresh();
       }
@@ -393,6 +397,10 @@ export function Workspace({
   const mutate: Mutate = (path, body, method = 'POST') =>
     securityRequest(path, info?.csrfToken, method, body);
   const businessProps = {
+    readOnly: Boolean(
+      context?.entitlement &&
+      !['active', 'development'].includes(context.entitlement.status),
+    ),
     basePath: `/organizations/${selected}`,
     permissions: context?.access.permissions ?? [],
     busy,
@@ -825,6 +833,17 @@ export function Workspace({
           </div>
           {errorBanner}
           {recovery}
+          {context?.entitlement &&
+            !['active', 'development'].includes(context.entitlement.status) && (
+              <div className="warning-note" role="status">
+                <strong>This organization is read-only.</strong>{' '}
+                {context.entitlement.status === 'expired'
+                  ? 'Your trial or subscription has expired. Contact your provider to renew.'
+                  : 'Your license or subscription needs attention. Contact the host or platform operator.'}{' '}
+                You can still view and print records you have permission to
+                access.
+              </div>
+            )}
           {invitations.length > 0 && (
             <section className="invitation-banner">
               <span className="feature-icon">

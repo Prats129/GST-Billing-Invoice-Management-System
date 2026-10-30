@@ -19,6 +19,8 @@ const schema = z.object({
   TLS_CERT_PATH: z.string().min(1).optional(),
   WEB_ROOT: z.string().min(1).optional(),
   DEPLOYMENT_EDITION: z.enum(['offline', 'saas']).default('offline'),
+  ENTITLEMENT_TRUST_FILE: z.string().min(1).optional(),
+  OFFLINE_INSTALLATION_ID: z.string().uuid().optional(),
   SESSION_IDLE_MINUTES: z.coerce.number().int().min(5).max(120).default(30),
   SESSION_ABSOLUTE_MINUTES: z.coerce
     .number()

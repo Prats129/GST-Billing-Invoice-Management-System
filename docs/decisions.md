@@ -50,6 +50,18 @@ Unresolved: professional approval of calculation/rounding and commercial GST/e-i
 policies, Windows compatibility matrix, installer redistribution and signing,
 certificate renewal UX, commercial backup policy, SaaS provider and pricing.
 
+Phase 6 user decision (2026-10-30): trial and time-limited subscription expiry
+immediately makes business data read-only; no grace period. Optional maintenance
+expiry never terminates a perpetual offline license. No Windows code-signing
+certificate or SaaS provider is currently available. Signed grants use external
+Ed25519 issuer keys, independently of Windows Authenticode certificates. Key trust
+and grant installation are host/platform-operator duties, not tenant RBAC powers.
+
+Phase 6 runtime baseline is Node 24.22.1+ within major 24 and pnpm 10.34.9,
+enforced by workspace engines. This matches .nvmrc and signed release manifests
+and prevents the observed Node 22.13.0 Windows Argon2 crash from being reached by
+a normal pnpm install/dev command. Existing system-wide tools are not replaced.
+
 Version selection and verified environment are recorded in review-coverage.md and
 README. Official references: [Node support](https://nodejs.org/en/about/previous-releases),
 [Nest migration](https://docs.nestjs.com/migration-guide),

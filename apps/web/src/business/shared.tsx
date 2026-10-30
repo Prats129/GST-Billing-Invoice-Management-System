@@ -7,6 +7,7 @@ import { formText } from '../security-forms.js';
 import { securityRequest } from '../security-api.js';
 import { Icon } from '../ui.js';
 export interface BusinessScreenProps {
+  readOnly?: boolean;
   basePath: string;
   permissions: Permission[];
   busy: boolean;

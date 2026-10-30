@@ -20,14 +20,34 @@ production-readiness claim is made.
 
 Version choices: NestJS 12 (provisional Express), Vite 8/React 19, TypeScript 6,
 Drizzle ORM 0.45 and PostgreSQL 18. Exact dependency resolutions are locked in
-pnpm-lock.yaml. Node 22.12+ is compatible, but use a current security patch;
-the preinstalled 22.13.0 host runtime is not the recommended deployment runtime.
+pnpm-lock.yaml. Phase 6 requires Node 24.22.1+ within major 24 and pnpm 10.34.9;
+the workspace engine checks reject the older host tools before installation.
+Node 22.13.0 crashed loading the Windows Argon2 prebuild on this development host;
+the same binary passed native loading/hash verification with Node 24.22.1.
 See [runtime support](https://nodejs.org/en/about/previous-releases),
 [Nest requirements](https://docs.nestjs.com/migration-guide),
 [Vite requirements](https://vite.dev/guide/) and
 [PostgreSQL support](https://www.postgresql.org/support/versioning/).
 
 ## Local startup
+
+On Windows, this checkout can select its existing compatible cached tools:
+
+```powershell
+.\scripts\Use-ProjectToolchain.ps1
+```
+
+The helper prepares an ignored `.local/toolchain` using existing Node/pnpm
+distributions, then selects it for that PowerShell session. It does not download
+tools or replace system installations. On a fresh clone without compatible cached
+tools, install the prerequisites first. An existing local toolchain is validated
+and reused, never silently overwritten.
+
+The workspace [VS Code terminal configuration](.vscode/settings.json) selects this
+prepared toolchain for new Windows terminals. Close older terminals and create a
+new one after setup; already-running terminals retain their old environment.
+Outside VS Code, run the helper in each new PowerShell session. This uses VS Code's
+[terminal environment setting](https://code.visualstudio.com/docs/terminal/profiles).
 
 From the project root:
 
@@ -71,6 +91,14 @@ API routes:
   effective permissions and scoped audits (server-enforced authorization).
 
 ## Checks and migrations
+
+Phase 6 commercial hardening is in progress. Host-only commands and exact release
+boundaries: [encrypted backup/restore](docs/backup-recovery.md),
+[signed entitlements](docs/licensing-operations.md), and
+[signed release preflight](docs/signed-releases.md). Production business writes
+require verified entitlements; development remains unlicensed unless configured.
+Official invoice issuance is still independently gated. This is not yet a signed
+commercial installer or a deployed SaaS service.
 
 ```sh
 pnpm format:check

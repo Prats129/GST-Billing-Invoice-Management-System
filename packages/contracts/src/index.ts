@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { EntitlementInfo } from './entitlements.js';
 
 export const healthResponseSchema = z.object({
   status: z.literal('ok'),
@@ -113,6 +114,7 @@ export type OrganizationSummary = z.infer<
   typeof organizationListSchema
 >[number];
 export interface OrganizationAccess {
+  entitlement?: EntitlementInfo;
   organization: { id: string; name: string };
   access: {
     isOwner: boolean;
@@ -144,3 +146,4 @@ export * from './business.js';
 export * from './billing.js';
 export * from './invoicing.js';
 export * from './logo.js';
+export * from './entitlements.js';

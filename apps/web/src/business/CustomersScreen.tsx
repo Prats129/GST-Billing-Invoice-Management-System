@@ -13,6 +13,7 @@ import {
 } from './shared.js';
 import type { BusinessScreenProps } from './shared.js';
 export function CustomersScreen({
+  readOnly = false,
   basePath,
   permissions,
   busy,
@@ -22,7 +23,7 @@ export function CustomersScreen({
   onClearError,
 }: BusinessScreenProps) {
   const canRead = permissions.includes('customers.read');
-  const canManage = permissions.includes('customers.manage');
+  const canManage = !readOnly && permissions.includes('customers.manage');
   const list = useDirectory<CustomerView>(
     `${basePath}/customers`,
     customerPageSchema,

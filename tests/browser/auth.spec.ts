@@ -885,6 +885,89 @@ test('correction dialogs submit and edit versioned original-line value adjustmen
   await expect(page.getByText('₹15.00', { exact: true })).toBeVisible();
 });
 
+test('expired entitlement notice preserves the workspace and authorized reads after a rejected write', async ({
+  page,
+}) => {
+  const base = `${origin}/api/v1/organizations/${organizationId}`;
+  let entitlementState = 'expired';
+  await page.route(base, async (route) => {
+    const response = await route.fetch();
+    const data = await response.json();
+    await route.fulfill({
+      response,
+      json: {
+        ...data,
+        entitlement: {
+          status: entitlementState,
+          kind: 'trial',
+          expiresAt: '2026-01-01T00:00:00Z',
+        },
+      },
+    });
+  });
+  await page.route(`${base}/business-profile`, async (route) => {
+    if (route.request().method() !== 'PUT') return route.continue();
+    await route.fulfill({
+      status: 403,
+      json: {
+        error: {
+          code: 'ENTITLEMENT_READ_ONLY',
+          message: 'Your trial has expired. Existing records remain available.',
+        },
+      },
+    });
+  });
+  await signIn(page, ownerEmail, ownerPassword);
+  await page
+    .getByLabel('Organization', { exact: true })
+    .selectOption(organizationId);
+  await expect(
+    page.getByText('This organization is read-only.', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Business setup', exact: true }).click();
+  await expect(
+    page.getByLabel('Legal business name', { exact: true }),
+  ).toHaveValue('Browser trading business');
+  await expect(
+    page.getByLabel('Legal business name', { exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: 'Save business details', exact: true }),
+  ).toHaveCount(0);
+  // Simulate a renewal followed by a later server-side expiry. A stale writable
+  // screen must handle rejection without losing authorized historical access.
+  entitlementState = 'active';
+  await page
+    .getByRole('button', { name: 'Refresh access', exact: true })
+    .click();
+  await expect(
+    page.getByLabel('Legal business name', { exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole('button', { name: 'Save business details', exact: true })
+    .click();
+  await expect(
+    page
+      .getByText('Your trial has expired. Existing records remain available.', {
+        exact: true,
+      })
+      .first(),
+  ).toBeVisible();
+  await expect(page.getByLabel('Organization', { exact: true })).toHaveValue(
+    organizationId,
+  );
+  await page.getByRole('link', { name: 'Invoices', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Invoices', exact: true, level: 1 }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Sign in to your workspace',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+});
+
 test('authenticator enrollment, recovery-code display and MFA challenge work in browser', async ({
   page,
 }) => {

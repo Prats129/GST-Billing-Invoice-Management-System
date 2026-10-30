@@ -36,6 +36,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm test:integration
+        env:
+          TEST_BACKUP_DOCKER_CONTAINER: ${{ job.services.postgres.id }}
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e

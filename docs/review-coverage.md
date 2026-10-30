@@ -886,3 +886,155 @@ a known-invalid request. Existing server validation remains authoritative for
 saved drafts and concurrent master-data changes. No business data was rewritten.
 Web type checking, targeted ESLint and Git whitespace checks passed. This UI
 follow-up was not separately exercised in an authenticated browser session.
+
+## Phase 6 batch 1: authenticated backup artifacts
+
+Read the complete root context/prompt and current architecture/phase notes;
+working tree was clean at start. Added bounded AES-256-GCM streaming backup
+artifacts with authenticated installation/schema/version/checksum/count metadata,
+unique nonces, no-overwrite publication and private temporary plaintext. Four
+artifact unit tests passed: round trip, wrong key/identity/schema, metadata/data/tag
+corruption/truncation and invalid input/no-overwrite cleanup. Initial sandbox test
+launch failed with EPERM; rerun with required subprocess permission passed.
+Database type checking and eight-file PowerShell syntax checks passed.
+
+## Phase 6 batch 2: real PostgreSQL backup/restore verification
+
+Added host-only backup CLI and NTFS-protected key creation. A repeatable-read
+exported snapshot binds dump and table counts. Restore checks use only a generated
+disposable database; no existing database name can be supplied for overwrite.
+Verified a PostgreSQL 18 Docker dump/encrypt/decrypt/restore round trip on Windows,
+including ACL setup, matching restored counts/readiness, wrong-key rejection,
+temporary cleanup and unchanged source fixture. The first real test exposed an
+empty PGSERVICE setting; removing inherited libpq configuration fixed it and the
+test passed. Added exact migration-history checks; final artifact tests (4) and
+migration-aware real restore drill (1) passed. Database/test TypeScript and
+targeted ESLint also passed.
+CI is configured to use its service container; remote CI remains unverified.
+
+User confirmed no code-signing certificate or SaaS provider is currently available.
+Keep these external and do not provision paid services. Grace policy question is
+pending. Remaining Phase 6 work is tracked in phase-6.md; official issuance gates
+and customer data remain unchanged. Native PostgreSQL restore/cutover, scheduled
+execution, installer signing/service/reboot, provider recovery and commercial
+license/subscription integration are not yet complete.
+
+## Phase 6 batch 3: signed entitlements and immediate read-only policy
+
+User confirmed immediate read-only at trial/subscription expiry (no grace).
+Added strict shared claim/envelope contracts, Ed25519 authenticity verification,
+14-day trials, offline host/organization binding, SaaS organization binding,
+sequence/clock rollback checks and perpetual-maintenance independence. Five
+cryptographic/policy unit tests passed. Added operator-only audited grant import,
+per-organization business-write enforcement after authentication/RBAC, and safe
+read-only UI behavior without clearing the authenticated session. Production
+fails closed without trust; existing unconfigured development stays writable.
+HTTP integration passed for missing/expired grants, active perpetual rights after
+maintenance expiry, preserved authorized reads, idempotent installation, rejected
+rollback/wrong-host grants and unchanged data after rejected writes.
+
+Before additive migration 0005, created a private NTFS-protected recovery key and
+encrypted backup of the existing local database, then successfully restored and
+verified all 26 archived tables in a separate temporary DB. Known Phase 5 schema
+prefixes are supported for pre-upgrade backups; unknown history is rejected.
+Applied 0005 and verified counts/fingerprints of all 23 existing business,
+identity, financial, audit and grant tables unchanged; live sessions/throttle were
+excluded because normal API use can update them. No existing permissions or
+credentials were rewritten. Recovery materials remain ignored under .local;
+an off-device copy remains the operator's responsibility.
+
+Both new integration files passed (2 tests total), plus API/test TypeScript.
+New workspace status presentation and final broad regression checks remain next.
+Issuer/online activation, provider automation, signed installer/update, scheduling
+and controlled disaster-recovery cutover remain unfinished Phase 6 work.
+
+## Phase 6 batch 4: job reporting and signed update-package preflight
+
+Added a one-shot PowerShell backup job using an approved Node executable hash,
+private keys/configuration, exclusive overlap lock, unique encrypted artifacts,
+full disposable restore and atomic last-success/failure status. Successfully ran
+it on this Windows host with Docker PostgreSQL tools. No scheduled task was
+registered; native-tool and unattended/reboot execution remain unverified.
+
+Added host-only signed release-package preflight: domain-separated Ed25519
+signatures, bounded manifests, version/known-schema checks, complete SHA-256 file
+verification and rejection of path traversal, reserved names, alternate streams,
+case collisions, unexpected files and Windows directory junctions. Five tests
+passed. No package files were executed; no installer/update was installed.
+
+Broad verification found one fsync-heavy filesystem unit test exceeding its
+five-second default while builds ran concurrently; its local timeout is now 30s.
+The subsequent full unit run passed 125 tests (before the five release tests were
+added). Full integration initially lacked pnpm's host-CLI environment; the
+documented `pnpm test:integration` rerun passed all 41 tests. Initial browser run
+passed four workflows and reached the new read-only flow, but its final locator
+matched both h1/h2; corrected it to the page-level heading. Final browser rerun,
+new pre-upgrade-restore test and complete checks remain next.
+
+## Phase 6 batch 5: recovery failure checks and runtime consistency
+
+Verified the one-shot Windows job's failure path using a deliberately nonexistent
+Docker container: it exited 1, recorded failure, preserved the previous successful
+timestamp and every existing archive. A subsequent real backup/restore job passed.
+Added explicit current-release compatibility reporting for restored backups and
+a test covering pre-upgrade Phase 5 archives without claiming current API readiness.
+Readiness now checks the entitlement table as part of the current schema.
+
+Full compiler, lint, build, formatting, whitespace and nine-file PowerShell syntax
+checks passed. Production dependency audit reported no known vulnerabilities.
+Workspace engine requirements now match the verified Node 24.22.1+/pnpm 10.34.9
+baseline, preventing normal installation under the previously crashing Node 22
+toolchain; system installations were not changed. Backup archives are excluded
+from Git and Docker contexts. The latest complete unit run passed 130 tests.
+Final integration and Chrome/Edge runs are in progress. User-staged changes remain
+staged; no commit or index rewrite was performed.
+
+## Phase 6 continuation: final local checkpoint (2026-10-30)
+
+Full unit run passed 130/130 and isolated integration passed 43/43. Chrome and
+Edge each passed all six workflows. The extended read-only browser workflow
+verifies disabled business editing for known expired state, re-enabling after
+renewal, and retaining authorized historical access when a later write is rejected.
+RBAC permissions are not rewritten to implement licensing. All production
+entitlement/issuance checks remain server-side and independent.
+
+API/web/test TypeScript, lint, production builds, compiled HTTP/assets/database/
+OpenAPI/Origin smoke, migration drift and nine-file PowerShell syntax checks
+passed. Final API smoke passed after the UI change. Both old Node and old pnpm
+were explicitly rejected by offline lockfile-only engine checks; the lockfile
+remained unchanged. Release tests passed again after adding a case-insensitive
+reserved-manifest-path check. One late test-array formatting warning was corrected;
+the final full lint, formatting and whitespace rerun passed.
+
+Moved the CI backup-container expression to integration-step environment, where
+GitHub's job context is available; remote CI remains unverified. Reference:
+[GitHub context availability](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability).
+
+This is a verified local hardening checkpoint, not completion of commercial
+Phase 6. Remaining work requires externally provisioned signing/issuer/hosting
+and an elevated disposable Windows/LAN test environment: commercial signed
+installer/update and controlled cutover, service/reboot/native PostgreSQL and
+unattended scheduling, online activation/self-service SaaS onboarding and provider
+renewal/backup operations. No production private key, paid service, scheduled task,
+machine-wide service, certificate trust or firewall rule was installed. Existing
+business data and user-staged changes are preserved; recovery material is private
+under ignored .local paths and still needs an operator-managed off-device copy.
+
+## Windows terminal toolchain selection repair
+
+The user's terminal still selected system Node 22.13.0 and pnpm 9.15.4 after the
+Phase 6 engine checks were enabled. Preserved those checks and system installs.
+Added a Windows helper that validates/reuses compatible existing distributions,
+copies them into a stable ignored .local/toolchain location without overwriting
+an existing setup, and selects its bin directory for the current shell. Added
+workspace VS Code terminal environment configuration for future terminals and
+documented the one-command helper for existing/external PowerShell sessions.
+No new runtime/dependency version or credential was introduced.
+
+Verified helper reuse and a fresh PowerShell process with the resolved VS Code
+environment: Node 24.22.1 and pnpm 10.34.9 resolve from .local/toolchain/bin.
+The first db:up attempt passed engine checks but found Docker Desktop stopped;
+started the already-installed application and successfully brought PostgreSQL
+to healthy state. Argon2 native/hash verification, ten-file PowerShell syntax,
+targeted formatting and Git whitespace checks passed. Actual VS Code terminal creation remains
+a user action; existing open terminals cannot inherit another process's PATH.

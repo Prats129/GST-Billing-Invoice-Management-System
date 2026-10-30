@@ -35,3 +35,9 @@ and versioned A4 printing, editable partial credit/debit value adjustments, immu
 cancellation records and PNG logos. See phase-5.md and review-coverage.md for evidence
 and exact scope. Commercial issuance remains blocked by professional compliance
 approval; production deployment and commercial hardening remain Phase 6/release work.
+
+Phase 6 is in progress. Start with authenticated encrypted backups and disposable
+restore verification; then licensing, signed installation/update, subscriptions
+and deployment/release checks. See phase-6.md and backup-recovery.md. No provider,
+signing certificate or commercial retention policy is silently selected. The user
+confirmed immediate read-only at trial/subscription expiry, with no grace period.

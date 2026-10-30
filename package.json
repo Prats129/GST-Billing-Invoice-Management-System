@@ -4,7 +4,8 @@
   "type": "module",
   "packageManager": "pnpm@10.34.9",
   "engines": {
-    "node": ">=22.12.0 <23 || >=24 <25"
+    "node": ">=24.22.1 <25",
+    "pnpm": "10.34.9"
   },
   "scripts": {
     "setup:env": "node scripts/setup-env.mjs",
@@ -24,7 +25,10 @@
     "db:generate": "pnpm --filter @gst/database db:generate",
     "db:migrate": "pnpm --filter @gst/database db:migrate",
     "db:up": "docker compose up -d --wait",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "backup": "tsx packages/database/src/backup-cli.ts",
+    "license:install": "pnpm build:packages && tsx apps/api/src/licensing/host-cli.ts",
+    "release:verify": "tsx apps/api/src/operations/release-cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
