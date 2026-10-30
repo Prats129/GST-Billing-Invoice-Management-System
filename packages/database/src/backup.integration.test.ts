@@ -53,6 +53,7 @@ test.skipIf(!enabled)(
     const verified = await verifyRestore(options, artifact);
     expect(verified.verified).toBe(true);
     expect(verified.currentReleaseCompatible).toBe(true);
+    expect(verified.schemaDigest).toBe(manifest.schemaDigest);
     expect(verified.tables).toBe(Object.keys(manifest.rowCounts).length);
     expect(
       await isolated!.database.db.select().from(organizations),

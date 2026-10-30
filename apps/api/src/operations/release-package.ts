@@ -9,7 +9,7 @@ export class ReleaseError extends Error {
     super('Release verification failed. Do not install this package.');
   }
 }
-interface ReleaseFile {
+export interface ReleaseFile {
   path: string;
   bytes: number;
   sha256: string;
@@ -62,7 +62,7 @@ function safePath(path: string) {
       )
   );
 }
-function parseManifest(value: unknown): ReleaseManifest {
+export function parseReleaseManifest(value: unknown): ReleaseManifest {
   const m = object(value);
   keys(m, [
     'format',
@@ -112,6 +112,62 @@ function parseManifest(value: unknown): ReleaseManifest {
   }
   return value as ReleaseManifest;
 }
+export function assertReleaseCompatibility(
+  manifest: ReleaseManifest,
+  installed: { version: string; schemaDigest: string },
+) {
+  if (
+    compare(manifest.version, installed.version) <= 0 ||
+    compare(installed.version, manifest.minimumInstalledVersion) < 0 ||
+    manifest.fromSchemaDigest !== installed.schemaDigest
+  )
+    throw new ReleaseError();
+}
+
+// Shared by publisher and customer verification. Include directory names in
+// collision checks so a tree accepted on Linux is also safe on Windows.
+export async function inspectReleaseFiles(
+  root: string,
+  expected?: ReadonlyMap<string, ReleaseFile>,
+): Promise<ReleaseFile[]> {
+  root = resolve(root);
+  const rootInfo = await lstat(root);
+  if (!rootInfo.isDirectory() || rootInfo.isSymbolicLink())
+    throw new ReleaseError();
+  const files: ReleaseFile[] = [];
+  const names = new Set<string>();
+  let visited = 0;
+  async function walk(relative: string) {
+    for (const name of await readdir(join(root, relative))) {
+      if (++visited > 20000) throw new ReleaseError();
+      const path = relative ? `${relative}/${name}` : name;
+      if (path === 'release.json') continue;
+      if (
+        !safePath(path) ||
+        path.toLowerCase() === 'release.json' ||
+        names.has(path.toLowerCase())
+      )
+        throw new ReleaseError();
+      names.add(path.toLowerCase());
+      const candidate = resolve(root, ...path.split('/'));
+      if (!candidate.startsWith(root + sep)) throw new ReleaseError();
+      const info = await lstat(candidate);
+      if (info.isSymbolicLink()) throw new ReleaseError();
+      if (info.isDirectory()) await walk(path);
+      else if (info.isFile()) {
+        if (files.length >= 10000 || info.size > 1024 ** 4)
+          throw new ReleaseError();
+        if (expected && expected.get(path)?.bytes !== info.size)
+          throw new ReleaseError();
+        const hash = createHash('sha256');
+        for await (const data of createReadStream(candidate)) hash.update(data);
+        files.push({ path, bytes: info.size, sha256: hash.digest('hex') });
+      } else throw new ReleaseError();
+    }
+  }
+  await walk('');
+  return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+}
 export async function verifyReleasePackage(
   root: string,
   trust: EntitlementTrust,
@@ -154,39 +210,24 @@ export async function verifyReleasePackage(
       )
     )
       throw new ReleaseError();
-    const manifest = parseManifest(JSON.parse(payload.toString('utf8')));
-    if (
-      compare(manifest.version, installed.version) <= 0 ||
-      compare(installed.version, manifest.minimumInstalledVersion) < 0 ||
-      manifest.fromSchemaDigest !== installed.schemaDigest
-    )
-      throw new ReleaseError();
-    const found = new Set<string>();
-    let visited = 0;
-    async function walk(relative: string) {
-      for (const name of await readdir(join(root, relative))) {
-        if (++visited > 20000) throw new ReleaseError();
-        const path = relative ? `${relative}/${name}` : name;
-        if (path === 'release.json') continue;
-        if (!safePath(path)) throw new ReleaseError();
-        const candidate = resolve(root, ...path.split('/'));
-        if (!candidate.startsWith(root + sep)) throw new ReleaseError();
-        const stat = await lstat(candidate);
-        if (stat.isSymbolicLink()) throw new ReleaseError();
-        if (stat.isDirectory()) await walk(path);
-        else if (stat.isFile()) found.add(path);
-        else throw new ReleaseError();
-      }
-    }
-    await walk('');
+    const manifest = parseReleaseManifest(JSON.parse(payload.toString('utf8')));
+    assertReleaseCompatibility(manifest, installed);
+    const expected = new Map(manifest.files.map((file) => [file.path, file]));
+    const found = new Map(
+      (await inspectReleaseFiles(root, expected)).map((file) => [
+        file.path,
+        file,
+      ]),
+    );
     if (found.size !== manifest.files.length) throw new ReleaseError();
     for (const file of manifest.files) {
-      if (!found.has(file.path)) throw new ReleaseError();
-      const path = join(root, ...file.path.split('/'));
-      if ((await lstat(path)).size !== file.bytes) throw new ReleaseError();
-      const hash = createHash('sha256');
-      for await (const data of createReadStream(path)) hash.update(data);
-      if (hash.digest('hex') !== file.sha256) throw new ReleaseError();
+      const actual = found.get(file.path);
+      if (
+        !actual ||
+        actual.bytes !== file.bytes ||
+        actual.sha256 !== file.sha256
+      )
+        throw new ReleaseError();
     }
     return manifest;
   } catch {

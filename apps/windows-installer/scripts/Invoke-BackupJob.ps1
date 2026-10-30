@@ -44,7 +44,7 @@ try {
     $verificationOutput = & $node $cli verify @arguments
     if ($LASTEXITCODE -ne 0) { throw 'Backup restore verification failed.' }
     $verification = $verificationOutput | ConvertFrom-Json
-    $status = @{ status = 'verified'; lastSuccessAt = [DateTime]::UtcNow.ToString('o'); artifact = $archiveName; currentReleaseCompatible = $verification.result.currentReleaseCompatible }
+    $status = @{ status = 'verified'; lastSuccessAt = [DateTime]::UtcNow.ToString('o'); artifact = $archiveName; schemaDigest = $verification.result.schemaDigest; currentReleaseCompatible = $verification.result.currentReleaseCompatible }
     [IO.File]::WriteAllText($statusTemp, ($status | ConvertTo-Json -Compress))
     Move-Item -LiteralPath $statusTemp -Destination $statusPath -Force
     Write-Output 'PASS: encrypted backup created and restored successfully into a disposable verification database.'

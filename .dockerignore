@@ -5,6 +5,7 @@ node_modules
 .env.*
 .cache
 .local
+scripts/issuer
 **/*.key
 **/*.pem
 **/*.pfx

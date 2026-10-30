@@ -51,3 +51,40 @@ operator explicitly chooses otherwise.
 No Windows code-signing certificate or SaaS provider is currently available. No
 installer was signed, installed, reboot-tested or published in this session.
 The verifier's cryptographic/file/path/junction tests use ephemeral test keys.
+
+## Publisher command
+
+`pnpm release:sign` inventories and hashes an existing protected staging tree,
+validates release metadata, signs with an externally supplied encrypted Ed25519
+PKCS8 key, and checks the result through the customer verifier. Its publisher
+scripts are excluded from the Docker build context and customer API/web imports.
+The command does not generate a private key, publish files or execute the package.
+
+Prepare a metadata JSON outside the staged tree containing the manifest fields
+above **except `files`**, which are generated from the real file tree. Use the
+reviewed source/target migration digests and a target version greater than the
+minimum installed version. Unknown fields, unsupported runtimes, secrets,
+symlinks/junctions and case-colliding paths/directories are rejected. Provision
+production dependencies as ordinary files, not pnpm development symlinks.
+
+Inject `ISSUER_KEY_PASSPHRASE` using the protected publisher process environment,
+as described in licensing-operations.md. Use a separate release key and public
+trust map; no customer key or license grant authorizes release signing.
+
+```powershell
+pnpm release:sign --root 'C:\Publisher-staging\release' --metadata 'C:\Publisher\approved-release.json' --key-file 'C:\Publisher-private\release.pem' --key-id release-2026 --trust 'C:\Publisher\release-public-keys.json'
+```
+
+Keep the signing key, passphrase, metadata and trust files outside staging. Its
+new `release.json` is created exclusively; an existing manifest is never replaced.
+No other files are written. The staging directory must be controlled by the
+publisher and immutable during signing/verification. If final verification fails,
+quarantine that directory, including any incomplete manifest, and rebuild in a
+new staging directory. The command does not delete files as an attempted repair.
+The verifier rejects unknown files/sizes before reading their contents.
+
+End-to-end publisher CLI tests use ephemeral encrypted keys, then the actual
+customer verifier. This is application-level signing, independent of Windows
+Authenticode. No commercial installer executable was signed, installed, updated
+or reboot-tested, and a declared target digest still requires actual migration
+and post-update readiness validation by the assisted installer.

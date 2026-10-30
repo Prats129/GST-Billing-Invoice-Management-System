@@ -115,11 +115,56 @@ disposable restore, then atomically updates `backup-status.json`. Failure exits 
 records failure and retains the previous successful timestamp and all archives.
 No successful timestamp is recorded for an unverified backup.
 
-The installer/operator must still register this job under the correct dedicated
-Windows identity at an explicitly selected interval, with non-overlapping task
-execution, startup/missed-run behavior and failure/staleness alerts. No scheduled
-task was registered on this development laptop. SaaS managed-provider policy and
-backup retention/off-device rotation remain deployment work.
+`Set-BackupSchedule.ps1` now generates a reviewable Windows task definition by
+default (`-Action Definition`). Supply all the same absolute native PostgreSQL
+job paths plus `-InstallationName`, the dedicated local `-BackupAccountSid` and an
+explicit local `-DailyAt HH:mm`. It never schedules the Docker development adapter.
+The definition runs daily and five minutes after boot, catches missed runs, ignores
+overlapping triggers, and has a one-hour execution limit. It runs without a logged-in
+desktop, under the chosen ordinary account, without elevated task privileges or
+execution-policy bypass. Set a schedule that fits the installation's backup duration.
+Task settings follow Microsoft's [Task Scheduler settings documentation](https://learn.microsoft.com/en-us/powershell/module/scheduledtasks/new-scheduledtasksettingsset?view=windowsserver2025-ps).
+Provision trusted signed scripts or an administrator-approved execution policy
+for that account; the task does not weaken Windows execution policy.
+
+Registration is explicit: use `-Action Register -Credential (Get-Credential)` in
+an elevated deployment console with the same reviewed arguments. Provision the
+dedicated **local non-administrator** account, its batch-logon rights and all ACLs
+first; this script does not create accounts or change permissions. The script checks
+the credential SID, refuses existing tasks, and rejects reparse-point paths or
+untrusted writable dependencies/ancestors. Code, Node and PostgreSQL tools must be
+protected throughout their trees (including explicit child-file ACLs); development
+symlinks/junctions are rejected. A tree is bounded to 20,000 entries. They must be
+admin-controlled; environment and key files must be private, read-only to the
+backup account; output/work directories must allow that account to write. Other
+non-admin accounts must not read these private files/directories. Task Scheduler
+stores the credential; it is never embedded in XML or application configuration.
+Domain-account/nested-group policy and restrictive enterprise ACLs need deployment
+review; direct local-administrator membership is rejected automatically.
+
+Validate one run under the real account with native PostgreSQL, then a reboot and
+missed-run scenario. Inspect Task Scheduler exit status and monitor the output:
+
+```powershell
+pnpm backup:health --directory 'E:\GST-backups' --maximum-age-hours 26
+```
+
+The age is an **operator-selected example**, not a finalized retention policy.
+Exit 0 requires a recent compatible verified restore and its existing artifact;
+the recorded schema digest must match the running release's migration files.
+An old job status without a digest must be refreshed by a new verified backup.
+exit 1 reports missing/invalid status, a failed job, staleness, incompatible schema
+or a missing artifact. A failed latest job remains unhealthy even when an earlier
+success is recent. Wire this command into the chosen monitoring/alert destination;
+the command does not itself deliver email or off-device alerts. It observes job
+metadata, not archive authentication: a fresh `backup verify` is still necessary
+for recovery. No archive deletion/retention or off-device copying is enabled.
+
+Definition checks include the native Windows Task Scheduler XML parser without
+registering a task. No scheduled task was registered on this development laptop.
+Actual privileged registration, account access, unattended execution, reboot and
+native tools remain unverified. SaaS managed-provider policy and off-device backup
+rotation remain deployment work.
 
 Unit corruption/wrong-key/identity/no-overwrite checks and a real PostgreSQL 18
 Docker round trip have passed locally on Windows, including private-workspace ACL

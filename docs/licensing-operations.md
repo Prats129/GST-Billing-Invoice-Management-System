@@ -85,7 +85,7 @@ Read-only/failed operations do not commit a new clock marker. Do not advertise
 immediate offline revocation or tamper-proof licensing.
 
 This implements signed-file activation and a provider-neutral signed SaaS
-subscription state. Online activation/issuer service, self-service SaaS onboarding,
+subscription state, plus the publisher command below. Online activation/issuer service, self-service SaaS onboarding,
 provider provisioning/renewal automation, commercial key custody/rotation,
 hardware-transfer workflow and maintenance-gated signed updates are unfinished.
 No billing gateway, seat limits or pricing rules were invented. SaaS hosting has
@@ -93,3 +93,46 @@ not been selected. Customer invoice payment tracking remains out of scope.
 
 Signature/expiry/binding/rollback unit tests and HTTP tests use ephemeral test
 keys only. Production issuer keys or grants have not been created or installed.
+
+## Publisher-only issuance and renewal
+
+`scripts/issuer` is operator tooling, excluded from the Docker build context and
+not imported by the customer API/web app. It does not generate or install private
+keys. Provision an encrypted Ed25519 PKCS8 PEM key in restricted publisher storage,
+with recovery/rotation controls and a separately reviewed public trust map.
+Windows Authenticode keys and release-signing keys remain separate concerns.
+
+Prepare an approved claims JSON matching `entitlementClaimsSchema`, with a new
+entitlement UUID, the existing organization UUID and the proper host binding.
+First issuance uses sequence 1. Trials must be exactly 14 days. For renewal or an
+operator-approved installation transfer, supply the previous signed envelope, the
+same organization/edition, a new entitlement UUID and exactly the next sequence.
+Issuance time cannot precede the prior grant. A renewal cannot issue another trial.
+SaaS grants must have a null installation ID. No seat/pricing rules are invented.
+
+Inject `ISSUER_KEY_PASSPHRASE` through the publisher's protected process environment
+or secret manager; do not put it in command arguments, customer `.env`, source
+control or shell history. The command does not load the project `.env`.
+
+```powershell
+pnpm license:issue --claims 'C:\Publisher\approved-claims.json' --key-file 'C:\Publisher-private\issuer.pem' --key-id issuer-2026 --trust 'C:\Publisher\approved-public-keys.json' --output 'C:\Publisher\signed-grant.json' --new-organization
+```
+
+For subsequent grants replace `--new-organization` with
+`--previous-grant 'C:\Publisher\previous-signed-grant.json'`. Keep the previous key's
+public entry during a signing-key rotation so that grant can be authenticated.
+The private key must match the approved public key for the selected key ID.
+The output is checked through the real customer verifier before writing and never
+overwrites an existing path. Output contains only the signed envelope; success and
+failure logs omit claims, paths, keys and passphrases. Byte buffers are cleared on
+exit, although JavaScript/OS memory erasure is not guaranteed. Provision directory
+ACLs externally; POSIX output permissions do not secure Windows directories.
+
+The operator must maintain an authoritative per-organization issuance register.
+The CLI verifies a supplied predecessor, not a central commercial ledger; deliberately
+using an older predecessor or misusing first issuance cannot be prevented without
+that issuer-side state. The customer still rejects rollback against its installed
+sequence. Host replacement needs commercial identity checks, protected recovery of
+the existing database/configuration and issuer approval; disconnected old copies
+cannot be instantly revoked. This command does not perform those identity checks,
+self-service activation, billing-provider renewal or key-custody deployment.

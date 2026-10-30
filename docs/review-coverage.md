@@ -1038,3 +1038,92 @@ started the already-installed application and successfully brought PostgreSQL
 to healthy state. Argon2 native/hash verification, ten-file PowerShell syntax,
 targeted formatting and Git whitespace checks passed. Actual VS Code terminal creation remains
 a user action; existing open terminals cannot inherit another process's PATH.
+
+## Phase 6 continuation: backup scheduling and health
+
+Added explicit operator-configured daily/boot Task Scheduler definitions and
+registration under a dedicated ordinary local account. Registration refuses an
+existing task, mismatched credentials, direct local administrators, reparse paths,
+untrusted writable dependencies/ancestors and public-readable private configuration.
+No account creation, ACL modification, archive pruning or Docker scheduling occurs.
+Definition generation is the default; actual registration requires elevation and
+the dedicated account credential. Added CI definition checks.
+
+Verified definition settings, escaping and unsafe-input rejection, including
+loading the XML through the actual Windows Task Scheduler COM parser in memory.
+Twelve PowerShell files parse successfully. No task was registered or executed.
+Added backup:health with an explicit maximum age and nonzero status for failed,
+missing, malformed, stale, old-schema or absent-artifact backups. Six focused tests
+passed (the sandbox blocked Vitest subprocess startup; the approved subprocess
+rerun passed). Database type checking, full regression checks and the final date
+validation adjustment are being verified next. Native PostgreSQL, privileged task
+registration/ACL provisioning, unattended/reboot execution and actual external
+alert delivery remain unverified. No business data or staging was changed.
+
+## Phase 6 continuation: publisher license tooling
+
+Added publisher-only license:issue tooling, excluded from Docker build context
+and not imported by the customer API/web build. Requires an externally supplied
+encrypted Ed25519 PKCS8 key matching the approved public trust map. First issuance
+is explicit; renewals/transfers authenticate the previous grant, preserve the
+organization/edition, require the next sequence and a new entitlement ID, and
+cannot issue a second trial. No production key, grant or commercial ledger was
+created. The publisher remains responsible for identity/transfer approval and
+the authoritative issuance register; this is not an online activation service.
+
+Six issuer tests passed, including a real isolated CLI subprocess with ephemeral
+encrypted keys, customer-verifier compatibility, protected failure logs and
+no-overwrite behavior. Six backup-health tests passed again. Type checking and
+targeted lint passed. Final full unit/build checks are next. Existing business
+data, user credentials, configuration, Git index and billing compliance gates
+are unchanged.
+
+## Phase 6 continuation: publisher release signing
+
+Added release:sign publisher tooling that inventories the actual staged tree,
+validates version/schema/runtime metadata, signs with an approved encrypted
+external key, refuses existing manifests and uses the real customer verifier
+before success. Shared inventory also rejects case-colliding directories and
+unknown files/sizes before reading their contents in customer verification.
+Issuer tools remain outside customer API/web imports and the Docker context.
+
+Seventeen focused license/release tests passed, including both actual publisher
+CLI subprocesses with ephemeral encrypted keys, unchanged existing manifests,
+tampering, rejected key/metadata/secret paths and native Windows junctions.
+The prior full run passed 142 unit tests before these six release-publisher tests
+were added. Full final checks are in progress. Application-level release signing
+does not implement Windows Authenticode, privileged installer/update/recovery
+cutover, online activation, SaaS onboarding/provider renewal or deployment.
+Those remain unfinished. No production signer, license, service, task, certificate
+trust, firewall rule, database or customer configuration was changed.
+
+## Phase 6 deployment prerequisites confirmed
+
+The user confirmed no disposable Windows VM/second client is available. Code-signing
+credentials and a SaaS provider were already unavailable. Therefore the next
+privileged Windows installer/service/reboot/LAN acceptance work cannot be completed
+or claimed on this development laptop. Signed installer/assisted update/cutover and
+SaaS onboarding/provider operations remain unfinished implementation as well as
+deployment validation; these are not hidden behind a claim of Phase 6 completion.
+No machine-wide substitute or weaker tax/certificate/permission gate was introduced.
+
+During final review, bound backup health to the recorded authenticated schema
+digest and the running release's migrations. A recently successful old-release
+backup cannot appear current after a schema upgrade. Restore verification now
+returns that digest and the Windows job records it. Existing status files without
+the digest require a new verified backup, not a fabricated success marker.
+
+Final verification: all 148 unit tests passed; both isolated PostgreSQL backup/
+restore integration tests passed against the existing healthy development
+container, including digest reporting and the older-schema case. Full workspace
+type checks and API/web production builds passed; the final database rebuild
+includes digest reporting. Twelve PowerShell files parse, the native Task Scheduler
+in-memory XML check passes, and mocked ACL checks reject unsafe owners, ancestor
+replacement, writable child dependencies and reparse points. Registration,
+unattended execution, native PostgreSQL, reboot/LAN and remote CI remain unverified.
+The prior 43-test integration and Chrome/Edge browser checkpoint is historical;
+those full suites were not repeated for these operator-only additions.
+
+Final full lint/Prettier and Git whitespace checks passed. The initial sandboxed
+recursive type-check command encountered Windows subprocess EPERM; the approved
+full rerun passed. No check failure remains unresolved for this local batch.

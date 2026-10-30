@@ -398,6 +398,7 @@ export async function verifyRestore(
       verified: true,
       tables: Object.keys(metadata.rowCounts).length,
       createdAt: metadata.createdAt,
+      schemaDigest: metadata.schemaDigest,
       currentReleaseCompatible,
       verificationDatabase: targetName,
     };

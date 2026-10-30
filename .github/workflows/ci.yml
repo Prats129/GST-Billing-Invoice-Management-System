@@ -49,3 +49,5 @@ jobs:
       - uses: actions/checkout@v7
       - shell: powershell
         run: ./apps/windows-installer/scripts/Test-SpikeScripts.ps1
+      - shell: powershell
+        run: ./apps/windows-installer/scripts/Test-BackupSchedule.ps1

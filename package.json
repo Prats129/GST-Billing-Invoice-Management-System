@@ -27,8 +27,11 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "backup": "tsx packages/database/src/backup-cli.ts",
+    "backup:health": "tsx packages/database/src/backup-health-cli.ts",
     "license:install": "pnpm build:packages && tsx apps/api/src/licensing/host-cli.ts",
-    "release:verify": "tsx apps/api/src/operations/release-cli.ts"
+    "license:issue": "pnpm build:packages && tsx scripts/issuer/entitlement-cli.ts",
+    "release:verify": "tsx apps/api/src/operations/release-cli.ts",
+    "release:sign": "pnpm build:packages && tsx scripts/issuer/release-cli.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
