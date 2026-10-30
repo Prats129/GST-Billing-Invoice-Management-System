@@ -5,7 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createIsolatedTestDatabase } from './testing.js';
 import { organizations, sql } from './index.js';
-import { createEncryptedBackup, verifyRestore } from './backup-operator.js';
+import {
+  createEncryptedBackup,
+  prepareRecovery,
+  verifyRestore,
+} from './backup-operator.js';
 import type { BackupOperatorOptions } from './backup-operator.js';
 
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
@@ -94,6 +98,9 @@ test.skipIf(!enabled)(
     const result = await verifyRestore(options, path);
     expect(result.verified).toBe(true);
     expect(result.currentReleaseCompatible).toBe(false);
+    await expect(
+      prepareRecovery(options, path, options.installationId),
+    ).rejects.toThrow('exact schema');
     expect(await readdir(options.workDirectory)).toEqual([]);
   },
   120000,

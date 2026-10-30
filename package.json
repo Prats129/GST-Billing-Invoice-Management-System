@@ -31,6 +31,7 @@
     "license:install": "pnpm build:packages && tsx apps/api/src/licensing/host-cli.ts",
     "license:issue": "pnpm build:packages && tsx scripts/issuer/entitlement-cli.ts",
     "release:verify": "tsx apps/api/src/operations/release-cli.ts",
+    "release:stage": "tsx apps/api/src/operations/release-stage-cli.ts",
     "release:sign": "pnpm build:packages && tsx scripts/issuer/release-cli.ts"
   },
   "devDependencies": {

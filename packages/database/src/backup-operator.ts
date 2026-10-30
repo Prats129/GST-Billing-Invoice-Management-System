@@ -246,6 +246,10 @@ async function tool(
   return execute(executable, args, { ...baseEnv, ...pgEnv }, files);
 }
 async function checkTools(options: BackupOperatorOptions) {
+  if (Boolean(options.pgBinDirectory) === Boolean(options.dockerContainer))
+    throw new BackupError(
+      'Select exactly one approved PostgreSQL tool source.',
+    );
   for (const name of ['pg_dump', 'pg_restore'] as const)
     if (
       !/\(PostgreSQL\) 18\./.test(await tool(options, name, ['--version'], {}))
@@ -335,24 +339,39 @@ export async function createEncryptedBackup(
     }
   }
 }
-export async function verifyRestore(
+async function restoreArchive(
   options: BackupOperatorOptions,
   artifact: string,
+  prepare: boolean,
 ) {
   await checkTools(options);
-  const work = await privateWorkDirectory(options.workDirectory);
-  const targetName = `gst_restore_${randomUUID().replaceAll('-', '')}`;
+  let work: string | undefined = await privateWorkDirectory(
+    options.workDirectory,
+  );
+  const targetName = `gst_${prepare ? 'recovery' : 'restore'}_${randomUUID().replaceAll('-', '')}`;
   const admin = client(options);
   let created = false;
+  let retained = false;
+  let sessionsInvalidated = 0;
   try {
     const dump = join(work, 'restore.dump');
     const metadata = await decryptBackup(artifact, dump, options.key, {
       installationId: options.installationId,
       schemaDigest: await supportedMigrationDigests(),
     });
+    if (prepare && metadata.schemaDigest !== (await migrationDigest()))
+      throw new BackupError(
+        "Recovery preparation requires this release's exact schema. Use the matching release; no automatic migration or downgrade is performed.",
+      );
     await admin.connect();
-    await admin.query(`CREATE DATABASE "${targetName}" TEMPLATE template0`);
+    // Prevent PUBLIC connections before any customer data is restored. Only the
+    // operator/database owner can connect after the explicit grant restriction.
+    await admin.query(
+      `CREATE DATABASE "${targetName}" TEMPLATE template0 ALLOW_CONNECTIONS false`,
+    );
     created = true;
+    await admin.query(`REVOKE ALL ON DATABASE "${targetName}" FROM PUBLIC`);
+    await admin.query(`ALTER DATABASE "${targetName}" ALLOW_CONNECTIONS true`);
     await tool(
       options,
       'pg_restore',
@@ -368,8 +387,8 @@ export async function verifyRestore(
       targetName,
     );
     const restored = client(options, targetName);
-    await restored.connect();
     try {
+      await restored.connect();
       if ((await assertMigrationHistory(restored)) !== metadata.schemaDigest)
         throw new BackupError(
           'Restored schema does not match the authenticated manifest.',
@@ -381,6 +400,28 @@ export async function verifyRestore(
         throw new BackupError(
           'Restored table counts do not match the backup snapshot.',
         );
+      if (prepare) {
+        await restored.query('BEGIN');
+        try {
+          const cleared = await restored.query('DELETE FROM public.sessions');
+          sessionsInvalidated = cleared.rowCount ?? 0;
+          await restored.query(
+            'INSERT INTO public.audit_events (action, metadata) VALUES ($1, $2::jsonb)',
+            [
+              'recovery.prepared',
+              JSON.stringify({
+                installationId: options.installationId,
+                backupCreatedAt: metadata.createdAt,
+                sessionsInvalidated: String(sessionsInvalidated),
+              }),
+            ],
+          );
+          await restored.query('COMMIT');
+        } catch (error) {
+          await restored.query('ROLLBACK');
+          throw error;
+        }
+      }
     } finally {
       await restored.end();
     }
@@ -394,6 +435,24 @@ export async function verifyRestore(
         await db.close();
       }
     }
+    if (prepare) {
+      // End the only allowed working connections before sealing the candidate.
+      // Cutover is deliberately not performed by a backup/recovery command.
+      await admin.query(
+        `ALTER DATABASE "${targetName}" ALLOW_CONNECTIONS false`,
+      );
+      const peers = await admin.query(
+        'SELECT count(*)::int AS count FROM pg_stat_activity WHERE datname = $1',
+        [targetName],
+      );
+      if (peers.rows[0]?.count !== 0)
+        throw new BackupError(
+          'Recovery candidate still has open connections. No candidate was retained.',
+        );
+    }
+    await removeWorkDirectory(options.workDirectory, work);
+    work = undefined;
+    retained = prepare;
     return {
       verified: true,
       tables: Object.keys(metadata.rowCounts).length,
@@ -401,14 +460,63 @@ export async function verifyRestore(
       schemaDigest: metadata.schemaDigest,
       currentReleaseCompatible,
       verificationDatabase: targetName,
+      sessionsInvalidated,
     };
   } finally {
     try {
-      if (created)
-        await admin.query(`DROP DATABASE "${targetName}" WITH (FORCE)`);
+      if (created && !retained) {
+        try {
+          await admin.query(
+            `ALTER DATABASE "${targetName}" ALLOW_CONNECTIONS false`,
+          );
+        } finally {
+          await admin.query(`DROP DATABASE "${targetName}" WITH (FORCE)`);
+        }
+      }
     } finally {
-      await admin.end();
-      await removeWorkDirectory(options.workDirectory, work);
+      try {
+        await admin.end();
+      } finally {
+        if (work) await removeWorkDirectory(options.workDirectory, work);
+      }
     }
   }
+}
+
+export async function verifyRestore(
+  options: BackupOperatorOptions,
+  artifact: string,
+) {
+  const result = await restoreArchive(options, artifact, false);
+  return {
+    verified: result.verified,
+    tables: result.tables,
+    createdAt: result.createdAt,
+    schemaDigest: result.schemaDigest,
+    currentReleaseCompatible: result.currentReleaseCompatible,
+    verificationDatabase: result.verificationDatabase,
+  };
+}
+
+// Host/platform operator only. This never chooses/replaces the active database,
+// grants runtime access, changes licensing or bypasses the invoice issuance gate.
+export async function prepareRecovery(
+  options: BackupOperatorOptions,
+  artifact: string,
+  confirmation: string,
+) {
+  if (!options.installationId || confirmation !== options.installationId)
+    throw new BackupError(
+      'Confirm the persistent installation UUID before preparing a recovery database.',
+    );
+  const result = await restoreArchive(options, artifact, true);
+  return {
+    state: 'quarantined' as const,
+    recoveryDatabase: result.verificationDatabase,
+    installationId: options.installationId,
+    schemaDigest: result.schemaDigest,
+    backupCreatedAt: result.createdAt,
+    tables: result.tables,
+    sessionsInvalidated: result.sessionsInvalidated,
+  };
 }

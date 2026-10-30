@@ -5,7 +5,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BackupError } from './backup-artifact.js';
-import { createEncryptedBackup, verifyRestore } from './backup-operator.js';
+import {
+  createEncryptedBackup,
+  prepareRecovery,
+  verifyRestore,
+} from './backup-operator.js';
 
 config({
   path:
@@ -23,15 +27,25 @@ try {
       artifact: { type: 'string' },
       'pg-bin-directory': { type: 'string' },
       'docker-container': { type: 'string' },
+      'confirm-installation-id': { type: 'string' },
     },
   });
   const action = positionals[0];
   if (
     positionals.length !== 1 ||
-    !['keygen', 'create', 'verify'].includes(action ?? '')
+    !['keygen', 'create', 'verify', 'prepare-recovery'].includes(action ?? '')
   )
     throw new BackupError(
-      'Usage: backup <keygen|create|verify> --key-file <private-file> [--installation-id <uuid> --work-directory <private-directory> --artifact <path> --pg-bin-directory <directory> | --docker-container <local-container>]',
+      'Usage: backup <keygen|create|verify|prepare-recovery> --key-file <private-file> [--installation-id <uuid> --work-directory <private-directory> --artifact <path> --pg-bin-directory <directory> | --docker-container <local-container>]. Recovery preparation also requires --confirm-installation-id <same-uuid>.',
+    );
+  if (
+    (action === 'prepare-recovery' &&
+      (!values['confirm-installation-id'] ||
+        values['confirm-installation-id'] !== values['installation-id'])) ||
+    (action !== 'prepare-recovery' && values['confirm-installation-id'])
+  )
+    throw new BackupError(
+      'Recovery requires the matching --confirm-installation-id; that option is not accepted by other backup commands.',
     );
   if (!values['key-file'])
     throw new BackupError(
@@ -89,11 +103,21 @@ try {
     const result =
       action === 'create'
         ? await createEncryptedBackup(options, resolve(values.artifact))
-        : await verifyRestore(options, resolve(values.artifact));
+        : action === 'prepare-recovery'
+          ? await prepareRecovery(
+              options,
+              resolve(values.artifact),
+              values['confirm-installation-id']!,
+            )
+          : await verifyRestore(options, resolve(values.artifact));
     process.stdout.write(
       JSON.stringify({
         event:
-          action === 'create' ? 'backup_created' : 'backup_restore_verified',
+          action === 'create'
+            ? 'backup_created'
+            : action === 'prepare-recovery'
+              ? 'recovery_prepared'
+              : 'backup_restore_verified',
         result,
       }) + '\n',
     );

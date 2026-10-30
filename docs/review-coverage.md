@@ -1127,3 +1127,62 @@ those full suites were not repeated for these operator-only additions.
 Final full lint/Prettier and Git whitespace checks passed. The initial sandboxed
 recursive type-check command encountered Windows subprocess EPERM; the approved
 full rerun passed. No check failure remains unresolved for this local batch.
+
+## Phase 6 continuation: quarantined recovery candidates
+
+Implemented host-only backup prepare-recovery with explicit installation UUID
+confirmation. It authenticates/decrypts a current-schema backup, restores only to
+a newly generated database with PUBLIC connection privileges removed, verifies
+migration history/table counts/readiness, invalidates copied login sessions and
+appends an audit event in the candidate only. The retained candidate denies all
+new database connections; live configuration/runtime grants remain untouched.
+Ordinary verify still removes its disposable database. Unknown/old schema recovery
+preparation fails without automatic migrations or a schema downgrade.
+
+Focused unit, real PostgreSQL isolation/quarantine/failure and compiled CLI checks
+passed: two unit tests and five real PostgreSQL tests, including the compiled CLI,
+denied candidate connections/PUBLIC privileges, session invalidation, source
+preservation, wrong-key/identity/corruption cleanup and old-schema rejection.
+Database build, test TypeScript and targeted lint passed. No live recovery
+candidate or customer-data operation has been performed; integration fixtures
+are random isolated databases. The Windows VM,
+code-signing, hosting and professional tax-review limitations remain unchanged.
+
+## Phase 6 continuation: protected release staging
+
+Added release:stage: signature/file preflight, a new private staging directory,
+bounded copy/hash validation of the signed file list and final exact-manifest
+verification. The Windows path applies NTFS ACLs before writing and checks owners,
+reparse points and ancestor replacement permissions. POSIX restricts modes/owners
+and handles root-owned sticky temporary directories. Downloads, existing staging
+directories and unrelated operator material are never overwritten. No staged
+code is executed and no service/configuration/cutover is changed.
+
+All six staging tests passed in the full unit suite. The initial Windows
+success-path tests correctly rejected the sandbox's
+TEMP directory because another account has Modify/DeleteChild permissions there.
+The fixture now uses a fresh directory under private Local AppData; the production
+ancestor check was preserved, and all original staging/verifier/publisher checks
+passed. Added a deterministic same-size mutation after preflight to exercise the
+copy-time hash check and generated-child-only cleanup. This is locally testable
+engineering, not Windows installer/reboot or
+commercial deployment acceptance. The missing VM does not block these filesystem
+or isolated database tests.
+
+Final continuation verification: all 156 unit tests and all 46 integration tests
+passed. The integration command was rerun through documented pnpm test:integration
+after a direct Vitest invocation omitted npm_execpath, which the pre-existing
+host CLI test requires (45/46 passed on that first invocation). No product change
+was made to hide the harness error. The final run also checks an authenticated
+archive with inconsistent counts, forcing failure after database creation/restore
+and proving generated-database cleanup. Candidates are connection-disabled before
+failure cleanup, so an interrupted DROP does not reopen them to new connections.
+
+Full workspace/test TypeScript, production API/web builds, compiled frontend/API/
+database/OpenAPI/Origin smoke, full lint/Prettier, Git whitespace and both Windows
+script checks passed. One type-import lint finding and an integration-file
+formatting warning were corrected before the final checks. The final database
+package rebuild includes the cleanup hardening. No browser UI changed; Chrome/
+Edge workflows were not repeated. POSIX staging branches/remote CI and native
+Windows service/installer/LAN/reboot/unattended acceptance remain unverified.
+User configuration, active business data and the Git index were preserved.

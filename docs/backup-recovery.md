@@ -97,6 +97,58 @@ invalidate restored sessions/recovery authority as appropriate, then explicitly
 approve controlled connection cutover. Retain rollback access to the previous
 database. These cutover steps remain a release gate and are not automated here.
 
+## Prepare a quarantined recovery database
+
+The operator can now retain a validated restore instead of discarding it:
+
+```powershell
+pnpm backup prepare-recovery --key-file 'E:\GST-private-backup-key\backup.key' --installation-id $installationId --confirm-installation-id $installationId --work-directory 'E:\GST-private-work' --artifact 'E:\GST-backups\manual-001.gstbackup' --docker-container gst-billing-invoice-management-system-postgres-1
+```
+
+For native deployment use `--pg-bin-directory` instead of the development Docker
+adapter. The confirmation must match the persistent installation UUID. This is
+a host/platform-operator command, never a tenant API, and requires the protected
+operator database credential. Do not run drills against a customer production
+server when an isolated recovery host is available.
+
+The command authenticates the archive, requires the running release's exact
+migration digest, and creates only `gst_recovery_<random UUID>`. It removes PUBLIC
+database privileges before restoring any data. After validating all table counts,
+migration history and operator-level readiness, it deletes copied login sessions
+and appends a `recovery.prepared` audit event **in the candidate only**. Existing
+users/passwords, MFA material, recovery proofs, grants and financial records are
+preserved; their original configuration keys and recovery custody are still needed.
+No API runtime grants are imported or created. There is no automatic upgrade,
+downgrade, license change or tax-policy bypass.
+
+Successful output reports the generated database name, installation identity,
+backup time, schema digest and invalidated-session count. The retained database
+has `ALLOW_CONNECTIONS false` and no open working connections. This blocks even
+new operator connections until an operator deliberately changes it. The original
+database remains online and untouched; no application connection or service is
+redirected. Ordinary `backup verify` still drops its disposable restore.
+
+Before any later cutover, stop all writers, preserve the old database/release,
+review the recovery point and data, recover the correct MFA/application keys,
+rotate recovery authority as appropriate, provision least-privilege runtime grants,
+and explicitly validate the new connection and financial/history access. These
+cutover steps remain unfinished release work. To inspect a candidate, a qualified
+operator can explicitly enable connections to its **returned generated name** on
+an isolated host, then disable them again. Never substitute the active database
+name or expose it to tenant admins. Retained candidates consume disk and must be
+tracked in the operator's recovery record; no automatic retention/deletion occurs.
+
+Failures attempt to drop only the database created by that invocation and clean
+its private workspace. OS/server failures can leave an orphan requiring operator
+inspection; existing customer databases and backups are never cleanup targets.
+Current-schema preparation, actual connection denial, source preservation,
+session invalidation, wrong-key/identity/corruption and compiled CLI behavior have
+passed against disposable PostgreSQL 18 Docker databases on Windows. Native
+PostgreSQL, actual disaster cutover and reboot/service behavior remain unverified.
+
+References: [PostgreSQL database connection control](https://www.postgresql.org/docs/18/sql-createdatabase.html),
+[default PUBLIC privileges](https://www.postgresql.org/docs/18/ddl-priv.html).
+
 ## Automation and verification status
 
 Run backups as a dedicated host operator, not via the browser. Choose a backup

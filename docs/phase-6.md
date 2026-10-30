@@ -35,6 +35,10 @@ No UI or environment switch may bypass the invoice compliance gate.
 - Authenticated backup artifacts, host-only backup/key commands and real
   PostgreSQL 18 restore verification. See backup-recovery.md for exact evidence
   and unverified scheduling/native/cutover boundaries.
+- Host-only recovery preparation retains a validated database with connections
+  disabled, removes copied sessions and audits the candidate without modifying
+  the active database. Current-schema checks and generated-target cleanup apply;
+  live recovery/cutover and runtime privilege provisioning remain unfinished.
 - Signed-file offline activation and provider-neutral SaaS subscription state,
   14-day trials, immediate read-only enforcement, independent RBAC checks,
   perpetual-maintenance behavior, monotonic grant installation and visible
@@ -49,12 +53,15 @@ No UI or environment switch may bypass the invoice compliance gate.
   failure/staleness health command are implemented. Actual unattended task/native
   tool/reboot validation, signed installer/update/cutover and SaaS deployment
   remain release work; see backup-recovery.md and signed-releases.md.
+- Protected signed-release staging copies into a new private directory, checks
+  Windows NTFS owners/ancestor ACLs and re-verifies bounded copies before success.
+  This prepares files without executing them or installing/updating a service.
 
-Latest continuation: 148 unit tests and both isolated backup/restore integration
-tests passed, with workspace type checks, production builds and Windows task
-definition checks. The earlier 43-test integration and six-workflow Chrome/Edge
-checkpoint remains recorded in review-coverage.md; those full suites were not
-rerun for these operator-only changes. Native PostgreSQL/service/installer/reboot/
+Latest continuation: 156 unit tests and all 46 isolated integration tests passed,
+with workspace type checks, production builds, compiled runtime smoke, lint,
+formatting and Windows task definition checks. The six-workflow Chrome/Edge
+checkpoint remains recorded in review-coverage.md; browser tests were not rerun
+for these operator-only changes. Native PostgreSQL/service/installer/reboot/
 unattended scheduling, online issuer/provider integration, remote CI and commercial
 release remain unverified or unfinished. The user confirmed no disposable Windows
 VM/second client is currently available; signing credentials and SaaS hosting are

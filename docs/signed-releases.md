@@ -38,6 +38,9 @@ Windows Authenticode trust. Never execute files from an unverified package.
 
 ## Remaining commercial installer/update gate
 
+Protected staging is implemented below. Installation/service control, maintenance,
+forward migration, live recovery/cutover and reboot acceptance remain unfinished.
+
 A commercial assisted updater must still implement and validate on a disposable
 Windows VM: Windows publisher signing and trust, approved binary redistribution,
 protected staging immune to modification between verification and use, least-
@@ -88,3 +91,34 @@ customer verifier. This is application-level signing, independent of Windows
 Authenticode. No commercial installer executable was signed, installed, updated
 or reboot-tested, and a declared target digest still requires actual migration
 and post-update readiness validation by the assisted installer.
+
+## Protected update staging
+
+```powershell
+pnpm release:stage --root 'C:\GST-downloads\release' --staging-parent 'C:\GST-private-staging' --trust 'C:\GST-private\release-public-keys.json' --installed-version 1.0.0 --schema-digest '<installed migration digest>'
+```
+
+Provision the staging parent first, under an operator account separate from the
+API identity. It must be outside the downloaded tree and protected against other
+users renaming/deleting its children. The command verifies the signed download,
+creates a new `gst-release-<random>` directory, applies private permissions before
+copying, then copies only the
+signed file list with bounded size/hash checks. It re-verifies the staged copy
+and requires the exact original manifest before reporting success. No package
+code is executed; no files, configuration or services are installed or replaced.
+
+On Windows the new directory has a protected NTFS ACL for the current operator,
+SYSTEM and Administrators. Owner/reparse/unsafe ancestor ACL checks reject paths
+where other users could replace the directory despite its private ACL. On POSIX,
+the directory is mode 0700, files 0600; untrusted ownership/writable ancestors are
+rejected, with root-owned sticky temporary directories permitted. Paths with
+junctions/symlinks and a destination inside the download are rejected. Private
+staging does not protect against an administrator or the operator account itself.
+
+Each invocation generates a new directory; existing staged releases and unrelated
+files are never overwritten. Failure attempts cleanup of only that invocation's
+generated child. Inspect the protected parent after storage/OS failures. Keep it
+private throughout the future update workflow and re-check integrity immediately
+before use; explicitly provision service read access only during controlled
+installation. This command does not prove the declared target migration digest,
+grant Windows Authenticode trust, start maintenance or perform live cutover.
