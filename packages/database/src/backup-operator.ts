@@ -13,6 +13,7 @@ import {
 } from './backup-artifact.js';
 import type { BackupManifest } from './backup-artifact.js';
 import { createDatabase } from './index.js';
+import { migrateDatabase } from './migrate.js';
 
 export interface BackupOperatorOptions {
   connectionString: string;
@@ -343,6 +344,7 @@ async function restoreArchive(
   options: BackupOperatorOptions,
   artifact: string,
   prepare: boolean,
+  upgradeToSchema?: string,
 ) {
   await checkTools(options);
   let work: string | undefined = await privateWorkDirectory(
@@ -353,15 +355,25 @@ async function restoreArchive(
   let created = false;
   let retained = false;
   let sessionsInvalidated = 0;
+  let tables: number;
   try {
     const dump = join(work, 'restore.dump');
     const metadata = await decryptBackup(artifact, dump, options.key, {
       installationId: options.installationId,
       schemaDigest: await supportedMigrationDigests(),
     });
-    if (prepare && metadata.schemaDigest !== (await migrationDigest()))
+    const releaseSchemaDigest = await migrationDigest();
+    if (upgradeToSchema && upgradeToSchema !== releaseSchemaDigest)
       throw new BackupError(
-        "Recovery preparation requires this release's exact schema. Use the matching release; no automatic migration or downgrade is performed.",
+        'The confirmed upgrade target does not match this release. No recovery database was created.',
+      );
+    if (
+      prepare &&
+      !upgradeToSchema &&
+      metadata.schemaDigest !== releaseSchemaDigest
+    )
+      throw new BackupError(
+        "Recovery preparation requires this release's exact schema. Use the matching release or explicitly confirm --upgrade-to-schema; no automatic migration or downgrade is performed.",
       );
     await admin.connect();
     // Prevent PUBLIC connections before any customer data is restored. Only the
@@ -393,12 +405,29 @@ async function restoreArchive(
         throw new BackupError(
           'Restored schema does not match the authenticated manifest.',
         );
-      if (
-        JSON.stringify(await counts(restored)) !==
-        JSON.stringify(metadata.rowCounts)
-      )
+      const restoredCounts = await counts(restored);
+      tables = Object.keys(restoredCounts).length;
+      if (JSON.stringify(restoredCounts) !== JSON.stringify(metadata.rowCounts))
         throw new BackupError(
           'Restored table counts do not match the backup snapshot.',
+        );
+      if (upgradeToSchema && metadata.schemaDigest !== releaseSchemaDigest) {
+        // Migrate only this invocation's generated, owner-only recovery copy.
+        // SQL comes from the installed trusted release, never the archive or a
+        // caller-selected migration directory. The source is never migrated.
+        try {
+          await migrateDatabase(connection(options, targetName).toString());
+        } catch {
+          throw new BackupError(
+            'Recovery migration failed. The source was not upgraded; review the trusted release migrations and operator environment before retrying.',
+          );
+        }
+        tables = Object.keys(await counts(restored)).length;
+      }
+      const candidateSchemaDigest = await assertMigrationHistory(restored);
+      if (prepare && candidateSchemaDigest !== releaseSchemaDigest)
+        throw new BackupError(
+          'Recovery schema did not reach the confirmed release target.',
         );
       if (prepare) {
         await restored.query('BEGIN');
@@ -413,6 +442,8 @@ async function restoreArchive(
                 installationId: options.installationId,
                 backupCreatedAt: metadata.createdAt,
                 sessionsInvalidated: String(sessionsInvalidated),
+                backupSchemaDigest: metadata.schemaDigest,
+                schemaDigest: candidateSchemaDigest,
               }),
             ],
           );
@@ -425,8 +456,8 @@ async function restoreArchive(
     } finally {
       await restored.end();
     }
-    const currentReleaseCompatible =
-      metadata.schemaDigest === (await migrationDigest());
+    const schemaDigest = upgradeToSchema ?? metadata.schemaDigest;
+    const currentReleaseCompatible = schemaDigest === releaseSchemaDigest;
     if (currentReleaseCompatible) {
       const db = createDatabase(connection(options, targetName).toString());
       try {
@@ -455,9 +486,11 @@ async function restoreArchive(
     retained = prepare;
     return {
       verified: true,
-      tables: Object.keys(metadata.rowCounts).length,
+      tables,
       createdAt: metadata.createdAt,
-      schemaDigest: metadata.schemaDigest,
+      schemaDigest,
+      backupSchemaDigest: metadata.schemaDigest,
+      upgraded: schemaDigest !== metadata.schemaDigest,
       currentReleaseCompatible,
       verificationDatabase: targetName,
       sessionsInvalidated,
@@ -504,17 +537,28 @@ export async function prepareRecovery(
   options: BackupOperatorOptions,
   artifact: string,
   confirmation: string,
+  upgradeToSchema?: string,
 ) {
   if (!options.installationId || confirmation !== options.installationId)
     throw new BackupError(
       'Confirm the persistent installation UUID before preparing a recovery database.',
     );
-  const result = await restoreArchive(options, artifact, true);
+  if (
+    upgradeToSchema !== undefined &&
+    (!/^[a-f0-9]{64}$/.test(upgradeToSchema) ||
+      upgradeToSchema !== (await migrationDigest()))
+  )
+    throw new BackupError(
+      'Confirm the exact current release schema digest before upgrading a recovery copy.',
+    );
+  const result = await restoreArchive(options, artifact, true, upgradeToSchema);
   return {
     state: 'quarantined' as const,
     recoveryDatabase: result.verificationDatabase,
     installationId: options.installationId,
     schemaDigest: result.schemaDigest,
+    backupSchemaDigest: result.backupSchemaDigest,
+    upgraded: result.upgraded,
     backupCreatedAt: result.createdAt,
     tables: result.tables,
     sessionsInvalidated: result.sessionsInvalidated,

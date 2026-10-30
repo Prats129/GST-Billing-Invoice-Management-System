@@ -1186,3 +1186,33 @@ package rebuild includes the cleanup hardening. No browser UI changed; Chrome/
 Edge workflows were not repeated. POSIX staging branches/remote CI and native
 Windows service/installer/LAN/reboot/unattended acceptance remain unverified.
 User configuration, active business data and the Git index were preserved.
+
+## Phase 6 continuation: explicit forward upgrades of recovery copies
+
+Added an opt-in --upgrade-to-schema target for host-only recovery preparation.
+The target must exactly match the installed trusted release's migration digest.
+Without it, old backups still fail closed. The backup is authenticated and its
+restored migration prefix/counts are checked before applying any migration to
+the generated owner-only candidate. Only this release's existing SQL is used;
+there is no caller-selected migration directory or downgrade path. The final
+history/readiness must match the confirmed target before quarantine is retained.
+Audit/result metadata distinguishes backup and upgraded schema digests.
+
+Added read-only db:schema tooling to print the release-file digest without
+database credentials or a connection. Initial focused verification passed four
+unit tests and all nine backup/recovery/upgrade integration tests. This includes
+old-backup/compiled CLI upgrades, original database/archive preservation and real
+migration-failure cleanup. Final verification passed all 158 unit tests, all 50
+isolated integration tests and the compiled runtime smoke check. Full type/build/lint/format checks and
+both PowerShell checks passed after removing a redundant counter initializer.
+No live database migration, service change, runtime grant rewrite or invoice
+compliance bypass was performed. Windows deployment/VM and hosting gates remain.
+
+The upgrade result reports the actual candidate table count and both original/
+target digests. A deliberately conflicting view in an isolated fixture proves
+migration failure cleanup after restore without touching repository SQL or the
+original database. Current-schema preparation and ordinary verification remain
+covered by the full suite. No browser UI changed, so browser workflows were not
+repeated. Native Windows PostgreSQL/service/installer/reboot/LAN and remote CI
+remain unverified. Existing development data/configuration and Git staging were
+preserved; no live recovery candidate was retained outside test fixtures.

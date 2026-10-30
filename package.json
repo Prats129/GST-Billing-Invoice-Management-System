@@ -24,6 +24,7 @@
     "test:e2e": "playwright test",
     "db:generate": "pnpm --filter @gst/database db:generate",
     "db:migrate": "pnpm --filter @gst/database db:migrate",
+    "db:schema": "tsx packages/database/src/schema-cli.ts",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "backup": "tsx packages/database/src/backup-cli.ts",

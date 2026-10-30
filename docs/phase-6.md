@@ -39,6 +39,10 @@ No UI or environment switch may bypass the invoice compliance gate.
   disabled, removes copied sessions and audits the candidate without modifying
   the active database. Current-schema checks and generated-target cleanup apply;
   live recovery/cutover and runtime privilege provisioning remain unfinished.
+- Explicit target-confirmed forward migration can upgrade an older supported
+  backup in a generated recovery copy, with before/after history/readiness checks
+  and source-preserving failure cleanup. db:schema reports the expected trusted
+  release-file digest without connecting to a database. Live updates remain gated.
 - Signed-file offline activation and provider-neutral SaaS subscription state,
   14-day trials, immediate read-only enforcement, independent RBAC checks,
   perpetual-maintenance behavior, monotonic grant installation and visible
@@ -57,7 +61,7 @@ No UI or environment switch may bypass the invoice compliance gate.
   Windows NTFS owners/ancestor ACLs and re-verifies bounded copies before success.
   This prepares files without executing them or installing/updating a service.
 
-Latest continuation: 156 unit tests and all 46 isolated integration tests passed,
+Latest continuation: 158 unit tests and all 50 isolated integration tests passed,
 with workspace type checks, production builds, compiled runtime smoke, lint,
 formatting and Windows task definition checks. The six-workflow Chrome/Edge
 checkpoint remains recorded in review-coverage.md; browser tests were not rerun

@@ -39,7 +39,9 @@ Windows Authenticode trust. Never execute files from an unverified package.
 ## Remaining commercial installer/update gate
 
 Protected staging is implemented below. Installation/service control, maintenance,
-forward migration, live recovery/cutover and reboot acceptance remain unfinished.
+live forward migration, live recovery/cutover and reboot acceptance remain unfinished.
+Explicit forward migration of an isolated recovery copy is now available through
+backup prepare-recovery; see backup-recovery.md. It does not install an update.
 
 A commercial assisted updater must still implement and validate on a disposable
 Windows VM: Windows publisher signing and trust, approved binary redistribution,

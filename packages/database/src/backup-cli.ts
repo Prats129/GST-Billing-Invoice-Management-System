@@ -28,6 +28,7 @@ try {
       'pg-bin-directory': { type: 'string' },
       'docker-container': { type: 'string' },
       'confirm-installation-id': { type: 'string' },
+      'upgrade-to-schema': { type: 'string' },
     },
   });
   const action = positionals[0];
@@ -46,6 +47,14 @@ try {
   )
     throw new BackupError(
       'Recovery requires the matching --confirm-installation-id; that option is not accepted by other backup commands.',
+    );
+  if (
+    values['upgrade-to-schema'] !== undefined &&
+    (action !== 'prepare-recovery' ||
+      !/^[a-f0-9]{64}$/.test(values['upgrade-to-schema']))
+  )
+    throw new BackupError(
+      '--upgrade-to-schema is accepted only for recovery preparation and must be a reviewed SHA-256 release schema digest.',
     );
   if (!values['key-file'])
     throw new BackupError(
@@ -108,6 +117,7 @@ try {
               options,
               resolve(values.artifact),
               values['confirm-installation-id']!,
+              values['upgrade-to-schema'],
             )
           : await verifyRestore(options, resolve(values.artifact));
     process.stdout.write(

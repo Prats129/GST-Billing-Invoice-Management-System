@@ -111,7 +111,7 @@ a host/platform-operator command, never a tenant API, and requires the protected
 operator database credential. Do not run drills against a customer production
 server when an isolated recovery host is available.
 
-The command authenticates the archive, requires the running release's exact
+By default the command authenticates the archive, requires the running release's exact
 migration digest, and creates only `gst_recovery_<random UUID>`. It removes PUBLIC
 database privileges before restoring any data. After validating all table counts,
 migration history and operator-level readiness, it deletes copied login sessions
@@ -148,6 +148,48 @@ PostgreSQL, actual disaster cutover and reboot/service behavior remain unverifie
 
 References: [PostgreSQL database connection control](https://www.postgresql.org/docs/18/sql-createdatabase.html),
 [default PUBLIC privileges](https://www.postgresql.org/docs/18/ddl-priv.html).
+
+## Explicit forward upgrade of an older recovery copy
+
+An older supported backup can now be upgraded to the current trusted release in
+its **separate generated recovery database**. No active database is migrated or
+redirected by this command. First inspect the expected release schema:
+
+```powershell
+pnpm db:schema
+```
+
+This prints JSON with `schemaDigest` calculated from this release's migration
+files. It requires no database credentials/connection and does not describe the
+actual live database. Check it against the reviewed release's target digest; do
+not use an arbitrary hash or trust unverified files from a downloaded package.
+
+For a deliberate upgrade, add this option to the reviewed prepare-recovery command:
+
+```text
+--upgrade-to-schema <exact schemaDigest from the trusted release>
+```
+
+The installation UUID confirmation is still required. Only prepare-recovery
+accepts this flag. Omitting it preserves the current-schema-only behavior. A wrong
+target, unknown/newer migration history or unsupported pre-Phase-5 backup fails
+closed; this is not a downgrade or a general migration-directory runner.
+
+The operator tool authenticates the archive, restores its known schema prefix and
+checks all manifest table counts before running this installed release's existing
+reviewed SQL against the new copy. It then verifies the final history and current
+application readiness, clears copied sessions, records both digests in the audit
+event and quarantines the result. Output includes `backupSchemaDigest`, final
+`schemaDigest` and `upgraded`; the latter is false when the backup was already
+current. No backup artifact, user password or active connection is rewritten.
+Reviewed migrations can introduce their defined schema/data changes in the copy;
+they do not invent runtime grants or activate a license.
+
+Failure attempts connection-disable/drop of only the generated candidate, with
+private workspace cleanup. It never attempts a source schema rollback or edits
+the backup. Recovering correct configuration/MFA keys, reviewing financial data,
+least-privilege runtime provisioning, maintenance and live cutover still require
+the later controlled deployment workflow. Plain backup verify never upgrades.
 
 ## Automation and verification status
 
