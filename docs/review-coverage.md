@@ -1,5 +1,35 @@
 # Review coverage
 
+## Phase 6 continuation: Windows deployment observations
+
+The interrupted previous turn made no filesystem changes; the checkout was clean.
+Reviewed the existing manual PoC service/PostgreSQL/TLS/firewall scripts and their
+unverified VM matrix. Added a read-only host/client observation command and safe
+tests for its acceptance/failure decisions. It checks private IPv4 DNS/topology,
+approved executable hashes, PoC service/XML identity, service-owned API listeners,
+loopback database listening, HTTPS health/readiness/frontend contracts and client
+database-port inaccessibility. Client mode rejects same-machine observations.
+Public/mixed/unresolved targets are not contacted; redirected/unhealthy/wrong-type
+responses and unsafe XML fail closed. HTTPS uses platform certificate validation,
+no proxy/redirects, bounded response size and request/read/body-time budgets.
+
+All 15 PowerShell files parsed successfully. Decision/contract tests passed with
+mocked DNS/HTTPS/service/process/hash/network observations and real secure XML
+parsing, including DTD rejection. A separate real CLI invocation rejected a
+credential-bearing origin before networking, returned exit 1 and sanitized JSON.
+The existing native Task Scheduler in-memory definition checks, full repository
+lint/formatting and Git whitespace checks passed. Added the safe deployment tests
+to Windows CI; remote CI was not run here. No application code changed, so the
+previous 162-unit/59-integration/build/smoke checkpoint was not repeated.
+
+No service, task, trust, firewall, ACL, database, credentials or laptop startup
+settings were changed. No UI changed or staging was modified. The operator guide
+lists host/client commands and manual acceptance scenarios. Actual native service,
+certificate trust/TLS, browser LAN access, automatic PostgreSQL/API startup,
+reboot, effective deployment ACLs and signed installer acceptance remain
+unverified/unfinished. A disposable VM, approved artifacts and second Windows
+client are still unavailable; this prevents completing actual deployment tests.
+
 ## Phase 6 continuation: controlled recovery switch
 
 Reviewed the existing recovery preparation/runtime-grant workflow and Phase 6

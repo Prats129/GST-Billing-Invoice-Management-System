@@ -67,8 +67,13 @@ No UI or environment switch may bypass the invoice compliance gate.
 - Protected signed-release staging copies into a new private directory, checks
   Windows NTFS owners/ancestor ACLs and re-verifies bounded copies before success.
   This prepares files without executing them or installing/updating a service.
+- Read-only Windows host/client deployment observations check approved executable
+  hashes, PoC service identity/listener ownership, HTTPS/API responses and database
+  network isolation. Safe decision/secure-XML tests run without machine changes;
+  see windows-deployment-checks.md. Actual native/TLS/LAN/reboot evidence and the
+  production installer remain deployment gates, not completed acceptance.
 
-Latest continuation: 162 unit tests and all 59 isolated integration tests passed,
+Prior application checkpoint: 162 unit tests and all 59 isolated integration tests passed,
 with workspace type checks, production builds, compiled runtime smoke, lint,
 formatting. Prior Windows task-definition and six-workflow Chrome/Edge
 checkpoints remain recorded in review-coverage.md; those tests were not rerun
@@ -77,3 +82,9 @@ unattended scheduling, online issuer/provider integration, remote CI and commerc
 release remain unverified or unfinished. The user confirmed no disposable Windows
 VM/second client is currently available; signing credentials and SaaS hosting are
 also unavailable. This phase remains in progress.
+
+Latest Windows-only continuation passed parsing of all 15 PowerShell files,
+mocked deployment observation/contract tests, sanitized CLI rejection, existing
+in-memory Task Scheduler checks and repository lint/formatting. Application tests
+were not repeated because no application code changed. These local checks do not
+constitute native service, trusted LAN/browser, reboot or installer acceptance.

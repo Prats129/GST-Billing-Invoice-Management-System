@@ -1,5 +1,9 @@
 # Phase 1 Windows offline feasibility spike
 
+Phase 6 adds a [read-only host/client checker](windows-deployment-checks.md) for
+the running prototype. Its locally tested observation logic does not replace
+the unverified native service/TLS/LAN/reboot and installer matrix below.
+
 Status on 2026-10-27: **UNVERIFIED deployment prototype**. The development host is Windows, but has no PostgreSQL tools on PATH; no service, firewall, trust-store or installer changes were attempted. The purpose is to make the risky deployment steps executable and reviewable before building a commercial installer.
 
 ## Verification evidence
