@@ -60,7 +60,7 @@ const policy: Record<string, readonly Privilege[]> = {
 function allowed(schema: string, table: string, privilege: Privilege) {
   return schema === 'public' && (policy[table]?.includes(privilege) ?? false);
 }
-async function assertRole(db: Client, role: string) {
+export async function assertRuntimeRole(db: Client, role: string) {
   const result = await db.query(
     `SELECT r.oid FROM pg_roles r WHERE r.rolname=$1
     AND r.rolcanlogin AND NOT r.rolsuper AND NOT r.rolcreatedb AND NOT r.rolcreaterole
@@ -72,7 +72,11 @@ async function assertRole(db: Client, role: string) {
   if (result.rows.length !== 1) throw new RuntimeAccessError();
   return Number(result.rows[0].oid);
 }
-async function assertPrivileges(db: Client, role: string, complete: boolean) {
+export async function assertRuntimePrivileges(
+  db: Client,
+  role: string,
+  complete: boolean,
+) {
   const schemas = await db.query(
     `SELECT nspname, has_schema_privilege($1,oid,'CREATE') AS create_access,
     has_schema_privilege($1,oid,'USAGE') AS usage_access,
@@ -238,7 +242,7 @@ export async function provisionRecoveryRuntime(options: {
       [options.database],
     );
     if (state.rows[0]?.datallowconn !== false) throw new RuntimeAccessError();
-    const roleId = await assertRole(admin, options.runtimeRole);
+    const roleId = await assertRuntimeRole(admin, options.runtimeRole);
     const publicAccess = await admin.query(
       `SELECT EXISTS (SELECT 1 FROM pg_database d, LATERAL aclexplode(coalesce(d.datacl,acldefault('d',d.datdba))) a WHERE d.datname=$1 AND a.grantee<>d.datdba AND NOT (a.grantee=$2::oid AND a.privilege_type='CONNECT' AND NOT a.is_grantable)) AS granted`,
       [options.database, roleId],
@@ -283,7 +287,7 @@ export async function provisionRecoveryRuntime(options: {
       ) !== 0
     )
       throw new RuntimeAccessError();
-    await assertPrivileges(candidate, options.runtimeRole, false);
+    await assertRuntimePrivileges(candidate, options.runtimeRole, false);
     for (const [table, grants] of Object.entries(policy))
       if (grants.length)
         await candidate.query(
@@ -304,8 +308,8 @@ export async function provisionRecoveryRuntime(options: {
     await candidate.query(
       `GRANT CONNECT ON DATABASE "${options.database}" TO "${options.runtimeRole}"`,
     );
-    await assertRole(candidate, options.runtimeRole);
-    await assertPrivileges(candidate, options.runtimeRole, true);
+    await assertRuntimeRole(candidate, options.runtimeRole);
+    await assertRuntimePrivileges(candidate, options.runtimeRole, true);
     await candidate.query(
       'INSERT INTO public.audit_events (action,metadata) VALUES ($1,$2::jsonb)',
       [

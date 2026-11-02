@@ -95,7 +95,9 @@ verify the backup separately, restore to a new database, recover protected app
 configuration and MFA key, validate financial/identity records and permissions,
 invalidate restored sessions/recovery authority as appropriate, then explicitly
 approve controlled connection cutover. Retain rollback access to the previous
-database. These cutover steps remain a release gate and are not automated here.
+database. The [controlled local switch](recovery-switch.md) now implements database
+activation/rollback separately. Service maintenance, configuration custody,
+financial review and actual deployment acceptance remain release gates.
 
 ## Prepare a quarantined recovery database
 
@@ -132,7 +134,9 @@ Before any later cutover, stop all writers, preserve the old database/release,
 review the recovery point and data, recover the correct MFA/application keys,
 rotate recovery authority as appropriate, provision least-privilege runtime grants,
 and explicitly validate the new connection and financial/history access. These
-cutover steps remain unfinished release work. To inspect a candidate, a qualified
+deployment steps remain release work; use the separate
+[controlled local switch](recovery-switch.md) for database activation/rollback.
+To inspect a candidate, a qualified
 operator can explicitly enable connections to its **returned generated name** on
 an isolated host, then disable them again. Never substitute the active database
 name or expose it to tenant admins. Retained candidates consume disk and must be
@@ -191,7 +195,9 @@ the backup. Recovering correct configuration/MFA keys, reviewing financial data,
 least-privilege runtime provisioning, maintenance and live cutover require
 separate steps. The host-only [runtime permission command](runtime-database-access.md)
 can now prepare a confirmed candidate without activating it. Maintenance and live
-cutover remain deployment work. Plain backup verify never upgrades.
+cutover acceptance remain deployment work. The separate
+[local switch](recovery-switch.md) performs explicit activation/rollback.
+Plain backup verify never upgrades.
 
 ## Automation and verification status
 

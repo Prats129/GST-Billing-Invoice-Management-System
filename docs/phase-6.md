@@ -38,9 +38,14 @@ No UI or environment switch may bypass the invoice compliance gate.
 - Host-only recovery preparation retains a validated database with connections
   disabled, removes copied sessions and audits the candidate without modifying
   the active database. Current-schema checks and generated-target cleanup apply;
-  live recovery/cutover remains unfinished. A host-only runtime-permission command
+  live deployment acceptance remains unfinished. A host-only runtime-permission command
   now applies a reviewed API policy to a dedicated unprivileged role while keeping
   the confirmed candidate quarantined; see runtime-database-access.md.
+- A host-only local recovery switch validates the candidate and real runtime
+  credentials, preserves the previous database and transactionally swaps database
+  names without editing application configuration. Explicit rollback and read-only
+  catalog status are available; see recovery-switch.md. Actual customer cutover
+  and native service/reboot/LAN acceptance remain unverified.
 - Explicit target-confirmed forward migration can upgrade an older supported
   backup in a generated recovery copy, with before/after history/readiness checks
   and source-preserving failure cleanup. db:schema reports the expected trusted
@@ -57,16 +62,16 @@ No UI or environment switch may bypass the invoice compliance gate.
   publisher-only file inventory/signing with encrypted external keys.
   Reviewable daily/boot task definitions, explicit protected registration and a
   failure/staleness health command are implemented. Actual unattended task/native
-  tool/reboot validation, signed installer/update/cutover and SaaS deployment
+  tool/reboot validation, signed installer/update/service cutover and SaaS deployment
   remain release work; see backup-recovery.md and signed-releases.md.
 - Protected signed-release staging copies into a new private directory, checks
   Windows NTFS owners/ancestor ACLs and re-verifies bounded copies before success.
   This prepares files without executing them or installing/updating a service.
 
-Latest continuation: 160 unit tests and all 54 isolated integration tests passed,
+Latest continuation: 162 unit tests and all 59 isolated integration tests passed,
 with workspace type checks, production builds, compiled runtime smoke, lint,
-formatting and Windows task definition checks. The six-workflow Chrome/Edge
-checkpoint remains recorded in review-coverage.md; browser tests were not rerun
+formatting. Prior Windows task-definition and six-workflow Chrome/Edge
+checkpoints remain recorded in review-coverage.md; those tests were not rerun
 for these operator-only changes. Native PostgreSQL/service/installer/reboot/
 unattended scheduling, online issuer/provider integration, remote CI and commercial
 release remain unverified or unfinished. The user confirmed no disposable Windows

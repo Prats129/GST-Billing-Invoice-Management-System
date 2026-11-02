@@ -3,6 +3,8 @@
 This host-only Phase 6 command prepares API permissions on an unused recovery
 copy. It leaves the copy quarantined (`ALLOW_CONNECTIONS false`). It does not
 activate it, change `.env`, install services or change the active database.
+The separate [controlled local switch](recovery-switch.md) performs activation
+and explicit rollback after maintenance/recovery review.
 Application RBAC, tenant isolation, license enforcement and invoice compliance
 checks still apply.
 

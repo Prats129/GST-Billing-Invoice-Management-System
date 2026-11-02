@@ -1,5 +1,37 @@
 # Review coverage
 
+## Phase 6 continuation: controlled recovery switch
+
+Reviewed the existing recovery preparation/runtime-grant workflow and Phase 6
+requirements. Implemented host-only activation and explicit rollback using
+transactional database renames on the same local PostgreSQL instance. This keeps
+application configuration unchanged and retains the previous database. Tests used
+only disposable databases; no live switch, service installation or customer
+configuration change was performed. The command
+refuses connected clients and validates recovery identity/schema/runtime
+permissions before activation. Focused verification passed two input-validation
+unit tests and all five PostgreSQL switch integration tests, including real
+post-switch API login, original/recovered OID/data preservation, explicit rollback,
+operator locks, blocked clients and a late name collision that rolls back the
+active database's connection flag. Compiled CLI activation/status/rollback and
+sanitized output also passed. Full regression verification passed all 162 unit
+tests and 59 integration tests, workspace/test TypeScript, production builds,
+compiled frontend/API/database/OpenAPI/Origin smoke, full lint and formatting.
+Both activation and rollback now probe target API-runtime readiness, including
+a negative rollback case that keeps the recovered database active when the old
+copy is unreadable. Final focused verification passed all five switch integration
+tests using an ephemeral non-superuser database owner with CREATEDB and a separate
+restricted API login. Final test TypeScript and focused lint also passed. No
+product permissions were broadened, dependencies added or Git staging changed.
+
+The operator guide documents writer/service maintenance, data-point review,
+explicit rollback acknowledgement, retained databases, temporary probe windows
+and catalog inspection after an uncertain COMMIT. Preparation audit events are
+not presented as proof that activation committed. Native Windows PostgreSQL,
+service/reboot/LAN, real power-loss recovery, customer cutover and remote CI remain
+unverified. No UI/PowerShell scripts changed, so prior browser/task-definition
+checks were not repeated. Phase 6 remains in progress pending deployment gates.
+
 ## Phase 6 continuation: recovery runtime permissions
 
 Resumed the saved runtime-access command and tests after interruption. Existing
