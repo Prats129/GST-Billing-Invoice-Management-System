@@ -1,5 +1,44 @@
 # Review coverage
 
+## Phase 6 continuation: HTTPS certificate validity and expiry
+
+Reviewed remaining Phase 6 gates after the Windows postponement and dependency/
+HTTP-cache checkpoint. The existing API reads TLS files without checking hostname
+or certificate dates before startup; the Windows runbook explicitly leaves expiry
+monitoring unfinished. Implemented direct-HTTPS startup validation and warnings
+for the certificates actually loaded by the running API. No new operator tool,
+production key, trust-store change or Windows deployment test is introduced.
+Verification used ephemeral test certificates and isolated loopback TLS.
+
+Focused verification passed 25 API/TLS tests before the final partial-wildcard
+case was added. This includes real HTTPS with per-request test trust, wrong-host
+client rejection, earliest chain expiry, malformed/key/CA/usage/date/SAN failures,
+warning boundaries/daily deduplication, sanitized log fields and timer shutdown.
+No machine trust was modified. Strict test TypeScript caught one optional-property
+type mismatch in the fixture response shape; corrected it before the passing run.
+Full regression verification is in progress.
+
+The first full run passed 184 unit tests, 59 integration tests, all type/build/
+lint/format checks and compiled smoke. A follow-up regression then reproduced
+acceptance of a configured TLS private key beneath WEB_ROOT. Added fail-closed
+configured/physical path checks for that unsafe overlap and a separate-directory
+positive case. No private key was served or real configuration changed. Final
+verification of this additional guard is in progress.
+
+Final verification passed all 186 unit tests and all 59 isolated integration
+tests, production builds, workspace/test TypeScript, lint, formatting and compiled
+frontend/assets/API/database/OpenAPI/Origin smoke. Private key bytes are read only
+after public certificate validation succeeds; no production key or trust store
+was used. Temporary fixture files/keys were cleaned up. A TLS test prerequisite
+is documented for existing installed OpenSSL; the API runtime uses Node built-ins
+and no dependency/package-manager/runtime versions were changed.
+
+No UI changed, so browser workflows were not repeated. No live database, user
+configuration, Windows service, certificate trust, signing key or Git staging was
+changed. Automatic renewal, client trust/CA replacement, real Windows/LAN/reboot,
+remote CI and commercial deployment remain unverified or unfinished. The Windows
+postponement and existing tax/issuer/hosting gates remain in effect.
+
 ## Phase 6 continuation: postponed Windows matrix and release/security review
 
 Recorded the user's explicit decision to postpone native Windows deployment tests

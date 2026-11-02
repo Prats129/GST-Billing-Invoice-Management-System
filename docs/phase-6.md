@@ -85,8 +85,14 @@ commercial Windows release. Independent release/security work can continue.
   dependencies and is now an explicit CI check. A reproduced mixed-case API
   cache-header gap is fixed, with authenticated-session/error regression coverage.
   This checkpoint is not comprehensive commercial security certification.
+- Direct-HTTPS startup validation rejects unusable certificate/key/hostname/date
+  configuration before database setup. An hourly monitor reports upcoming expiry
+  of the running process's supplied chain without logging certificate/key contents.
+  See https-operations.md; automatic renewal and actual Windows trust/LAN/reboot
+  acceptance remain unfinished or postponed.
+  Configured TLS private keys are also rejected beneath the public frontend root.
 
-Latest application checkpoint: 167 unit tests and all 59 isolated integration tests passed,
+Latest application checkpoint: 186 unit tests and all 59 isolated integration tests passed,
 with workspace type checks, production builds, compiled runtime smoke, lint,
 formatting. Prior Windows task-definition and six-workflow Chrome/Edge
 checkpoints remain recorded in review-coverage.md; those tests were not rerun

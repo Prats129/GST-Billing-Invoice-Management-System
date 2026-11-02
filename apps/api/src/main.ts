@@ -4,6 +4,7 @@ import { config as loadEnv } from 'dotenv';
 import { createApp } from './app.js';
 import { parseConfig } from './config.js';
 import { logEvent } from './logging.js';
+import { TlsConfigurationError } from './tls.js';
 
 loadEnv({
   path:
@@ -27,12 +28,13 @@ try {
     port: config.PORT,
     edition: config.DEPLOYMENT_EDITION,
   });
-} catch {
+} catch (error) {
   process.stderr.write(
     JSON.stringify({
       level: 'error',
       event: 'startup_failed',
       message: 'Check environment, TLS paths and port availability',
+      ...(error instanceof TlsConfigurationError ? { code: error.code } : {}),
     }) + '\n',
   );
   process.exitCode = 1;

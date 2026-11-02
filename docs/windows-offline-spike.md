@@ -94,7 +94,7 @@ Use `pg_dump -Fc` and a separate restore target for recovery testing; copying a 
 
 ## HTTPS and explicit private CA trust
 
-Use an operator-only CA directory separate from the API-readable leaf directory. The CA key is encrypted with an interactively entered passphrase. The leaf key is unencrypted so the service can start unattended, protected by Windows ACLs. Leaf certificates are short lived (90 days); CA lifetime is two years. Certificate renewal, expiry monitoring and host replacement are not implemented yet.
+Use an operator-only CA directory separate from the API-readable leaf directory. The CA key is encrypted with an interactively entered passphrase. The leaf key is unencrypted so the service can start unattended, protected by Windows ACLs. Leaf certificates are short lived (90 days); CA lifetime is two years. The API now has [certificate validity/expiry reporting](https-operations.md). Automated certificate renewal, CA/client-trust replacement and host replacement remain unfinished.
 
 ```powershell
 & .\apps\windows-installer\scripts\New-LanCertificate.ps1 -OpenSslPath 'C:\GST-PoC\tools\openssl.exe' -OpenSslSha256 '<independently-verified-64-hex-digest>' -DnsName 'gst-host' -CaDirectory 'C:\GST-PoC\operator-ca' -ServerDirectory 'C:\GST-PoC\tls'

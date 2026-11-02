@@ -1,5 +1,4 @@
 import 'reflect-metadata';
-import { readFileSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import type { Server } from 'node:http';
 import type { NextFunction, Request, Response } from 'express';
@@ -12,6 +11,7 @@ import express from 'express';
 import { createDatabase } from '@gst/database';
 import type { Database } from '@gst/database';
 import type { Config } from './config.js';
+import { loadServerTls, monitorServerTls } from './tls.js';
 import { ApiExceptionFilter } from './errors.js';
 import { DATABASE, HealthController } from './health.js';
 import { safeLogger } from './logging.js';
@@ -38,6 +38,9 @@ export async function createApp(
   suppliedDatabase?: Pick<Database, 'ready' | 'close'> &
     Partial<Pick<Database, 'db'>>,
 ) {
+  // Validate HTTPS before constructing database/authentication resources.
+  const tls = loadServerTls(config);
+  let stopTlsMonitor: (() => void) | undefined;
   const database = suppliedDatabase ?? createDatabase(config.DATABASE_URL);
   const identity = database.db
     ? new IdentityService(database as Database, config)
@@ -70,20 +73,21 @@ export async function createApp(
         provide: 'DATABASE_LIFECYCLE',
         useValue: { onApplicationShutdown: () => database.close() },
       },
+      {
+        provide: 'TLS_LIFECYCLE',
+        useValue: {
+          onApplicationBootstrap: () => {
+            if (tls) stopTlsMonitor = monitorServerTls(tls.certificates);
+          },
+          onApplicationShutdown: () => stopTlsMonitor?.(),
+        },
+      },
     ],
   })
   class AppModule {}
-  const httpsOptions =
-    config.TLS_KEY_PATH && config.TLS_CERT_PATH
-      ? {
-          key: readFileSync(config.TLS_KEY_PATH),
-          cert: readFileSync(config.TLS_CERT_PATH),
-          minVersion: 'TLSv1.2' as const,
-        }
-      : undefined;
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: safeLogger,
-    ...(httpsOptions ? { httpsOptions } : {}),
+    ...(tls ? { httpsOptions: tls.httpsOptions } : {}),
     bodyParser: false,
   });
   app.disable('x-powered-by');

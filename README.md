@@ -17,6 +17,11 @@ production-readiness claim is made.
   or your own dedicated local PostgreSQL 18 instance. PostgreSQL must bind only
   to loopback; never expose its port to LAN clients.
 - Windows PowerShell 5.1+ for the optional deployment spike.
+- Certificate tests use an installed OpenSSL executable (system `openssl` on Linux,
+  Git for Windows' `C:\Program Files\Git\usr\bin\openssl.exe` by default).
+  Set `TEST_OPENSSL_PATH` if your trusted installation is elsewhere. These tests
+  generate temporary keys/certificates and never import machine certificate trust.
+  Running the application itself does not require the OpenSSL command-line tool.
 
 Version choices: NestJS 12 (provisional Express), Vite 8/React 19, TypeScript 6,
 Drizzle ORM 0.45 and PostgreSQL 18. Exact dependency resolutions are locked in
@@ -99,6 +104,8 @@ boundaries: [encrypted backup/restore](docs/backup-recovery.md),
 require verified entitlements; development remains unlicensed unless configured.
 Official invoice issuance is still independently gated. This is not yet a signed
 commercial installer or a deployed SaaS service.
+
+For direct HTTPS, see [certificate validity, expiry logs and renewal](docs/https-operations.md).
 
 ```sh
 pnpm format:check
