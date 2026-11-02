@@ -51,7 +51,7 @@ export async function migrationDigest(prefixLength?: number) {
   }
   return hash.digest('hex');
 }
-async function assertMigrationHistory(db: Client) {
+export async function assertMigrationHistory(db: Client) {
   const dir = fileURLToPath(new URL('../migrations/', import.meta.url));
   const expected: string[] = [];
   for (const name of (await readdir(dir))

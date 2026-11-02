@@ -5,6 +5,10 @@ missing AUTH_DATA_KEY without replacing existing DB credentials or encryption
 keys. Back up that key separately from PostgreSQL backups: changing/losing it
 makes existing encrypted TOTP secrets unreadable.
 
+Commercial API connections require a dedicated unprivileged database role,
+separate from host recovery/migration credentials. For a quarantined recovery
+copy, follow [runtime database access](runtime-database-access.md).
+
 ## First owner (no default account)
 
 Use a host terminal and a private input file. Passwords/recovery credentials must

@@ -66,6 +66,9 @@ The API role needs `SELECT` on `organization_entitlements` and only column-level
 `UPDATE (last_observed_at)` on that table. Do **not** grant it INSERT, DELETE or
 UPDATE of `signed_grant`/`highest_sequence`. Use the operator connection for
 installation. Existing grants are deliberately not broadened by migration 0005.
+The host-only [recovery runtime permission command](runtime-database-access.md)
+applies this column restriction as part of the reviewed API policy on a confirmed
+quarantined copy; it does not activate the copy or install an entitlement.
 Application code still verifies every business mutation even if a local
 development connection owns the database.
 

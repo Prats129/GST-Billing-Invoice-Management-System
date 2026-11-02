@@ -188,8 +188,10 @@ they do not invent runtime grants or activate a license.
 Failure attempts connection-disable/drop of only the generated candidate, with
 private workspace cleanup. It never attempts a source schema rollback or edits
 the backup. Recovering correct configuration/MFA keys, reviewing financial data,
-least-privilege runtime provisioning, maintenance and live cutover still require
-the later controlled deployment workflow. Plain backup verify never upgrades.
+least-privilege runtime provisioning, maintenance and live cutover require
+separate steps. The host-only [runtime permission command](runtime-database-access.md)
+can now prepare a confirmed candidate without activating it. Maintenance and live
+cutover remain deployment work. Plain backup verify never upgrades.
 
 ## Automation and verification status
 

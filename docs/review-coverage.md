@@ -1,5 +1,33 @@
 # Review coverage
 
+## Phase 6 continuation: recovery runtime permissions
+
+Resumed the saved runtime-access command and tests after interruption. Existing
+staged changes are preserved. The command targets only a confirmed, quarantined,
+generated recovery database with matching installation/schema identity and no
+sessions. It grants a reviewed API table/column policy to an existing dedicated
+unprivileged login, rejects unsafe existing permissions and records a candidate
+audit event. It does not create credentials, change active configuration or
+perform service cutover. Added safe retry handling and checks for schema grant
+options. Focused verification passed two unit tests and four PostgreSQL integration
+tests, including real restricted-account login/writes and protected SQL denial.
+Added explicit wrong-installation/open-candidate rejection checks to the same
+suite for final verification. Docker was stopped and has been restarted for
+isolated fixtures. All 160 unit tests, workspace type checks, production builds,
+lint/formatting and both PowerShell checks passed. Final verification also passed
+all 54 integration tests, including the additional identity/open-state cases,
+and the compiled frontend/API/database/OpenAPI/Origin smoke check. Final test
+TypeScript and focused lint passed after those test additions.
+
+The initial sandbox Vitest launch failed with a subprocess EPERM restriction;
+the approved normal-execution rerun passed without weakening application checks.
+The operator guide documents dedicated role setup, explicit table/column grants,
+safe retries and inspection after host/database outages. No UI changed, so browser
+workflows were not repeated. Native Windows PostgreSQL/service/installer/reboot/
+LAN, actual disaster cutover, hosting and remote CI remain unverified or unfinished.
+No active business data, credentials, service configuration or Git staging were
+rewritten. Test-only databases and roles are cleaned up by the integration suite.
+
 ## Batch 1 — audit and architecture (2026-10-27)
 
 - Read PROJECT_CONTEXT.md and PHASE_1_CODEX_PROMPT.md completely; repository had
