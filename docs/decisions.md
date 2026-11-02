@@ -50,6 +50,14 @@ Unresolved: professional approval of calculation/rounding and commercial GST/e-i
 policies, Windows compatibility matrix, installer redistribution and signing,
 certificate renewal UX, commercial backup policy, SaaS provider and pricing.
 
+User decision: postpone actual Windows VM/install/service/reboot/LAN acceptance.
+The available laptop has 8 GB RAM and Windows 11 Home Single Language; no spare
+test host or separate client is available. A Windows guest would leave limited
+memory for the host/development tools, so no VM, RAM/OS purchase or privileged
+deployment changes are required now. The tests remain unverified release gates,
+not waived or marked complete. Resume on suitable disposable hardware with a
+separate Windows client. Continue independent Phase 6 release/security work.
+
 Phase 6 user decision (2026-10-30): trial and time-limited subscription expiry
 immediately makes business data read-only; no grace period. Optional maintenance
 expiry never terminates a perpetual offline license. No Windows code-signing

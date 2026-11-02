@@ -23,6 +23,30 @@ afterEach(async () => {
   await app?.close();
   app = undefined;
 });
+test.each(['/api/v1/health', '/API/v1/health', '/Api/V1/HeAlTh'])(
+  'API response %s is never cacheable',
+  async (path) => {
+    const api = await setup();
+    const response = await api
+      .get(path)
+      .set('Host', 'localhost:3000')
+      .expect(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+  },
+);
+
+test.each(['/API', '/API/v1/missing'])(
+  'unknown API response %s is never cacheable',
+  async (path) => {
+    const api = await setup();
+    const response = await api
+      .get(path)
+      .set('Host', 'localhost:3000')
+      .expect(404);
+    expect(response.headers['cache-control']).toBe('no-store');
+  },
+);
+
 test('versioned liveness returns the shared contract and security headers', async () => {
   const api = await setup();
   const res = await api

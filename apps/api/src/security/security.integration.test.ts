@@ -138,12 +138,17 @@ test('real HTTP login, hashed opaque storage, CSRF, logout and no-store', async 
     .where(eq(sessions.tokenHash, digest(raw)));
   expect(stored?.tokenHash).not.toBe(raw);
   expect(stored?.csrfHash).not.toBe(auth.csrf);
-  const info = await http()
-    .get('/api/v1/auth/session')
-    .set(authHeaders(auth))
-    .expect(200);
-  expect(info.headers['cache-control']).toBe('no-store');
-  expect(info.text).not.toContain('passwordHash');
+  for (const path of ['/api/v1/auth/session', '/API/V1/auth/session']) {
+    const info = await http().get(path).set(authHeaders(auth)).expect(200);
+    expect(info.headers['cache-control']).toBe('no-store');
+    expect(info.body.csrfToken).toBe(auth.csrf);
+    expect(info.text).not.toContain('passwordHash');
+  }
+  const unauthenticated = await http()
+    .get('/API/v1/auth/session')
+    .set('Host', 'localhost:3000')
+    .expect(401);
+  expect(unauthenticated.headers['cache-control']).toBe('no-store');
   await http()
     .post('/api/v1/auth/logout')
     .set({ ...requestHeaders, Cookie: auth.cookie })

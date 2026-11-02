@@ -30,6 +30,15 @@ Read-only recovery must retain existing authorization and tenant isolation. Full
 shared-database restoration is host/platform-operator-only, never a tenant API.
 No UI or environment switch may bypass the invoice compliance gate.
 
+## Postponed Windows acceptance
+
+The user explicitly postponed actual installer/service/ACL/TLS/LAN/reboot testing.
+Their current laptop has 8 GB RAM and Windows 11 Home Single Language, and there
+is no separate disposable host/client. No VM or OS/hardware purchase is required
+now. Preserve the existing scripts/checklist and resume when suitable test
+machines are available. These checks are pending, not passed, and still block
+commercial Windows release. Independent release/security work can continue.
+
 ## Completed engineering checkpoints
 
 - Authenticated backup artifacts, host-only backup/key commands and real
@@ -72,12 +81,16 @@ No UI or environment switch may bypass the invoice compliance gate.
   network isolation. Safe decision/secure-XML tests run without machine changes;
   see windows-deployment-checks.md. Actual native/TLS/LAN/reboot evidence and the
   production installer remain deployment gates, not completed acceptance.
+- Production dependency audit reported zero advisories for 149 production
+  dependencies and is now an explicit CI check. A reproduced mixed-case API
+  cache-header gap is fixed, with authenticated-session/error regression coverage.
+  This checkpoint is not comprehensive commercial security certification.
 
-Prior application checkpoint: 162 unit tests and all 59 isolated integration tests passed,
+Latest application checkpoint: 167 unit tests and all 59 isolated integration tests passed,
 with workspace type checks, production builds, compiled runtime smoke, lint,
 formatting. Prior Windows task-definition and six-workflow Chrome/Edge
 checkpoints remain recorded in review-coverage.md; those tests were not rerun
-for these operator-only changes. Native PostgreSQL/service/installer/reboot/
+for these changes. Native PostgreSQL/service/installer/reboot/
 unattended scheduling, online issuer/provider integration, remote CI and commercial
 release remain unverified or unfinished. The user confirmed no disposable Windows
 VM/second client is currently available; signing credentials and SaaS hosting are

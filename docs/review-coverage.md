@@ -1,5 +1,38 @@
 # Review coverage
 
+## Phase 6 continuation: postponed Windows matrix and release/security review
+
+Recorded the user's explicit decision to postpone native Windows deployment tests
+on their 8 GB Windows 11 Home Single Language laptop. No VM, machine changes or
+OS/hardware purchase are required. The actual installer/service/ACL/TLS/LAN/reboot
+matrix remains unverified and is still a commercial release gate. The next
+independent planned item is production dependency/API release-security review;
+findings and verification will be recorded as work proceeds.
+
+Production dependency audit completed successfully: pnpm audit --prod --json
+reported zero advisories across 149 production dependencies. This is registry
+coverage at the time of the check, not proof of absence of vulnerabilities.
+Added the same production audit to CI without dependency changes or exceptions.
+API review reproduced mixed-case routes returning HTTP 200 without Cache-Control
+no-store: Express matched these routes but the cache middleware used a
+case-sensitive prefix. Corrected the prefix boundary and added unit cases for
+case variants/API errors plus authenticated-session/401 integration assertions.
+The first new test invocation omitted its fixture setup; corrected that harness
+before reproducing the actual two mixed-case header failures. Focused API tests
+passed all nine cases after the fix. Full verification passed all 167 unit tests,
+workspace/test TypeScript, production builds, lint and formatting. Final verification
+also passed all 59 isolated integration tests and the compiled frontend/assets,
+API/database readiness, OpenAPI and Origin-rejection smoke check. The extended
+real-HTTP security case verifies no-store on authenticated mixed-case session
+responses containing CSRF data and on unauthenticated 401 responses.
+
+This was a focused production-dependency/HTTP-boundary checkpoint, not exhaustive
+commercial security certification. No dependency versions, database schema/data,
+credentials, service configuration, Windows trust or Git staging were changed.
+No UI changed; browser workflows were not repeated. Remote CI, actual Windows
+deployment, signing/issuer custody, SaaS provider operations and professional tax
+approval remain pending. Windows acceptance is explicitly postponed, not waived.
+
 ## Phase 6 continuation: Windows deployment observations
 
 The interrupted previous turn made no filesystem changes; the checkout was clean.

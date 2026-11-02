@@ -92,7 +92,8 @@ export async function createApp(
     config.ALLOWED_HOSTS.split(',').map((v) => v.trim()),
   );
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith('/api/'))
+    // Express routes are case-insensitive; cache protection must match them too.
+    if (/^\/api(?:\/|$)/i.test(req.path))
       res.setHeader('Cache-Control', 'no-store');
     if (
       !req.headers.host ||

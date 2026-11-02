@@ -6,6 +6,12 @@ running PoC; it does not install, start, stop, reboot, repair or remove anything
 It does not change firewall rules, ACLs, services, certificate stores or secrets.
 No production installer or completed Windows deployment acceptance is implied.
 
+**Postponed by the user:** the available development laptop has 8 GB RAM and
+Windows 11 Home Single Language; no disposable host/separate client is available.
+Do not install a Windows guest or alter this laptop's service/trust configuration
+to work around the missing test environment. Resume this matrix on suitable test
+machines later. Postponement does not waive the commercial release gate.
+
 ## What it checks
 
 Both modes require an exact HTTPS origin whose DNS addresses are exclusively
