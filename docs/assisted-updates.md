@@ -1,9 +1,11 @@
 # Assisted update implementation boundary
 
-The repository now contains the update sequencing core and a real protected
-file-backed journal/lock. It does **not** yet contain an executable production
-Windows installer or a bound native service/database adapter. No new install
-command is advertised, and application startup does not invoke this code.
+The repository contains the update sequencing core, protected file-backed journal
+and bound adapters for schema-preserving updates of an already provisioned
+dedicated Windows service. It does **not** yet contain an executable production
+installer or initial PostgreSQL/service provisioning. No new install command is
+advertised, and application startup does not invoke this code. Native Windows
+acceptance remains postponed, not passed.
 
 ## Implemented sequence
 
@@ -25,12 +27,73 @@ command is advertised, and application startup does not invoke this code.
    Start the candidate privately and verify actual readiness before admitting
    users or restoring restart/background-job policies.
 
-Windows operations in this sequence are explicit `UpdateHost` contracts, not
-implemented service calls. Tests supply simulated native/database operations.
-Package verification is real, as are the optional journal files/ACL operations.
-An adapter returning an unchecked receipt does not prove backup, migration or
-Windows acceptance: it must bind the existing tested database tools to the actual
-protected installation before this runner can be exposed to an operator.
+The sequencing tests simulate `UpdateHost` contracts. The separate bound adapter
+integration test exercises actual encrypted backups, restore verification,
+runtime grants and database cutover, mocking only the Windows service boundary.
+The native Windows backend is implemented, but its service/task/firewall effects
+have only mocked decision tests. They have not been executed on this laptop.
+
+## Bound adapter and supported update scope
+
+`createWindowsUpdateHost` in `windows-update-host.ts` composes the actual database
+adapter and Windows service backend. The caller must be a trusted host operator,
+not a tenant route. Installed version/schema/root, one fixed journal parent,
+release/entitlement public-key trust, runtime binding and script/binary hashes
+must come from separately protected installation/operator state. Neither a
+download nor tenant input may select those values. No permissive default service,
+account, development entitlement bypass or downloaded executable is supplied.
+
+The first bound adapter requires **identical source and target schema digests**,
+matching its trusted migration bundle, before any service stop or backup. It
+still restores into a separate copy, provisions restricted runtime access and
+retains the original database during activation. It does not implement live or
+copy-based schema-changing update orchestration; that requires a later matching
+updater/recovery release. The underlying standalone recovery tools retain their
+existing forward-migration capability.
+
+The database adapter writes `backup.json`, `prepared.json`, `candidate.json`,
+`cutover-intent.json` and `cutover-result.json` privately and exclusively with
+file flushes. The intent includes original/candidate OIDs and release paths before
+the switch, so a lost commit reply requires inspection rather than another swap.
+The encrypted backup is retained in that same protected operation directory.
+Candidate maintenance inspection uses the existing per-database advisory lock,
+withholds runtime CONNECT during temporary operator access and reseals the copy
+before restoring that grant. Original and candidate organization sets must match.
+
+`UpdateService.ps1` operates only on an existing `GSTBillingApi` service running
+as `NT SERVICE\GSTBillingApi`, with an approved wrapper/runtime and protected,
+supported XML definition. It refuses LocalService/LocalSystem/PoC identities,
+unknown executable hooks, writable/reparse dependencies, existing failure-action
+policies and delayed automatic startup. The first adapter supports ordinary Auto
+or Manual startup; it does not silently rewrite an unsupported recovery policy.
+
+Maintenance records the original startup/backup-task state, adds an inbound HTTPS
+block for the exact runtime/port, disables the configured backup task and service
+startup, stops the service and waits for exit. An already-running backup must
+finish first. Other operator/import/inspection writers must also be stopped;
+database idle/prepared-transaction checks do not excuse operator coordination.
+The block stays active through private Manual startup and HTTPS/child-process/
+listener ownership checks. Admission restores the recorded startup/task state and
+removes only this operation's block. No CA trust or existing LAN allow rule is
+changed. Whether local trusted HTTPS probes behave correctly behind the block
+on the supported Windows/firewall matrix remains an actual VM acceptance test.
+
+Selection validates the candidate tree, grants the dedicated service read/execute
+access, preserves `previous-service.xml`, then atomically replaces the service
+XML with the candidate entry/working directory and a matching WEB_ROOT override.
+The original runtime environment, database URLs, keys and installation identity
+are preserved. The backend checks the environment file hash and exact offline/
+production/runtime/installation binding, refusing operator database credentials
+in the service environment. Helpers are read and hash-verified, then executed as
+those exact bytes over stdin. Their child environment excludes inherited operator
+database credentials and keys; only system paths, action and nonsecret service
+configuration are passed. Expected script hashes must be independently trusted.
+
+The adapter is a host library entrypoint, **not** a commercially accepted updater
+CLI. Its first native invocation belongs on the postponed disposable host/client
+environment. Initial service/cluster provisioning, durable installed-state
+management, signed native packaging and guided rollback/uninstall are not supplied
+by this update adapter.
 
 ## Journals, interruption and failure
 
@@ -68,14 +131,11 @@ restoration of old data.
 
 ## Remaining implementation and acceptance
 
-The native adapter must persist actual protected release/configuration paths,
-database names/OIDs and backup references in its own recovery record, enforce a
-single trusted journal location, authenticate the expected service and hold writer
-exclusion across package checking, maintenance checking and activation. It must
-connect `acquireUpdateJournal` to `acquire`/`record` rather than supplying no-op
-locking or logging. It must implement service/file cutover and recovery against
-approved Windows binaries and a dedicated production identity. The LocalService
-PoC is not silently promoted into a production installer.
+The bound adapter persists release/configuration references and database OIDs and
+uses `acquireUpdateJournal` for actual locking/recording. The future installer must
+provision and protect its installation state, service identity, binaries and
+stable journal location, then validate the complete lifecycle on disposable
+Windows machines. The LocalService PoC is not promoted into a production installer.
 
 Unfinished work also includes initial dedicated PostgreSQL installation, signing
 and redistribution approval, startup/recovery policies, operator-guided rollback,

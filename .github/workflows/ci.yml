@@ -54,3 +54,5 @@ jobs:
         run: ./apps/windows-installer/scripts/Test-BackupSchedule.ps1
       - shell: powershell
         run: ./apps/windows-installer/scripts/Test-DeploymentChecks.ps1
+      - shell: powershell
+        run: ./apps/windows-installer/scripts/Test-UpdateService.ps1

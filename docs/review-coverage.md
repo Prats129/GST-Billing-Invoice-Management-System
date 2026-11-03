@@ -1,5 +1,60 @@
 # Review coverage
 
+## Phase 6 continuation: database and Windows service adapter binding
+
+Started binding the sequencer to actual backup creation/restore verification,
+quarantined candidate/runtime provisioning, maintenance checks and transactional
+database switching. This adapter initially accepts schema-preserving releases
+only; schema-changing packages must fail before stopping writers. It preserves
+the original database/application paths and writes private cutover intent with
+database OIDs before activation. Candidate maintenance inspection temporarily
+withholds runtime CONNECT, opens only the operator connection and reseals before
+restoring that grant. Windows service/file operations and verification are in
+progress. No live service/database/configuration or Git staging changed.
+
+Bound real database adapter integration passed both cases: encrypted backup and
+restore drill, quarantined clone, signed maintenance checks, dedicated runtime
+privilege provisioning, transactional activation, retained original OID/database,
+real runtime authentication/readiness and pre-stop rejection of schema-changing
+packages. Only Windows service calls were mocked in this integration fixture.
+Moved the fixture into the database workspace after its first run exposed that
+the API correctly has no direct pg dependency; no dependency was added. Corrected
+one test-only helper path before all three native transport/schema tests passed.
+
+Implemented the Windows backend for existing dedicated GSTBillingApi services:
+identity/binary/config/ACL checks, maintenance ingress block, backup task disable,
+disabled/stopped service, retained service XML, candidate selection and read access,
+manual/private startup, HTTPS/listener checks and restoration of prior admission
+state. Scripts execute from verified bytes via stdin, with no operator environment
+secrets inherited. Safe mocked PowerShell lifecycle/XML tests pass; they caught
+and corrected PowerShell XML attribute/property shadowing in the strict parser.
+All 18 PowerShell files parse. A harmless wrapper transport test executes real
+verified helper definitions, never native machine operations.
+
+Full regression passed all 222 unit tests (30 files) and all 62 isolated database
+integration tests (12 files), workspace/test TypeScript and production builds.
+Full typecheck initially hit sandbox child-process EPERM and passed when rerun
+with approved process access. Lint caught a regex spacing style issue and a test
+cleanup guard throwing directly inside finally; corrected both without changing
+product behavior. Final lint, API rebuild and compiled frontend/assets/API/
+database/OpenAPI/Origin smoke passed. Repository formatting and whitespace checks
+passed again after the final native path-separation guard, along with test types,
+API rebuild, lint and all three focused native transport tests. The guard rejects
+in-place/nested release updates and journals inside signed application trees.
+The native transport tests and mocked Windows service/
+deployment tests also passed after strict response typing and pure XML-selection
+coverage were added. Existing safe in-memory backup-task tests passed without
+registration. No browser UI was changed, so browser workflows were not repeated.
+
+No native service/firewall/task/registry/trust/startup operation was run. Test
+resources were confined to generated fixture files and isolated databases/roles,
+which were cleaned up. Initial installation, protected installed-state management,
+schema-changing update orchestration, guided rollback/uninstall, remote CI,
+commercial signing/redistribution and native host/LAN/reboot acceptance remain
+unfinished or unverified. This batch provides actual bound operations as a host
+library, not a production-accepted installer command; the Windows postponement
+remains in effect and no Git staging was changed.
+
 ## Phase 6 continuation: assisted-update safety sequencing
 
 Started the application-update coordination core after reviewing the existing

@@ -118,7 +118,7 @@ const candidateSchema = z
 /**
  * Safety sequencing core, not a production Windows installer. Package signature
  * verification is concrete; native service/database transactions are explicit
- * host ports, to be bound only after disposable Windows acceptance.
+ * host ports; production exposure requires disposable Windows acceptance.
  */
 export async function runAssistedUpdate(options: {
   operationId: string;

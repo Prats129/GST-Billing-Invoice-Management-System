@@ -44,6 +44,14 @@ commercial Windows release. Independent release/security work can continue.
 
 ## Completed engineering checkpoints
 
+- Bound schema-preserving update adapter now connects actual encrypted backup/
+  restore, candidate/runtime provisioning and database cutover to implemented
+  Windows service/file control. See assisted-updates.md for the narrow supported
+  service/startup scope and trusted operator configuration requirements. Isolated
+  database cutover is verified with native service calls mocked; real Windows
+  service/firewall/task/LAN/reboot acceptance, initial installer, schema-changing
+  updates and guided rollback/uninstall remain unfinished or postponed.
+
 - Assisted-update sequencing core verifies real staged packages, requires fresh
   backup/candidate/maintenance/readiness checks from explicit host adapters and
   keeps failures stopped for recovery. Real private file-backed journals/locks
@@ -111,7 +119,7 @@ commercial Windows release. Independent release/security work can continue.
   acceptance remain unfinished or postponed.
   Configured TLS private keys are also rejected beneath the public frontend root.
 
-Latest application checkpoint: 186 unit tests and all 59 isolated integration tests passed,
+Latest application checkpoint: 222 unit tests and all 62 isolated integration tests passed,
 with workspace type checks, production builds, compiled runtime smoke, lint,
 formatting. Prior Windows task-definition and six-workflow Chrome/Edge
 checkpoints remain recorded in review-coverage.md; those tests were not rerun
