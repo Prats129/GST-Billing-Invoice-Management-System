@@ -12,7 +12,7 @@ import type { ReleaseFile } from './release-package.js';
 
 // Shared by update journals: protect a newly created operator directory before
 // writing, and reject unsafe owners/reparse points/replaceable ancestors.
-export async function secureDirectory(path: string) {
+export async function secureDirectory(path: string, protect = true) {
   if (process.platform === 'win32') {
     // ACL protection precedes every package write. Check ancestors as well:
     // DeleteChild on a parent can defeat a private child directory's ACL.
@@ -27,7 +27,7 @@ foreach($s in @($current,[Security.Principal.SecurityIdentifier]'S-1-5-18',[Secu
   $rule=New-Object Security.AccessControl.FileSystemAccessRule($s,'FullControl','ContainerInherit,ObjectInherit','None','Allow')
   $acl.AddAccessRule($rule)
 }
-Set-Acl -LiteralPath $p -AclObject $acl
+if($env:GST_RELEASE_PROTECT -eq 'yes') { Set-Acl -LiteralPath $p -AclObject $acl }
 $item=Get-Item -LiteralPath $p -Force
 $first=$true
 while($null -ne $item) {
@@ -35,7 +35,8 @@ while($null -ne $item) {
   $acl=Get-Acl -LiteralPath $item.FullName
   if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin $trusted) { throw 'Untrusted owner' }
   foreach($rule in $acl.Access) {
-    if($rule.AccessControlType -ne 'Allow' -or ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -ne 0) { continue }
+    if($rule.AccessControlType -ne 'Allow') { continue }
+    if(-not $first -and ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -ne 0) { continue }
     $sid=$rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
     if($sid -in $trusted) { continue }
     $rights=[Security.AccessControl.FileSystemRights]'Delete,DeleteSubdirectoriesAndFiles,ChangePermissions,TakeOwnership'
@@ -54,18 +55,24 @@ while($null -ne $item) {
         Buffer.from(script, 'utf16le').toString('base64'),
       ],
       {
-        env: { ...process.env, GST_RELEASE_STAGE: path },
+        env: {
+          ...process.env,
+          GST_RELEASE_STAGE: path,
+          GST_RELEASE_PROTECT: protect ? 'yes' : 'no',
+        },
         windowsHide: true,
         timeout: 30000,
         maxBuffer: 16384,
       },
     );
   } else {
-    await chmod(path, 0o700);
+    if (protect) await chmod(path, 0o700);
     const uid = process.getuid!();
     let current = path;
     while (true) {
       const info = await lstat(current);
+      if (current === path && (info.mode & 0o077) !== 0)
+        throw new ReleaseError();
       if (
         !info.isDirectory() ||
         info.isSymbolicLink() ||
@@ -83,6 +90,11 @@ while($null -ne $item) {
       current = parent;
     }
   }
+}
+
+// Read-only audit of existing recovery evidence; never repair its ACL implicitly.
+export async function assertPrivateDirectory(path: string) {
+  await secureDirectory(path, false);
 }
 
 async function copyBounded(

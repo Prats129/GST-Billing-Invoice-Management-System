@@ -40,10 +40,10 @@ function Assert-UpdateTree([string] $Root) {
         }
     }
 }
-function Get-UpdateServiceXml($Configuration) {
+function Get-UpdateServiceXml($Configuration, [Xml.XmlDocument] $Document = $null) {
     $xmlPath = Join-Path $Configuration.serviceRoot 'GSTBillingApi.xml'
-    Assert-UpdateProtectedPath $xmlPath
-    $xml = Read-DeploymentServiceXml $xmlPath
+    if ($null -eq $Document) { Assert-UpdateProtectedPath $xmlPath; $Document = Read-DeploymentServiceXml $xmlPath }
+    $xml = $Document
     $root = $xml.DocumentElement
     foreach ($required in @('id','executable','arguments','workingdirectory','serviceaccount')) { if ($root.SelectNodes($required).Count -ne 1) { throw 'Ambiguous service definition.' } }
     if ($root.get_Name() -ne 'service' -or $root.id -ne 'GSTBillingApi' -or $root.serviceaccount.username -ne 'NT SERVICE\GSTBillingApi') { throw 'Service XML identity mismatch.' }
@@ -93,7 +93,7 @@ function Set-UpdateReleaseXml([Xml.XmlDocument] $Document, [string] $Root) {
 }
 function Invoke-UpdateService([string] $Action, $Configuration) {
     Assert-Administrator
-    if ($Action -notin @('Stop','Select','Start','Ready','Admit')) { throw 'Unknown update action.' }
+    if ($Action -notin @('Stop','Select','Start','Ready','Admit','Restore','StartOriginal','ReadyOriginal','AdmitOriginal')) { throw 'Unknown update action.' }
     $operation = [Guid]::Empty
     if (-not [Guid]::TryParseExact($Configuration.operationId, 'D', [ref]$operation)) { throw 'Operation UUID required.' }
     if ($Configuration.backupTaskName -and $Configuration.backupTaskName -notmatch '^GSTBilling-Backup-[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$') { throw 'Invalid backup task identity.' }
@@ -105,8 +105,13 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
     foreach ($address in $resolved) {
         if ((-not [Net.IPAddress]::IsLoopback($address) -and -not (Test-DeploymentPrivateAddress $address)) -or $address.ToString() -notin $localAddresses) { throw 'Private local origin required.' }
     }
-    foreach ($path in @($Configuration.serviceRoot, $Configuration.nodePath, $Configuration.installedRoot, $Configuration.stagedRoot, $Configuration.environmentFile, $Configuration.journalDirectory)) { Assert-UpdateProtectedPath $path ($path -eq $Configuration.environmentFile -or $path -eq $Configuration.journalDirectory) }
-    foreach ($relative in @('apps\api\dist\main.js','apps\web\dist\index.html')) { if (-not (Test-Path -LiteralPath (Join-Path $Configuration.stagedRoot $relative) -PathType Leaf)) { throw 'Required candidate application files missing.' } }
+    foreach ($path in @($Configuration.serviceRoot, $Configuration.nodePath, $Configuration.installedRoot, $Configuration.environmentFile, $Configuration.journalDirectory)) { Assert-UpdateProtectedPath $path ($path -eq $Configuration.environmentFile -or $path -eq $Configuration.journalDirectory) }
+    $targetRoot = $Configuration.stagedRoot
+    if ($Action.EndsWith('Original') -or $Action -eq 'Restore') { $targetRoot = $Configuration.installedRoot }
+    if ($Action -ne 'Stop') {
+        Assert-UpdateProtectedPath $targetRoot
+        foreach ($relative in @('apps\api\dist\main.js','apps\web\dist\index.html')) { if (-not (Test-Path -LiteralPath (Join-Path $targetRoot $relative) -PathType Leaf)) { throw 'Required application files missing.' } }
+    }
     $null = Get-VerifiedExecutable $Configuration.nodePath $Configuration.nodeSha256
     $service = Get-UpdateService $Configuration
     $xml = Get-UpdateServiceXml $Configuration
@@ -141,10 +146,9 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
     if ($Action -eq 'Select') {
         if ($service.State -ne 'Stopped' -or $service.StartMode -ne 'Disabled') { throw 'Service must remain disabled and stopped.' }
         Assert-UpdateTree $Configuration.stagedRoot
-        $stageAcl = Get-Acl -LiteralPath $Configuration.stagedRoot
-        $stageRead = New-Object Security.AccessControl.FileSystemAccessRule('NT SERVICE\GSTBillingApi', 'ReadAndExecute', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
-        $stageAcl.AddAccessRule($stageRead)
-        Set-Acl -LiteralPath $Configuration.stagedRoot -AclObject $stageAcl
+        # DACL-only addition: do not copy or rewrite audit/owner information.
+        & (Join-Path $env:SystemRoot 'System32\icacls.exe') $Configuration.stagedRoot '/grant' 'NT SERVICE\GSTBillingApi:(OI)(CI)(RX)' '/Q' *> $null
+        if ($LASTEXITCODE -ne 0) { throw 'Service read-access provisioning failed.' }
         $xml = Set-UpdateReleaseXml $xml $Configuration.stagedRoot
         $xmlPath = Join-Path $Configuration.serviceRoot 'GSTBillingApi.xml'
         $temporary = Join-Path $Configuration.serviceRoot ('update-' + $Configuration.operationId + '.xml')
@@ -156,8 +160,26 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
         [IO.File]::Replace($temporary, $xmlPath, $null)
         return
     }
-    if ($xml.service.workingdirectory -ne $Configuration.stagedRoot) { throw 'Candidate has not been selected.' }
-    if ($Action -eq 'Start') {
+    if ($Action -eq 'Restore') {
+        if ($service.State -ne 'Stopped' -or $service.StartMode -ne 'Disabled') { throw 'Service must remain stopped for recovery.' }
+        Assert-UpdateTree $Configuration.installedRoot
+        if ($xml.service.workingdirectory -eq $Configuration.installedRoot) { return }
+        $previous = Join-Path $Configuration.journalDirectory 'previous-service.xml'
+        Assert-UpdateProtectedPath $previous $true
+        $original = Get-UpdateServiceXml $Configuration (Read-DeploymentServiceXml $previous)
+        if ($original.service.workingdirectory -ne $Configuration.installedRoot) { throw 'Retained definition does not select the original release.' }
+        $path = Join-Path $Configuration.serviceRoot 'GSTBillingApi.xml'
+        $temporary = Join-Path $Configuration.serviceRoot ('restore-' + $Configuration.operationId + '.xml')
+        $retired = Join-Path $Configuration.journalDirectory 'retired-service.xml'
+        if ((Test-Path -LiteralPath $temporary) -or (Test-Path -LiteralPath $retired)) { throw 'Existing recovery selection requires inspection.' }
+        $stream = New-Object IO.FileStream($temporary, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        try { $original.Save($stream); $stream.Flush($true) } finally { $stream.Dispose() }
+        [IO.File]::Copy($path, $retired, $false)
+        [IO.File]::Replace($temporary, $path, $null)
+        return
+    }
+    if ($xml.service.workingdirectory -ne $targetRoot) { throw 'Expected application has not been selected.' }
+    if ($Action -in @('Start','StartOriginal')) {
         if ($service.State -ne 'Stopped' -or $service.StartMode -ne 'Disabled') { throw 'Candidate must be stopped and disabled before private startup.' }
         Set-Service -Name GSTBillingApi -StartupType Manual -ErrorAction Stop
         Start-Service -Name GSTBillingApi -ErrorAction Stop
@@ -165,8 +187,8 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
         return
     }
     if ($service.State -ne 'Running' -or $service.StartMode -ne 'Manual') { throw 'Unexpected private candidate state.' }
-    if ($Action -eq 'Ready') {
-        $entry = Join-Path $Configuration.stagedRoot 'apps\api\dist\main.js'
+    if ($Action -in @('Ready','ReadyOriginal')) {
+        $entry = Join-Path $targetRoot 'apps\api\dist\main.js'
         $command = '^\s*(?:"' + [regex]::Escape($Configuration.nodePath) + '"|' + [regex]::Escape($Configuration.nodePath) + ')\s+"' + [regex]::Escape($entry) + '"\s*$'
         $processes = @(Get-CimInstance Win32_Process -Filter ("ParentProcessId=" + [int]$service.ProcessId) | Where-Object { $_.ExecutablePath -eq $Configuration.nodePath -and $_.CommandLine -match $command })
         if ($processes.Count -ne 1) { throw 'Candidate process ownership mismatch.' }

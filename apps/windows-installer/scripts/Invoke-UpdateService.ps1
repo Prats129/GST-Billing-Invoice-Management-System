@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][ValidateSet('Stop','Select','Start','Ready','Admit')][string] $Action)
+param([Parameter(Mandatory)][ValidateSet('Stop','Select','Start','Ready','Admit','Restore','StartOriginal','ReadyOriginal','AdmitOriginal')][string] $Action)
 try {
     . "$PSScriptRoot/UpdateService.ps1"
     if (-not $env:GST_UPDATE_SERVICE -or $env:GST_UPDATE_SERVICE.Length -gt 16384) { throw 'Configuration required.' }

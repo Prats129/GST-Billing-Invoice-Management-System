@@ -44,6 +44,13 @@ commercial Windows release. Independent release/security work can continue.
 
 ## Completed engineering checkpoints
 
+- Connected execution plan is recorded in phase-6-execution.md. Shared protected
+  installation state and explicit schema-preserving failed-update recovery now
+  verify original signed files, observed OIDs and operator acknowledgements,
+  restore the matching pair/state and archive lock evidence after readiness.
+  See assisted-updates.md. Initial provisioning/uninstall, schema-changing
+  recovery and actual native acceptance remain unfinished.
+
 - Bound schema-preserving update adapter now connects actual encrypted backup/
   restore, candidate/runtime provisioning and database cutover to implemented
   Windows service/file control. See assisted-updates.md for the narrow supported
@@ -119,7 +126,7 @@ commercial Windows release. Independent release/security work can continue.
   acceptance remain unfinished or postponed.
   Configured TLS private keys are also rejected beneath the public frontend root.
 
-Latest application checkpoint: 222 unit tests and all 62 isolated integration tests passed,
+Latest application checkpoint: 230 unit tests and all 63 isolated integration tests passed,
 with workspace type checks, production builds, compiled runtime smoke, lint,
 formatting. Prior Windows task-definition and six-workflow Chrome/Edge
 checkpoints remain recorded in review-coverage.md; those tests were not rerun

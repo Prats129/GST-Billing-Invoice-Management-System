@@ -24,6 +24,11 @@ import type {
 } from './assisted-update.js';
 import type { ReleaseManifest } from './release-package.js';
 import { verifyReleasePackage } from './release-package.js';
+import {
+  readInstallationState,
+  replaceInstallationState,
+} from './installation-state.js';
+import type { InstallationState } from './installation-state.js';
 
 export interface UpdateService {
   stop(): Promise<void>;
@@ -61,6 +66,7 @@ export function createDatabaseUpdateHost(options: {
   let manifest: ReleaseManifest | undefined;
   let stopped = false;
   let activated = false;
+  let installedState: InstallationState | undefined;
   const inspect = <T>(
     fn: Parameters<typeof inspectUpdateDatabase<T>>[1],
     candidateName?: string,
@@ -128,11 +134,32 @@ export function createDatabaseUpdateHost(options: {
         // migration cutover needs a matching target updater/recovery release.
         throw new Error('Use the matching schema-preserving operator release.');
       }
+      installedState = await readInstallationState(options.journalParent);
+      if (
+        installedState.installationId !== options.installationId ||
+        installedState.version !== options.installed.version ||
+        installedState.schemaDigest !== options.installed.schemaDigest ||
+        installedState.appRoot !== options.installedRoot
+      )
+        throw new Error(
+          'Protected installation state does not match the requested update.',
+        );
       journal = await acquireUpdateJournal(
         options.journalParent,
         options.installationId,
         options.operationId,
       );
+      try {
+        if (
+          JSON.stringify(await readInstallationState(options.journalParent)) !==
+          JSON.stringify(installedState)
+        )
+          throw new Error('Installation changed during acquisition.');
+      } catch (error) {
+        await journal.release();
+        journal = undefined;
+        throw error;
+      }
       return { release: () => journal!.release() };
     },
     async record(value) {
@@ -269,7 +296,23 @@ export function createDatabaseUpdateHost(options: {
       await options.service.assertReady();
     },
     async admitUsers() {
-      if (!activated) throw new Error();
+      if (!activated || !installedState || !manifest) throw new Error();
+      const replacement: InstallationState = {
+        ...installedState,
+        version: manifest.version,
+        appRoot: options.stagedRoot,
+        schemaDigest: manifest.toSchemaDigest,
+        operationId: options.operationId,
+      };
+      await save('installed-state-intent', {
+        before: installedState,
+        after: replacement,
+      });
+      await replaceInstallationState(
+        options.journalParent,
+        installedState,
+        replacement,
+      );
       await options.service.admit();
       stopped = false;
     },

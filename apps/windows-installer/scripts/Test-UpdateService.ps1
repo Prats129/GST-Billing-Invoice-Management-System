@@ -19,6 +19,7 @@ $script:fixture = @{
 }
 function Assert-Administrator {}
 function Assert-UpdateProtectedPath { param($Path, $Private) }
+function Assert-UpdateTree { param($Root) }
 function Get-VerifiedExecutable { param($Path, $Sha256) return $Path }
 function Read-DeploymentServiceXml { param($Path) return ConvertFrom-DeploymentXml $script:xml }
 function Get-NetIPAddress { return [PSCustomObject]@{ IPAddress = '127.0.0.1' } }
@@ -26,7 +27,7 @@ function Resolve-DeploymentAddresses { param($Hostname) return [Net.IPAddress]::
 function Get-ItemProperty { return [PSCustomObject]@{} }
 function Get-CimInstance {
     param($ClassName, $Filter, $ErrorAction)
-    if ($ClassName -eq 'Win32_Process') { return [PSCustomObject]@{ ExecutablePath = $config.nodePath; CommandLine = ('"' + $config.nodePath + '" "C:\GST\new\apps\api\dist\main.js"'); ProcessId = 11 } }
+    if ($ClassName -eq 'Win32_Process') { $selected = (ConvertFrom-DeploymentXml $script:xml).service.workingdirectory; return [PSCustomObject]@{ ExecutablePath = $config.nodePath; CommandLine = ('"' + $config.nodePath + '" "' + (Join-Path $selected 'apps\api\dist\main.js') + '"'); ProcessId = 11 } }
     return [PSCustomObject]@{ StartName = $script:fixture.account; PathName = '"C:\GST\service\GSTBillingApi.exe"'; StartMode = $script:fixture.mode; State = $script:fixture.state; ProcessId = 10 }
 }
 function Get-NetFirewallRule {
@@ -91,6 +92,14 @@ if ($script:fixture.blocked -or $script:fixture.mode -ne 'Auto' -or -not $script
 $script:fixture.stopFailure = $true
 Assert-Rejected { Invoke-UpdateService Stop $config }
 if (-not $script:fixture.blocked -or $script:fixture.mode -ne 'Disabled') { throw 'Failed stop lost maintenance protection.' }
+$script:fixture.stopFailure = $false
+Invoke-UpdateService Stop $config
+$script:xml = $oldXml
+Invoke-UpdateService Restore $config
+Invoke-UpdateService StartOriginal $config
+Invoke-UpdateService ReadyOriginal $config
+Invoke-UpdateService AdmitOriginal $config
+if ($script:fixture.blocked -or $script:fixture.mode -ne 'Auto') { throw 'Original recovery did not restore admission state.' }
 $script:xml = $oldXml.Replace('<id>GSTBillingApi</id>', '<id>OtherService</id>')
 Assert-Rejected { Get-UpdateServiceXml $config }
 Assert-Rejected { ConvertFrom-DeploymentXml '<!DOCTYPE service [<!ENTITY x SYSTEM "file:///invalid">]><service>&x;</service>' }

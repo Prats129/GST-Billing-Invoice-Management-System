@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { UpdateHost, UpdateRecord } from './assisted-update.js';
 import { secureDirectory } from './release-staging.js';
 
-const recordSchema = z
+export const recordSchema = z
   .object({
     operationId: z.string().uuid(),
     installationId: z.string().uuid(),

@@ -1,5 +1,59 @@
 # Review coverage
 
+## Phase 6 continuation: connected completion workflow and failed-update recovery
+
+Recorded one connected execution plan in phase-6-execution.md, following the user's
+request to reduce fragmented planning and continue through meaningful batches.
+Started failed-update recovery against the existing protected journals, retained
+database OIDs and native service selection. Native acceptance remains postponed;
+no services, tasks, firewall rules, trust stores, production databases or Git
+staging are changed by this work. Implementation and checks are in progress.
+
+Implemented shared, exclusive initialization and compare-before-replace installed
+state; update admission records and commits the selected version/root before
+admitting users. Explicit recovery checks operation/installation identity,
+bounded protected evidence, original signed files, actual database name/OID pairs
+and required operator acknowledgements. Unknown states and lost rollback replies
+never authorize a guessed swap or automatic retry. Successful recovery restores
+matching database/application/state, verifies readiness and atomically archives
+the whole exact operation lock with its receipts instead of deleting evidence.
+Recovery does not require active maintenance to restore an installed release.
+
+Focused tests passed: five recovery safety cases, protected-state tests, existing
+staging/journal/transport cases and three real database adapter integration cases.
+The integration now injects an admission failure after metadata commit, then
+performs a real rollback and restores the previous metadata. Windows service
+effects remain mocked. Added native original-service restore/start/readiness/
+admission operations and safe mocked lifecycle checks. A read-only storage audit
+now rejects inherit-only unsafe ACEs on the managed directory itself, protecting
+new metadata children; real temporary NTFS regression confirms rejection without
+silently repairing permissions. Its first fixture modifier required unavailable
+SeSecurityPrivilege; changed only fixture construction to DACL-only icacls, which
+passed without audit-policy privilege or system ACL changes. Lint caught test-only
+type-import style and was corrected. Full regression checks are in progress.
+
+Investigated the next initial-installer dependency using official vendor sources;
+see windows-artifact-review.md. No approved wrapper is present, and cached PG
+binaries are not proof of distribution/checksum approval. No binaries were
+downloaded or executed, and no vendor/package/runtime versions were changed.
+
+Final local verification passed all 230 unit tests (32 files), all 63 isolated
+database integration tests (12 files), workspace/test TypeScript, production
+builds, lint and compiled frontend/assets/API/database/OpenAPI/Origin smoke.
+The three harmless transport tests passed again after native original-service
+actions/DACL-only grant changes. All 18 PowerShell files parsed; mocked service/
+recovery and deployment checks and in-memory backup-task tests passed. Final
+repository formatting and whitespace checks passed. No browser UI changed,
+so browser workflows were not repeated. Remote CI and native Windows service/
+file cutover, installation, LAN and reboot acceptance remain unverified.
+
+This completes the locally verified recovery/state batch in the connected plan,
+not Phase 6 or a production installer. Initial native provisioning/uninstall and
+schema-changing updates still need the reviewed artifact/service lifecycle and
+postponed test environment; SaaS provider, issuer custody, signing and professional
+tax approval remain separate release dependencies. No current customer database,
+laptop service/task/firewall/trust/startup setting or Git staging was changed.
+
 ## Phase 6 continuation: database and Windows service adapter binding
 
 Started binding the sequencer to actual backup creation/restore verification,

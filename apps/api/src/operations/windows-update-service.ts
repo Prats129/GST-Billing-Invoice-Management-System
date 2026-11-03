@@ -5,6 +5,7 @@ import { join, win32 } from 'node:path';
 import { z } from 'zod';
 import { parse } from 'dotenv';
 import type { UpdateService } from './database-update-host.js';
+import type { UpdateRecoveryService } from './update-recovery.js';
 
 const path = z
   .string()
@@ -86,7 +87,7 @@ export function createWindowsUpdateService(
     };
   },
   expected: { runtimeConnectionString: string; installationId: string },
-): UpdateService {
+): UpdateService & UpdateRecoveryService {
   const config = windowsUpdateServiceSchema.parse(configuration);
   if (new URL(config.origin).port !== String(config.port))
     throw new Error('Explicit matching HTTPS port required.');
@@ -193,5 +194,9 @@ export function createWindowsUpdateService(
     startPrivate: () => execute('Start'),
     assertReady: () => execute('Ready'),
     admit: () => execute('Admit'),
+    restoreOriginal: () => execute('Restore'),
+    startOriginal: () => execute('StartOriginal'),
+    assertOriginalReady: () => execute('ReadyOriginal'),
+    admitOriginal: () => execute('AdmitOriginal'),
   };
 }

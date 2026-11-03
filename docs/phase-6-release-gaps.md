@@ -3,6 +3,11 @@
 Repository review: 2026-11-02. This is a completion checklist, not a new phase or
 an approval to release. Existing local tests do not certify production deployment.
 
+Follow the [connected execution plan](phase-6-execution.md) without restarting
+planning for each helper. Protected installed state and explicit schema-preserving
+recovery are now implemented locally; remaining native/artifact dependencies are
+recorded in [artifact review](windows-artifact-review.md).
+
 | Remaining work                              | Current boundary                                                                                                                                                          | Required next input or work                                                                                                                                                                                                                      | Completion evidence                                                                                                                                                |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Windows installer and assisted updates      | Signed verification/staging and a schema-preserving Windows/database update adapter exist; initial installer and native acceptance remain unfinished.                     | Implement the installer lifecycle around approved redistributable binaries and protected service identities. Signing credentials and a disposable host/client are needed for release acceptance.                                                 | Signed clean install, backup-before-update, compatible migration, readiness, failure recovery and data-preserving uninstall tested on disposable Windows machines. |

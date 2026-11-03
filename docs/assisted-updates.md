@@ -97,6 +97,16 @@ by this update adapter.
 
 ## Journals, interruption and failure
 
+The host adapter now requires a private `installation.json` in the single
+operator-configured journal parent. It records installation UUID, current app
+root, version, schema digest and last operation, without credentials. The initial
+installer must create it exclusively using `initializeInstallationState`, after
+protecting and validating the deployment. Updates refuse missing/mismatched state;
+they do not silently adopt an existing installation. Compare-before-replace and
+same-directory atomic rename commit selected state before admitting users. The
+operation retains the before/after intent so a failed admission can be recovered.
+Development API startup is unaffected and does not create this record.
+
 `update-journal.ts` supplies exclusive `mkdir` locking under one fixed private
 operator-configured parent per installation. A random owner token binds the lock.
 Each operation creates a new private `gst-update-<UUID>` directory. Windows NTFS
@@ -129,6 +139,36 @@ journal/unlock failure also cannot report update success. Recovery after users
 may have written requires an explicit recovery-point decision, not automatic
 restoration of old data.
 
+## Explicit failed-update recovery
+
+`inspectFailedUpdate` reads bounded private journal/owner/cutover evidence and
+actual database names/OIDs without changing ACLs, files or business data. It
+reports `before_cutover`, `activated`, `not_activated` or `unknown`. A missing
+intent after switch/start intent is unknown; a failed command reply is not proof
+of rollback. These are host-library functions, not a tenant endpoint or a new
+customer command to run on this laptop.
+
+`recoverFailedUpdate` requires the original installation UUID, confirmation that
+the updater has stopped and acceptance of the recovery point. Restoring the
+retained database omits writes made in the candidate; that candidate remains
+retained, not merged or deleted. The recovery claim is exclusive and never stolen
+by a timeout. The routine verifies original signed files against protected
+installed version/schema/root, requires exact observed database OID pairs, stops
+writers and reinspects state before an explicit rollback through the existing
+database switch tool. It restores the retained service XML, starts the original
+privately, checks runtime/database/HTTPS readiness, restores installed metadata
+and admits users. Active maintenance is not required to restore an already
+installed release; existing authorization, licensing and compliance gates remain.
+
+The Windows backend supplies Restore/StartOriginal/ReadyOriginal/AdmitOriginal
+actions, preserving the retired candidate service definition. Actual native file
+replacement/service/firewall acceptance remains postponed; safe tests mock these
+machine effects. An interrupted/failed recovery keeps both locks and copies for
+inspection. A lost rollback reply is never automatically retried. After verified
+success, one atomic rename archives the entire original lock and recovery
+receipts under the operation journal, releasing the fixed update lock without
+erasing evidence. Uncertain or contradictory metadata never authorizes unlock.
+
 ## Remaining implementation and acceptance
 
 The bound adapter persists release/configuration references and database OIDs and
@@ -137,11 +177,11 @@ provision and protect its installation state, service identity, binaries and
 stable journal location, then validate the complete lifecycle on disposable
 Windows machines. The LocalService PoC is not promoted into a production installer.
 
-Unfinished work also includes initial dedicated PostgreSQL installation, signing
-and redistribution approval, startup/recovery policies, operator-guided rollback,
-data-preserving uninstall and actual disposable host/client tests. A journal alone
-does not recover a machine; the native adapter and operator recovery workflow are
-still required. See [Windows checks](windows-deployment-checks.md),
+Unfinished work includes initial dedicated PostgreSQL installation, signing and
+redistribution approval, startup/recovery policies, recovery after schema-changing
+updates, data-preserving uninstall and actual disposable host/client tests.
+Schema-preserving recovery is implemented locally as described above; it is not
+a production-accepted installer UI. See [Windows checks](windows-deployment-checks.md),
 [signed releases](signed-releases.md) and [release gaps](phase-6-release-gaps.md).
 No service, task, trust store, firewall, live database or laptop startup setting
 was changed while implementing or testing this core.

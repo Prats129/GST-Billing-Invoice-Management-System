@@ -15,6 +15,15 @@ import { migrationDigest } from '@gst/database/operations';
 import { loadEntitlementTrust } from '../../../apps/api/src/licensing/entitlement.js';
 import { runAssistedUpdate } from '../../../apps/api/src/operations/assisted-update.js';
 import { createDatabaseUpdateHost } from '../../../apps/api/src/operations/database-update-host.js';
+import {
+  initializeInstallationState,
+  readInstallationState,
+} from '../../../apps/api/src/operations/installation-state.js';
+import { secureDirectory } from '../../../apps/api/src/operations/release-staging.js';
+import {
+  inspectFailedUpdate,
+  recoverFailedUpdate,
+} from '../../../apps/api/src/operations/update-recovery.js';
 
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
 const tools = process.env.TEST_BACKUP_DOCKER_CONTAINER
@@ -116,24 +125,42 @@ beforeAll(async () => {
         ],
       );
     }
+    await db.query(`GRANT USAGE ON SCHEMA public TO "${role}"`);
+    await db.query(`GRANT SELECT ON ALL TABLES IN SCHEMA public TO "${role}"`);
   } finally {
     await db.end();
   }
   directory = await mkdtemp(join(fixtureParent, 'gst-update-adapter-test-'));
-  await mkdir(join(directory, 'package'));
+  for (const folder of ['package', 'original', 'next', 'unsupported'])
+    await mkdir(join(directory, folder));
   await mkdir(join(directory, 'journals'));
+  await secureDirectory(join(directory, 'journals'));
   digest = await migrationDigest();
   await packageManifest(digest);
+  await packageManifest(digest, 'original', '1.0.0', '0.9.0');
+  await initializeInstallationState(join(directory, 'journals'), {
+    format: 1,
+    installationId,
+    version: '1.0.0',
+    schemaDigest: digest,
+    appRoot: join(directory, 'original'),
+    operationId: null,
+  });
 }, 120000);
 
-async function packageManifest(target: string) {
+async function packageManifest(
+  target: string,
+  folder = 'package',
+  releaseVersion = '1.1.0',
+  minimum = '1.0.0',
+) {
   const contents = 'signed fixture; never execute';
-  await writeFile(join(directory!, 'package', 'app.js'), contents);
+  await writeFile(join(directory!, folder, 'app.js'), contents);
   const payload = Buffer.from(
     JSON.stringify({
       format: 1,
-      version: '1.1.0',
-      minimumInstalledVersion: '1.0.0',
+      version: releaseVersion,
+      minimumInstalledVersion: minimum,
       fromSchemaDigest: digest,
       toSchemaDigest: target,
       nodeMajor: 24,
@@ -148,7 +175,7 @@ async function packageManifest(target: string) {
     }),
   ).toString('base64url');
   await writeFile(
-    join(directory!, 'package', 'release.json'),
+    join(directory!, folder, 'release.json'),
     JSON.stringify({
       keyId: 'test',
       payload,
@@ -160,7 +187,7 @@ async function packageManifest(target: string) {
     }),
   );
 }
-function fixture() {
+async function fixture(folder = 'package') {
   const service = {
     stop: vi.fn(async () => {}),
     selectRelease: vi.fn(async () => {}),
@@ -169,14 +196,15 @@ function fixture() {
     admit: vi.fn(async () => {}),
   };
   const operationId = randomUUID();
-  const installed = { version: '1.0.0', schemaDigest: digest };
-  const stagedRoot = join(directory!, 'package');
+  const current = await readInstallationState(join(directory!, 'journals'));
+  const installed = { version: current.version, schemaDigest: digest };
+  const stagedRoot = join(directory!, folder);
   const host = createDatabaseUpdateHost({
     operationId,
     installationId,
     journalParent: join(directory!, 'journals'),
     stagedRoot,
-    installedRoot: join(directory!, 'original'),
+    installedRoot: current.appRoot,
     installed,
     backup: {
       connectionString: source!.connectionString,
@@ -193,6 +221,17 @@ function fixture() {
   return {
     service,
     operationId,
+    recovery: {
+      operationId,
+      installationId,
+      journalParent: join(directory!, 'journals'),
+      installedRoot: current.appRoot,
+      stagedRoot,
+      installed,
+      connectionString: source!.connectionString,
+      runtimeConnectionString: runtime,
+      releaseTrust: trust,
+    },
     options: {
       operationId,
       installationId,
@@ -205,7 +244,7 @@ function fixture() {
 }
 
 test('bound adapter backs up, restores, checks maintenance, provisions and switches a real database retaining the original', async () => {
-  const f = fixture();
+  const f = await fixture();
   expect(await runAssistedUpdate(f.options)).toMatchObject({
     phase: 'completed',
   });
@@ -258,9 +297,53 @@ test('bound adapter backs up, restores, checks maintenance, provisions and switc
   expect(log).not.toContain(apiPassword);
 }, 120000);
 
+test('guided recovery restores the original database/release state after an admission failure', async () => {
+  await packageManifest(digest, 'next', '1.2.0', '1.1.0');
+  const f = await fixture('next');
+  f.service.admit.mockRejectedValueOnce(
+    new Error('Admission failed after cutover'),
+  );
+  await expect(runAssistedUpdate(f.options)).rejects.toMatchObject({
+    recoveryRequired: true,
+  });
+  expect(await readInstallationState(f.recovery.journalParent)).toMatchObject({
+    version: '1.2.0',
+  });
+  expect(await inspectFailedUpdate(f.recovery)).toMatchObject({
+    state: 'activated',
+  });
+  const service = {
+    stop: vi.fn(async () => {}),
+    restoreOriginal: vi.fn(async () => {}),
+    startOriginal: vi.fn(async () => {}),
+    assertOriginalReady: vi.fn(async () => {}),
+    admitOriginal: vi.fn(async () => {}),
+  };
+  await expect(
+    recoverFailedUpdate(f.recovery, service, {
+      updaterStopped: false,
+      installationId,
+      acceptRecoveryPoint: true,
+    }),
+  ).rejects.toThrow();
+  expect(service.stop).not.toHaveBeenCalled();
+  await expect(
+    recoverFailedUpdate(f.recovery, service, {
+      updaterStopped: true,
+      installationId,
+      acceptRecoveryPoint: true,
+    }),
+  ).resolves.toMatchObject({ state: 'original_restored' });
+  expect(await readInstallationState(f.recovery.journalParent)).toMatchObject({
+    version: '1.1.0',
+    appRoot: f.recovery.installedRoot,
+  });
+  expect(service.restoreOriginal).toHaveBeenCalledOnce();
+}, 120000);
+
 test('schema-changing signed releases fail before native stop or backup', async () => {
-  await packageManifest('f'.repeat(64));
-  const f = fixture();
+  await packageManifest('f'.repeat(64), 'unsupported', '1.2.0', '1.1.0');
+  const f = await fixture('unsupported');
   await expect(runAssistedUpdate(f.options)).rejects.toMatchObject({
     recoveryRequired: false,
   });
