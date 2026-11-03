@@ -70,6 +70,9 @@ schema compatibility and service recovery. No production updater is claimed here
 
 Protected staging is implemented below. Installation/service control, maintenance,
 live forward migration, live recovery/cutover and reboot acceptance remain unfinished.
+The [assisted-update sequencing core and protected journal](assisted-updates.md)
+are implemented and locally testable. Their privileged native adapter and
+production installer entrypoint remain unfinished; they do not install updates.
 Explicit forward migration of an isolated recovery copy is now available through
 backup prepare-recovery; see backup-recovery.md. It does not install an update.
 

@@ -44,6 +44,17 @@ commercial Windows release. Independent release/security work can continue.
 
 ## Completed engineering checkpoints
 
+- Assisted-update sequencing core verifies real staged packages, requires fresh
+  backup/candidate/maintenance/readiness checks from explicit host adapters and
+  keeps failures stopped for recovery. Real private file-backed journals/locks
+  preserve interrupted operation records. See assisted-updates.md. Windows
+  service/database adapter binding, initial installation, rollback/uninstall and
+  native acceptance remain unfinished; no runnable installer is claimed.
+  This continuation passed all 219 unit tests, API production build,
+  application/test TypeScript and lint. Native service/database effects in the
+  runner tests are simulated; real signatures and protected filesystem journals
+  are exercised. Database/browser/native deployment suites were not repeated.
+
 - Offline maintenance eligibility preflight enforces active maintenance at install
   time for every organization, using signed grants and a read-only full-database
   snapshot. See signed-releases.md. Installer integration and atomic update

@@ -10,7 +10,9 @@ import type { EntitlementTrust } from '../licensing/entitlement.js';
 import { ReleaseError, verifyReleasePackage } from './release-package.js';
 import type { ReleaseFile } from './release-package.js';
 
-async function secureDirectory(path: string) {
+// Shared by update journals: protect a newly created operator directory before
+// writing, and reject unsafe owners/reparse points/replaceable ancestors.
+export async function secureDirectory(path: string) {
   if (process.platform === 'win32') {
     // ACL protection precedes every package write. Check ancestors as well:
     // DeleteChild on a parent can defeat a private child directory's ACL.

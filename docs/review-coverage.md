@@ -1,5 +1,52 @@
 # Review coverage
 
+## Phase 6 continuation: assisted-update safety sequencing
+
+Started the application-update coordination core after reviewing the existing
+signed package, backup, candidate migration, runtime access and database switch
+implementations. No native installer entrypoint or default/no-op Windows adapter
+is provided. Concrete signed package verification runs before stopping writers
+and again after candidate preparation. The host contract requires an exclusive
+maintenance lock, durably flushed phase records, stopped ingress/writers/restarts,
+a fresh verified backup, quarantined forward-migrated candidate, current maintenance
+for all original/candidate organizations, controlled activation and private
+readiness before admitting users. Failures after a stop attempt keep the service
+stopped and preserve recovery copies; ambiguous COMMIT errors never imply rollback
+or trigger automatic schema downgrade. No service, task, firewall, trust store,
+production database/configuration or Git staging was changed.
+
+First focused sequencing run passed all 18 cases. Added a concrete file-backed
+exclusive journal with serialized fsync'd records, strict sanitized fields,
+owner-token checks and retained locks after interruption/failure. Reused existing
+release-staging protection rather than weakening ACLs or adding dependencies.
+The first three journal tests failed the real ancestor ACL audit under sandbox
+TEMP; moved generated fixtures to the existing staging tests' private Windows
+profile base without changing production checks. All three journal tests then
+passed. Added an end-to-end simulated activation failure with a real journal and
+retry-blocking lock. A full run passed 217 tests but one native ACL fixture hit
+the default five-second test timeout; used the existing release-staging tests'
+30-second budget for the new native journal fixtures, without loosening production
+checks. The next full run passed 218 tests; added a final owner-token tampering
+case and reran all unit tests successfully: 219 passed across 29 files.
+
+API production build, test/application TypeScript and lint passed. Final repository
+formatting and Git whitespace checks also passed. There are no new
+dependencies, package scripts, schema migrations, product UI or executable
+installer entrypoints. Actual service/database actions in the coordination tests
+are simulated; signature verification, signed maintenance expiry checks and
+temporary journal/lock/NTFS protection are exercised for real. Isolated database,
+browser and Windows service/LAN/reboot suites were not repeated because no bound
+database/UI/native service implementation changed.
+
+This is an implementation checkpoint, not completion of the requested Windows
+installer. The remaining native service/database adapter must bind the existing
+operator tools, persist actual recovery paths/OIDs and implement initial install,
+activation/rollback/uninstall against approved deployment binaries and a dedicated
+service identity. No default adapter is supplied that could silently claim those
+operations succeeded. Disposable host/client acceptance and signing/redistribution
+remain external gates; the user's Windows postponement stays in force. See
+assisted-updates.md for exact contracts and unverified boundaries.
+
 ## Phase 6 continuation: offline update maintenance eligibility
 
 User confirmed active maintenance at installation time and eligibility for every
