@@ -5,7 +5,10 @@ import {
   entitlementClaimsSchema,
   signedEntitlementSchema,
 } from '../../packages/contracts/dist/index.js';
-import type { SignedEntitlement } from '../../packages/contracts/dist/index.js';
+import type {
+  SignedEntitlement,
+  EntitlementClaims,
+} from '../../packages/contracts/dist/index.js';
 import {
   loadEntitlementTrust,
   verifyEntitlement,
@@ -53,15 +56,7 @@ export function issueEntitlement(options: {
     );
     if (options.previousGrant !== undefined) {
       const previous = verifyEntitlement(options.previousGrant, trust);
-      if (
-        claims.organizationId !== previous.organizationId ||
-        claims.edition !== previous.edition ||
-        claims.sequence !== previous.sequence + 1 ||
-        claims.entitlementId === previous.entitlementId ||
-        Date.parse(claims.issuedAt) < Date.parse(previous.issuedAt) ||
-        claims.kind === 'trial'
-      )
-        throw new IssuerError();
+      assertSuccessor(claims, previous);
       // An installation transfer can change the binding only via this publisher
       // operation. Disconnected copies cannot be revoked immediately.
     } else if (claims.sequence !== 1) throw new IssuerError();
@@ -81,6 +76,21 @@ export function issueEntitlement(options: {
   } catch {
     throw new IssuerError();
   }
+}
+
+export function assertSuccessor(
+  claims: EntitlementClaims,
+  previous: EntitlementClaims,
+) {
+  if (
+    claims.organizationId !== previous.organizationId ||
+    claims.edition !== previous.edition ||
+    claims.sequence !== previous.sequence + 1 ||
+    claims.entitlementId === previous.entitlementId ||
+    Date.parse(claims.issuedAt) < Date.parse(previous.issuedAt) ||
+    claims.kind === 'trial'
+  )
+    throw new IssuerError();
 }
 
 export function approvedIssuerTrust(

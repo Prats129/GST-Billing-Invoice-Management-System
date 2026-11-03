@@ -1,5 +1,49 @@
 # Review coverage
 
+## Phase 6 continuation: publisher issuance register
+
+Started the next independent commercial-operations item in the connected plan:
+an explicit protected publisher register for license issuance/renewal, preventing
+stale predecessor and duplicate first-issuance mistakes. Native installer/artifact,
+provider, signing-key custody and professional approval gates remain pending.
+No production keys/licenses, customer database, deployment configuration or Git
+staging are changed. Implementation and verification are in progress.
+
+Implemented explicit new-register initialization with a stable expected UUID,
+read-only audits of existing private directories, full signed history verification
+and authoritative predecessor checks. Per-sequence file-content flush and atomic
+no-overwrite hard-link commit prevent two concurrent issuances from publishing
+the same next sequence. Register commit precedes delivery output; exact export
+recovers delivery failure without private-key access or another issuance. Normal
+issuer CLI calls now require --register and --register-id. Output paths inside
+the store are refused; malformed/gapped history fails closed. No bootstrap of
+existing commercial history, cloud issuer, replication or instant offline
+revocation is claimed. Windows directory metadata/power-loss acceptance remains
+unverified despite local NTFS tests.
+
+The first focused run passed all 11 issuer/register tests, including actual CLI
+init/issue/export, concurrency, stale/duplicate/gapped sequences, key rotation,
+host replacement and output recovery. Lint caught a fixture cleanup guard throwing
+directly in finally; moved the guard into a guarded cleanup helper, then lint and
+test TypeScript passed. Added final output-path/pending-file safeguards and POSIX
+parent-directory flushes; full regression checks are in progress.
+
+Full local regression passed all 240 unit tests (34 files), workspace/test
+TypeScript, lint, production package/API/web builds, repository formatting and
+Git whitespace checks. Compiled frontend/assets/API/real-database/OpenAPI/Origin
+smoke passed. Both existing isolated entitlement integration cases passed,
+confirming consumer installation/lifecycle compatibility. The focused issuer/
+register suite passed again (11 tests) after the parent-directory audit and again
+after final CLI environment/path handling. No schema,
+API route, UI, customer license policy or dependencies changed, so unrelated
+database/browser/native deployment suites were not repeated in this batch.
+
+This completes the locally verified publisher-register batch. Phase 6 remains
+incomplete: deployed authority/custody and restore reconciliation, approved native
+installer artifacts, actual Windows/power-loss acceptance, provider/certificate
+operations and professional tax review are still release requirements. No Git
+staging or privileged laptop deployment was performed.
+
 ## Phase 6 continuation: forward-copy updates and paired schema recovery
 
 Continuing the connected execution plan with schema-changing update/recovery

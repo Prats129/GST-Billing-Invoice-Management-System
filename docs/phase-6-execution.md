@@ -30,6 +30,9 @@ installer, restart planning after each helper or add unrelated product features.
    renewal/trust procedures and the chosen SaaS provider/subscription process.
    Do not select a provider, publish prices, create production signing keys or
    assert professional tax approval on the user's behalf.
+   Publisher-only local issuance registration and exact committed-grant export
+   are implemented. Production authority/storage/key custody, existing-history
+   reconciliation, provider and certificate operations remain external work.
 5. Run integrated local regression checks, then collect the postponed disposable
    Windows host/client install/update/failure/recovery/uninstall/LAN/reboot evidence
    and actual SaaS backup/restore evidence before commercial release.

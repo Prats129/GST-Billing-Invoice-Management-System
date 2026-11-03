@@ -44,6 +44,16 @@ commercial Windows release. Independent release/security work can continue.
 
 ## Completed engineering checkpoints
 
+- Publisher issuance now requires an explicit protected local register and its
+  expected identity. Recorded predecessors prevent duplicate first issuance and
+  stale renewal; atomic no-overwrite sequence commits prevent concurrent forks.
+  Exact grant export recovers delivery failures without another signing operation.
+  See licensing-operations.md and review-coverage.md for verification and limits.
+  All 240 unit tests, both targeted entitlement integration tests, workspace/test
+  types, production builds, lint/format checks and compiled smoke passed. Final
+  issuer/register reruns passed all 11 focused tests with ephemeral keys only.
+  Production custody/deployment and external release dependencies remain pending.
+
 - Supported forward-copy updates now require the target operator's trusted
   migrations, retain the original schema in cutover evidence and restore matching
   application/database/installed state on explicit recovery. Runtime readiness

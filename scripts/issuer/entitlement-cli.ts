@@ -1,6 +1,10 @@
-import { writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { issueEntitlement, loadIssuerKey } from './entitlement.js';
+import { loadIssuerKey } from './entitlement.js';
+import {
+  issueRegisteredEntitlement,
+  writeGrantOutput,
+  assertGrantOutputPath,
+} from './register.js';
 import { readBounded } from './inputs.js';
 
 let pem: Buffer | undefined;
@@ -15,6 +19,8 @@ try {
       output: { type: 'string' },
       'previous-grant': { type: 'string' },
       'new-organization': { type: 'boolean' },
+      register: { type: 'string' },
+      'register-id': { type: 'string' },
     },
   });
   if (
@@ -23,14 +29,20 @@ try {
     !values['key-id'] ||
     !values.trust ||
     !values.output ||
+    !values.register ||
+    !values['register-id'] ||
     Boolean(values['previous-grant']) === Boolean(values['new-organization']) ||
     !process.env.ISSUER_KEY_PASSPHRASE
   )
     throw new Error();
+  assertGrantOutputPath(values.register, values.output);
   passphrase = Buffer.from(process.env.ISSUER_KEY_PASSPHRASE, 'utf8');
   delete process.env.ISSUER_KEY_PASSPHRASE;
   pem = await readBounded(values['key-file'], 16384);
-  const envelope = issueEntitlement({
+  const envelope = await issueRegisteredEntitlement({
+    directory: values.register,
+    registerId: values['register-id'],
+    newOrganization: Boolean(values['new-organization']),
     claims: JSON.parse(
       (await readBounded(values.claims, 16384)).toString('utf8'),
     ),
@@ -49,14 +61,11 @@ try {
         }
       : {}),
   });
-  await writeFile(values.output, JSON.stringify(envelope) + '\n', {
-    flag: 'wx',
-    mode: 0o600,
-  });
+  await writeGrantOutput(values.output, envelope);
   process.stdout.write('{"event":"entitlement_issued"}\n');
 } catch {
   process.stderr.write(
-    '{"event":"entitlement_issue_failed","message":"Use approved claims, encrypted Ed25519 key, matching public trust, protected ISSUER_KEY_PASSPHRASE and a new output path. Select exactly one of --new-organization or --previous-grant."}\n',
+    '{"event":"entitlement_issue_failed","message":"Check approved claims, encrypted key, public trust, protected passphrase and authoritative --register/--register-id. Select exactly one of --new-organization or --previous-grant. If issuance was recorded but output failed, export the committed grant to a new path; do not reset history."}\n',
   );
   process.exitCode = 1;
 } finally {

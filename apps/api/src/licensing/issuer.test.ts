@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { createPublicKey, generateKeyPairSync, randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, resolve, dirname, basename } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import {
@@ -10,6 +10,16 @@ import {
   loadIssuerKey,
 } from '../../../../scripts/issuer/entitlement.js';
 import { loadEntitlementTrust, verifyEntitlement } from './entitlement.js';
+import { secureDirectory } from '../operations/release-staging.js';
+
+async function removeIssuerFixture(parent: string, directory: string) {
+  if (
+    dirname(resolve(directory)) !== resolve(parent) ||
+    !basename(directory).startsWith('gst-issuer-cli-')
+  )
+    throw new Error('Unsafe fixture cleanup.');
+  await rm(directory, { recursive: true, force: true });
+}
 
 function fixture() {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
@@ -125,13 +135,27 @@ test('issuer keys require encrypted Ed25519 PKCS8 and the correct passphrase', (
 
 test('publisher CLI writes a consumable grant, refuses overwrite and sanitizes failures', async () => {
   const f = fixture();
-  const directory = await mkdtemp(join(tmpdir(), 'gst-issuer-cli-'));
+  const parent =
+    process.platform === 'win32'
+      ? (process.env.LOCALAPPDATA ?? tmpdir())
+      : tmpdir();
+  const directory = await mkdtemp(join(parent, 'gst-issuer-cli-'));
   try {
+    await secureDirectory(directory);
     const claims = join(directory, 'claims.json');
     const trust = join(directory, 'trust.json');
     const key = join(directory, 'ephemeral.key');
     const output = join(directory, 'signed.json');
     const passphrase = 'ephemeral-cli-passphrase-only';
+    const register = join(directory, 'register');
+    const registerCli = (...args: string[]) =>
+      promisify(execFile)(
+        process.execPath,
+        ['--import', 'tsx', resolve('scripts/issuer/register-cli.ts'), ...args],
+        { env: { ...process.env }, timeout: 45000, windowsHide: true },
+      );
+    const initialized = await registerCli('init', '--register', register);
+    const { registerId } = JSON.parse(initialized.stdout);
     await writeFile(claims, JSON.stringify(f.claims));
     await writeFile(trust, JSON.stringify(f.trust));
     await writeFile(
@@ -159,11 +183,16 @@ test('publisher CLI writes a consumable grant, refuses overwrite and sanitizes f
       '--output',
       output,
       '--new-organization',
+      '--register',
+      register,
+      '--register-id',
+      registerId,
     ];
     const invoke = (password = passphrase) =>
       promisify(execFile)(process.execPath, args, {
         env: { ...process.env, ISSUER_KEY_PASSPHRASE: password },
-        timeout: 15000,
+        timeout: 45000,
+        windowsHide: true,
       });
     expect((await invoke()).stdout.trim()).toBe(
       '{"event":"entitlement_issued"}',
@@ -186,7 +215,30 @@ test('publisher CLI writes a consumable grant, refuses overwrite and sanitizes f
       expect(failure.stderr).not.toContain(directory);
     }
     await expect(readFile(output)).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(
+      (
+        await registerCli(
+          'export',
+          '--register',
+          register,
+          '--register-id',
+          registerId,
+          '--organization',
+          f.claims.organizationId,
+          '--sequence',
+          '1',
+          '--trust',
+          trust,
+          '--output',
+          output,
+        )
+      ).stdout.trim(),
+    ).toBe('{"event":"registered_entitlement_exported"}');
+    expect(await readFile(output, 'utf8')).toBe(bytes);
+    await expect(
+      registerCli('init', '--register', register),
+    ).rejects.toMatchObject({ code: 1 });
   } finally {
-    await rm(directory, { recursive: true, force: true });
+    await removeIssuerFixture(parent, directory);
   }
-}, 30000);
+}, 120000);
