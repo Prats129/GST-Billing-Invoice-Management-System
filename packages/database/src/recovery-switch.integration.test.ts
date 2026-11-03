@@ -8,9 +8,17 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createDatabase } from '@gst/database';
 import { createIsolatedTestDatabase } from '@gst/database/testing';
-import { createEncryptedBackup, prepareRecovery } from './backup-operator.js';
+import {
+  createEncryptedBackup,
+  prepareRecovery,
+  migrationDigest,
+} from './backup-operator.js';
 import { provisionRecoveryRuntime } from './runtime-access.js';
-import { recoverySwitchStatus, switchRecovery } from './recovery-switch.js';
+import {
+  recoverySwitchStatus,
+  switchRecovery,
+  assertRecoveryRuntimeReady,
+} from './recovery-switch.js';
 import { parseConfig } from '../../../apps/api/src/config.js';
 import { IdentityService } from '../../../apps/api/src/security/identity.service.js';
 import { OrganizationsService } from '../../../apps/api/src/security/organizations.service.js';
@@ -490,6 +498,155 @@ test.skipIf(!tools)(
       expect(stdout).not.toContain(source!.connectionString);
       expect(stderr).toBe('');
     }
+  },
+  120000,
+);
+
+test.skipIf(!tools)(
+  'forward migration switches only the copy and rollback restores the verified original schema without a down migration',
+  async () => {
+    // Keep this historical-schema fixture last. Its original is deliberately
+    // left on Phase 5 for deletion by the fixture cleanup, never re-migrated to
+    // manufacture current-release compatibility for another test.
+    const oldDigest = await migrationDigest(5);
+    const targetDigest = await migrationDigest();
+    await at(sourceName, async (db) => {
+      await db.query('DROP TABLE public.organization_entitlements');
+      await db.query(
+        'DELETE FROM drizzle.__drizzle_migrations WHERE id=(SELECT max(id) FROM drizzle.__drizzle_migrations)',
+      );
+    });
+    const backup = {
+      connectionString: source!.connectionString,
+      installationId,
+      key: Buffer.alloc(32, 29),
+      workDirectory: join(directory!, 'work'),
+      ...tools!,
+    };
+    const oldArtifact = join(directory!, 'older-release.gstbackup');
+    expect(
+      (await createEncryptedBackup(backup, oldArtifact)).schemaDigest,
+    ).toBe(oldDigest);
+    const prepared = await prepareRecovery(
+      backup,
+      oldArtifact,
+      installationId,
+      targetDigest,
+    );
+    const database = prepared.recoveryDatabase;
+    candidates.push(database);
+    expect(prepared).toMatchObject({
+      upgraded: true,
+      schemaDigest: targetDigest,
+    });
+    await provisionRecoveryRuntime({
+      connectionString: source!.connectionString,
+      database,
+      confirmDatabase: database,
+      installationId,
+      runtimeRole,
+    });
+    await expect(
+      switchRecovery(
+        { ...options(database), originalSchemaDigest: targetDigest },
+        'activate',
+      ),
+    ).rejects.toThrow();
+    const bound = { ...options(database), originalSchemaDigest: oldDigest };
+    await expect(switchRecovery(bound, 'activate')).resolves.toMatchObject({
+      state: 'activated',
+      retainedOid: sourceOid,
+    });
+    let history: { id: number; hash: string } | undefined;
+    await admin!.query(
+      `ALTER DATABASE "${previous(database)}" ALLOW_CONNECTIONS true`,
+    );
+    try {
+      await at(previous(database), async (db) => {
+        expect(
+          (
+            await db.query(
+              "SELECT to_regclass('public.organization_entitlements') AS relation",
+            )
+          ).rows[0].relation,
+        ).toBeNull();
+        expect(
+          (
+            await db.query(
+              'SELECT count(*)::int AS count FROM drizzle.__drizzle_migrations',
+            )
+          ).rows[0].count,
+        ).toBe(5);
+        history = (
+          await db.query(
+            'SELECT id,hash FROM drizzle.__drizzle_migrations ORDER BY id DESC LIMIT 1',
+          )
+        ).rows[0];
+        await db.query(
+          'UPDATE drizzle.__drizzle_migrations SET hash=$1 WHERE id=$2',
+          ['0'.repeat(64), history!.id],
+        );
+      });
+    } finally {
+      await admin!.query(
+        `ALTER DATABASE "${previous(database)}" ALLOW_CONNECTIONS false`,
+      );
+    }
+    await expect(switchRecovery(bound, 'rollback')).rejects.toThrow();
+    const rejected = await recoverySwitchStatus(bound);
+    expect(
+      rejected.databases.find((d) => d.name === previous(database)),
+    ).toMatchObject({ oid: sourceOid, open: false });
+    expect(rejected.databases.find((d) => d.name === sourceName)?.oid).not.toBe(
+      sourceOid,
+    );
+    await admin!.query(
+      `ALTER DATABASE "${previous(database)}" ALLOW_CONNECTIONS true`,
+    );
+    try {
+      await at(previous(database), async (db) => {
+        await db.query(
+          'UPDATE drizzle.__drizzle_migrations SET hash=$1 WHERE id=$2',
+          [history!.hash, history!.id],
+        );
+      });
+    } finally {
+      await admin!.query(
+        `ALTER DATABASE "${previous(database)}" ALLOW_CONNECTIONS false`,
+      );
+    }
+    await expect(
+      switchRecovery(
+        { ...bound, originalSchemaDigest: targetDigest },
+        'rollback',
+      ),
+    ).rejects.toThrow();
+    await expect(switchRecovery(bound, 'rollback')).resolves.toMatchObject({
+      state: 'rolled_back',
+      activeOid: sourceOid,
+    });
+    await expect(
+      assertRecoveryRuntimeReady(runtimeUrl(), oldDigest),
+    ).resolves.toBeUndefined();
+    const currentApi = createDatabase(runtimeUrl());
+    try {
+      // Retained-release recovery never relaxes current application startup.
+      await expect(currentApi.ready()).rejects.toThrow();
+    } finally {
+      await currentApi.close();
+    }
+    await at(sourceName, async (db) => {
+      expect(
+        (
+          await db.query(
+            'SELECT count(*)::int AS count FROM drizzle.__drizzle_migrations',
+          )
+        ).rows[0].count,
+      ).toBe(5);
+      expect(
+        (await db.query('SELECT name FROM public.organizations')).rows,
+      ).toEqual([{ name: 'Current original' }]);
+    });
   },
   120000,
 );

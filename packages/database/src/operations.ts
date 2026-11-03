@@ -7,7 +7,11 @@ export {
 } from './backup-operator.js';
 export type { BackupOperatorOptions } from './backup-operator.js';
 export { provisionRecoveryRuntime } from './runtime-access.js';
-export { switchRecovery, recoverySwitchStatus } from './recovery-switch.js';
+export {
+  switchRecovery,
+  recoverySwitchStatus,
+  assertRecoveryRuntimeReady,
+} from './recovery-switch.js';
 export {
   inspectUpdateDatabase,
   readUpdateOrganizations,

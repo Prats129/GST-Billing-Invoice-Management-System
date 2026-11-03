@@ -104,6 +104,7 @@ export function createDatabaseUpdateHost(options: {
       confirmActiveDatabase: binding.database,
       installationId: options.installationId,
       confirmWritersStopped: true,
+      originalSchemaDigest: options.installed.schemaDigest,
     };
   };
   const maintenance = async (name?: string) =>
@@ -124,15 +125,10 @@ export function createDatabaseUpdateHost(options: {
         options.releaseTrust,
         options.installed,
       );
-      if (target.toSchemaDigest !== options.installed.schemaDigest)
-        throw new Error('Schema-changing updates require a later adapter.');
-      if (
-        journal ||
-        (await migrationDigest()) !== options.installed.schemaDigest
-      ) {
-        // This first bound adapter is deliberately schema-preserving. Forward
-        // migration cutover needs a matching target updater/recovery release.
-        throw new Error('Use the matching schema-preserving operator release.');
+      if (journal || (await migrationDigest()) !== target.toSchemaDigest) {
+        // Migrations come only from this independently trusted target operator
+        // release, never from a caller-selected directory or backup contents.
+        throw new Error('Use the matching target-schema operator release.');
       }
       installedState = await readInstallationState(options.journalParent);
       if (
@@ -228,13 +224,14 @@ export function createDatabaseUpdateHost(options: {
         target.toSchemaDigest !== (await migrationDigest())
       )
         throw new Error(
-          'Schema-changing updates are not supported by this adapter.',
+          'Update schema does not match the trusted operator release.',
         );
       manifest = structuredClone(target);
       const prepared = await prepareRecovery(
         options.backup,
         join(journal.directory, 'before-update.gstbackup'),
         options.installationId,
+        target.toSchemaDigest,
       );
       await save('prepared', prepared); // Name retained even if runtime provisioning fails.
       await provisionRecoveryRuntime({
@@ -270,6 +267,8 @@ export function createDatabaseUpdateHost(options: {
         stagedRoot: options.stagedRoot,
         installedVersion: options.installed.version,
         targetVersion: manifest.version,
+        installedSchemaDigest: options.installed.schemaDigest,
+        targetSchemaDigest: manifest.toSchemaDigest,
       });
       const result = await switchRecovery(switchOptions(), 'activate');
       await save('cutover-result', result);

@@ -44,12 +44,23 @@ commercial Windows release. Independent release/security work can continue.
 
 ## Completed engineering checkpoints
 
+- Supported forward-copy updates now require the target operator's trusted
+  migrations, retain the original schema in cutover evidence and restore matching
+  application/database/installed state on explicit recovery. Runtime readiness
+  distinguishes reviewed retained schemas from current application startup.
+  Real PostgreSQL forward/rollback and tampered-history checks, plus orchestration
+  fault tests, cover this batch. Local checks passed all 235 unit tests, 64 isolated
+  integration tests, workspace/test types, production builds, lint, formatting
+  and compiled smoke. Both real update/recovery files passed again after removing
+  temporary diagnostics (9 tests). See review-coverage.md for evidence and limits.
+  Native Windows acceptance and commercial release dependencies remain pending.
+
 - Connected execution plan is recorded in phase-6-execution.md. Shared protected
   installation state and explicit schema-preserving failed-update recovery now
   verify original signed files, observed OIDs and operator acknowledgements,
   restore the matching pair/state and archive lock evidence after readiness.
-  See assisted-updates.md. Initial provisioning/uninstall, schema-changing
-  recovery and actual native acceptance remain unfinished.
+  See assisted-updates.md. Initial provisioning/uninstall and actual native
+  acceptance remain unfinished; forward-copy recovery is extended above.
 
 - Bound schema-preserving update adapter now connects actual encrypted backup/
   restore, candidate/runtime provisioning and database cutover to implemented

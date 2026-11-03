@@ -1,6 +1,13 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { generateKeyPairSync, randomUUID, sign, createHash } from 'node:crypto';
-import { mkdtemp, mkdir, writeFile, rm, lstat } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  rm,
+  lstat,
+} from 'node:fs/promises';
 import { join, resolve, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { secureDirectory } from './release-staging.js';
@@ -9,7 +16,6 @@ import { loadEntitlementTrust } from '../licensing/entitlement.js';
 import { inspectFailedUpdate, recoverFailedUpdate } from './update-recovery.js';
 import { readInstallationState } from './installation-state.js';
 import type * as DatabaseOperations from '@gst/database/operations';
-import type * as DatabaseModule from '@gst/database';
 
 const hook = vi.hoisted(() => ({
   activated: true,
@@ -51,10 +57,7 @@ vi.mock('@gst/database/operations', async (original) => ({
     _value: unknown,
     inspect: (db: unknown, digest: string) => unknown,
   ) => inspect({}, 'a'.repeat(64)),
-}));
-vi.mock('@gst/database', async (original) => ({
-  ...(await original<typeof DatabaseModule>()),
-  createDatabase: () => ({ ready: async () => {}, close: async () => {} }),
+  assertRecoveryRuntimeReady: async () => {},
 }));
 const { publicKey, privateKey } = generateKeyPairSync('ed25519');
 const trust = loadEntitlementTrust({
@@ -210,6 +213,67 @@ test('confirmed recovery verifies original signatures, restores metadata and arc
   expect(hook.calls).toBe(1);
   expect(f.service.admitOriginal).toHaveBeenCalledOnce();
 }, 60000);
+test('schema-changing recovery restores the original schema binding with the original release', async () => {
+  const f = await fixture();
+  const intentPath = join(
+    f.root,
+    'gst-update-' + f.options.operationId,
+    'cutover-intent.json',
+  );
+  const intent = JSON.parse(await readFile(intentPath, 'utf8'));
+  await writeFile(
+    intentPath,
+    JSON.stringify({
+      ...intent,
+      installedSchemaDigest: 'a'.repeat(64),
+      targetSchemaDigest: 'b'.repeat(64),
+    }),
+  );
+  const state = await readInstallationState(f.root);
+  await writeFile(
+    join(f.root, 'installation.json'),
+    JSON.stringify({
+      ...state,
+      schemaDigest: 'b'.repeat(64),
+    }),
+  );
+  await expect(
+    recoverFailedUpdate(f.options, f.service, f.confirmations),
+  ).resolves.toMatchObject({ state: 'original_restored' });
+  expect(await readInstallationState(f.root)).toMatchObject({
+    schemaDigest: 'a'.repeat(64),
+    version: '1.0.0',
+    appRoot: f.options.installedRoot,
+  });
+  expect(hook.calls).toBe(1);
+}, 60000);
+
+test('a mismatched recorded target schema cannot authorize recovery or unlock', async () => {
+  const f = await fixture();
+  const intentPath = join(
+    f.root,
+    'gst-update-' + f.options.operationId,
+    'cutover-intent.json',
+  );
+  const intent = JSON.parse(await readFile(intentPath, 'utf8'));
+  await writeFile(
+    intentPath,
+    JSON.stringify({
+      ...intent,
+      installedSchemaDigest: 'a'.repeat(64),
+      targetSchemaDigest: 'b'.repeat(64),
+    }),
+  );
+  await expect(
+    recoverFailedUpdate(f.options, f.service, f.confirmations),
+  ).rejects.toThrow();
+  expect(hook.calls).toBe(0);
+  expect(f.service.startOriginal).not.toHaveBeenCalled();
+  expect((await lstat(join(f.root, 'gst-update.lock'))).isDirectory()).toBe(
+    true,
+  );
+}, 60000);
+
 test('missing acknowledgements and wrong installation never stop services or rollback', async () => {
   const f = await fixture();
   for (const confirmations of [

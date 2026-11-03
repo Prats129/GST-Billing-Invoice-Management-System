@@ -341,7 +341,7 @@ test('guided recovery restores the original database/release state after an admi
   expect(service.restoreOriginal).toHaveBeenCalledOnce();
 }, 120000);
 
-test('schema-changing signed releases fail before native stop or backup', async () => {
+test('signed releases without matching target migrations fail before native stop or backup', async () => {
   await packageManifest('f'.repeat(64), 'unsupported', '1.2.0', '1.1.0');
   const f = await fixture('unsupported');
   await expect(runAssistedUpdate(f.options)).rejects.toMatchObject({

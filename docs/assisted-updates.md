@@ -1,7 +1,7 @@
 # Assisted update implementation boundary
 
 The repository contains the update sequencing core, protected file-backed journal
-and bound adapters for schema-preserving updates of an already provisioned
+and bound adapters for supported forward-copy updates of an already provisioned
 dedicated Windows service. It does **not** yet contain an executable production
 installer or initial PostgreSQL/service provisioning. No new install command is
 advertised, and application startup does not invoke this code. Native Windows
@@ -43,13 +43,31 @@ must come from separately protected installation/operator state. Neither a
 download nor tenant input may select those values. No permissive default service,
 account, development entitlement bypass or downloaded executable is supplied.
 
-The first bound adapter requires **identical source and target schema digests**,
-matching its trusted migration bundle, before any service stop or backup. It
-still restores into a separate copy, provisions restricted runtime access and
-retains the original database during activation. It does not implement live or
-copy-based schema-changing update orchestration; that requires a later matching
-updater/recovery release. The underlying standalone recovery tools retain their
-existing forward-migration capability.
+The bound adapter requires the **target schema to match its independently trusted
+operator migration bundle** before any service stop or backup. The source must be
+a verified supported prefix, bound to protected installed state and the signed
+package. It restores into a separate generated copy, explicitly confirms the
+target to the existing forward migrator, provisions restricted runtime access and
+retains the original database during activation. No migration directory comes
+from tenant input or an archive, and the active source is never migrated.
+
+Cutover evidence records both schema digests. Database audit evidence binds the
+retained schema to the exact original/candidate OIDs and installation. Explicit
+rollback verifies that retained migration history before changing names, probes
+the runtime against the retained release's reviewed structure and restores the
+original schema in installed metadata alongside the original version/root.
+There is no down migration. Legacy schema-preserving receipts remain supported;
+missing evidence never authorizes an inferred schema change.
+
+Retained readiness is reviewed for Phase 5, Phase 6 and the matching current
+operator release. Other intermediate schemas require reviewed compatibility
+probes before activation. Normal API startup still requires the full current
+schema. All-organization maintenance checks remain mandatory: a pre-licensing
+Phase 5 database lacks the entitlement table and is therefore **not** admitted by
+the commercial update orchestrator. The real Phase 5-to-6 database drill tests
+migration/rollback mechanics, not a maintenance bypass or a licensed install.
+Different-schema orchestration fault tests use mocked database ports; actual
+Windows file/service cutover remains unverified.
 
 The database adapter writes `backup.json`, `prepared.json`, `candidate.json`,
 `cutover-intent.json` and `cutover-result.json` privately and exclusively with
@@ -91,9 +109,9 @@ configuration are passed. Expected script hashes must be independently trusted.
 
 The adapter is a host library entrypoint, **not** a commercially accepted updater
 CLI. Its first native invocation belongs on the postponed disposable host/client
-environment. Initial service/cluster provisioning, durable installed-state
-management, signed native packaging and guided rollback/uninstall are not supplied
-by this update adapter.
+environment. Initial service/cluster provisioning, signed native packaging and
+data-preserving uninstall are not supplied by this update adapter. Protected
+installed-state management and explicit guided recovery are implemented below.
 
 ## Journals, interruption and failure
 
@@ -178,9 +196,9 @@ stable journal location, then validate the complete lifecycle on disposable
 Windows machines. The LocalService PoC is not promoted into a production installer.
 
 Unfinished work includes initial dedicated PostgreSQL installation, signing and
-redistribution approval, startup/recovery policies, recovery after schema-changing
-updates, data-preserving uninstall and actual disposable host/client tests.
-Schema-preserving recovery is implemented locally as described above; it is not
+redistribution approval, startup/recovery policies, production acceptance of
+schema-changing updates, data-preserving uninstall and actual disposable host/client tests.
+Supported forward-copy recovery is implemented locally as described above; it is not
 a production-accepted installer UI. See [Windows checks](windows-deployment-checks.md),
 [signed releases](signed-releases.md) and [release gaps](phase-6-release-gaps.md).
 No service, task, trust store, firewall, live database or laptop startup setting

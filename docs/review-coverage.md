@@ -1,5 +1,60 @@
 # Review coverage
 
+## Phase 6 continuation: forward-copy updates and paired schema recovery
+
+Continuing the connected execution plan with schema-changing update/recovery
+support. Initial native installation remains dependent on approved distribution
+artifacts and postponed Windows acceptance. This batch will migrate only generated
+copies, bind the original schema to cutover evidence and restore matching original
+metadata on explicit recovery. No live database migration, laptop deployment,
+dependency upgrade or Git staging is authorized or performed. Implementation and
+verification are in progress; no new acceptance claim is made yet.
+
+Implemented matching-target migration admission, explicit forward migration of
+the generated copy, original/target schema cutover evidence and schema-aware
+original-state restoration. The database switch records and verifies the original
+schema with both OIDs. Reviewed Phase 5/6 retained-runtime probes share the existing
+structural checks; normal current API startup retains every original probe.
+Unknown retained schemas remain blocked, and all-organization maintenance is
+unchanged. A pre-licensing database cannot pass commercial update eligibility.
+
+All 235 unit tests (33 files) passed, including different-schema orchestration,
+migration-failure exclusion, wrong target bundle, recovery metadata and legacy
+journal coverage. Focused real database adapter checks passed after rebuilding.
+The new actual PostgreSQL forward/rollback drill passed and rejected altered old
+migration history; it deliberately uses a Phase 5 fixture and does not claim a
+licensed upgrade. Initial combined runs had intermittent adapter/CLI failures.
+The historical-schema scenario now runs last and retains its actual old schema
+for fixture deletion, rather than re-migrating/re-granting it for later tests.
+One overlapping diagnostic run also invalidated an existing cluster-wide catalog
+count assertion; subsequent full database runs were strictly serial. A failed
+candidate cleanup left one generated test database/role, removed only after exact
+name/owner and zero-connection verification. No runtime role privilege was widened
+and no connection guard was relaxed to obtain a passing result.
+
+The complete serial integration run passed all 64 tests (12 files), including
+forward/rollback, retained-history tampering, runtime privileges and compiled CLI.
+Temporary sanitized failure diagnostics helped investigate the intermittent runs
+and are removed from product code. Initial compilation hit sandbox process-spawn
+EPERM and passed with approved worker access. Workspace/test TypeScript and lint
+passed; final production build, smoke and diagnostics-free focused regression
+checks are in progress. A test-file formatting failure was corrected.
+
+Final verification passed production package/API/web builds and the compiled
+frontend/assets/API/real-database/OpenAPI/Origin smoke check. After removing all
+temporary diagnostics, both real update/recovery integration files passed again
+(9 tests); both orchestration/recovery unit files also passed again (10 tests).
+Final lint, repository Prettier and Git whitespace checks passed. No temporary
+diagnostic symbols remain. No browser UI or native PowerShell behavior changed,
+so browser and mocked native suites were not repeated. Actual Windows installation,
+service/file cutover, LAN and reboot acceptance remain postponed and unverified.
+
+This completes the locally verified supported forward-copy/recovery batch, not
+Phase 6 or a production installer. The initial installer/uninstall, approved
+artifacts, signing/issuer custody, provider operations and professional tax review
+remain release work. No customer database schema, environment settings, dependency
+versions, UI, services, tasks, firewall, trust store or Git staging were changed.
+
 ## Phase 6 continuation: connected completion workflow and failed-update recovery
 
 Recorded one connected execution plan in phase-6-execution.md, following the user's

@@ -22,6 +22,10 @@ installer, restart planning after each helper or add unrelated product features.
 3. Extend the same update/recovery workflow to supported forward schema changes
    on a separate copy. Original release/database must be recoverable together;
    never require an unsafe down migration. Keep unsupported transitions blocked.
+   Forward-copy orchestration and paired schema evidence/recovery are implemented.
+   Real PostgreSQL migration/rollback and orchestration fault checks are recorded
+   in review-coverage.md. No licensed pre-Phase-6 upgrade or native Windows
+   acceptance is claimed; each future schema needs reviewed retained readiness.
 4. Finish commercial operating workflows with real issuer key custody, certificate
    renewal/trust procedures and the chosen SaaS provider/subscription process.
    Do not select a provider, publish prices, create production signing keys or

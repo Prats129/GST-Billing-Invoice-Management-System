@@ -1,5 +1,6 @@
 import { Client } from 'pg';
 import { createDatabase } from './index.js';
+import { assertDatabaseReadiness } from './readiness.js';
 import { assertMigrationHistory, migrationDigest } from './backup-operator.js';
 import {
   assertRuntimePrivileges,
@@ -21,6 +22,8 @@ export interface RecoverySwitchOptions {
   installationId: string;
   confirmWritersStopped: boolean;
   confirmRollbackDataLoss?: boolean;
+  // Protected original release binding, not a request to downgrade a database.
+  originalSchemaDigest?: string;
 }
 function localUrl(value: string) {
   const url = new URL(value);
@@ -46,6 +49,8 @@ function inputs(options: RecoverySwitchOptions) {
       !/^gst_recovery_[a-f0-9]{32}$/.test(options.recoveryDatabase) ||
       active !== options.confirmActiveDatabase ||
       !/^[a-z_][a-z0-9_]{0,62}$/.test(role) ||
+      (options.originalSchemaDigest !== undefined &&
+        !/^[a-f0-9]{64}$/.test(options.originalSchemaDigest)) ||
       !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(
         options.installationId,
       ) ||
@@ -98,6 +103,32 @@ async function idle(admin: Client, names: string[]) {
     [names],
   );
   if (busy.rows[0]?.busy) throw new RecoverySwitchError();
+}
+
+// Only the explicit host recovery path may probe a retained release. Normal API
+// startup continues to require every current-release readiness check.
+export async function assertRecoveryRuntimeReady(
+  connectionString: string,
+  schemaDigest: string,
+) {
+  const digest = await migrationDigest();
+  const phase5 = schemaDigest === (await migrationDigest(5));
+  // Phase 6 retained probes are reviewed too, so a future target operator can
+  // recover today's licensed installations without treating arbitrary prefixes
+  // as application-compatible.
+  if (
+    !phase5 &&
+    schemaDigest !== (await migrationDigest(6)) &&
+    schemaDigest !== digest
+  )
+    throw new RecoverySwitchError();
+  const runtime = client(localUrl(connectionString));
+  try {
+    await runtime.connect();
+    await assertDatabaseReadiness((sql) => runtime.query(sql), !phase5);
+  } finally {
+    await runtime.end();
+  }
 }
 // Read-only catalog inspection is also usable after a lost COMMIT acknowledgement.
 // It reports observed names/flags, not an assertion that business data is correct.
@@ -165,7 +196,26 @@ export async function switchRecovery(
     await idle(admin, names);
     await assertRuntimeRole(admin, value.role);
     const digest = await migrationDigest();
+    let originalDigest = options.originalSchemaDigest ?? digest;
     if (action === 'activate') {
+      const originalUrl = new URL(value.operator);
+      originalUrl.pathname = `/${value.active}`;
+      const original = client(originalUrl);
+      try {
+        await original.connect();
+        const observed = await assertMigrationHistory(original);
+        if (options.originalSchemaDigest && observed !== originalDigest)
+          throw new RecoverySwitchError();
+        if (
+          observed !== digest &&
+          observed !== (await migrationDigest(5)) &&
+          observed !== (await migrationDigest(6))
+        )
+          throw new RecoverySwitchError();
+        originalDigest = observed;
+      } finally {
+        await original.end();
+      }
       const roleId = await assertRuntimeRole(admin, value.role);
       const acl = await admin.query(
         `SELECT EXISTS(SELECT 1 FROM pg_database d,
@@ -230,6 +280,7 @@ export async function switchRecovery(
               recoveredOid: other.oid,
               runtimeRole: value.role,
               schemaDigest: digest,
+              previousSchemaDigest: originalDigest,
             }),
           ],
         );
@@ -270,6 +321,15 @@ export async function switchRecovery(
           marker.runtimeRole !== value.role
         )
           throw new RecoverySwitchError();
+        // Old schema-preserving receipts lack this field. They remain valid only
+        // for the exact current schema; changed schemas need explicit evidence.
+        const recordedDigest = marker.previousSchemaDigest ?? digest;
+        if (
+          !/^[a-f0-9]{64}$/.test(recordedDigest) ||
+          (options.originalSchemaDigest && recordedDigest !== originalDigest)
+        )
+          throw new RecoverySwitchError();
+        originalDigest = recordedDigest;
         await recovered.query(
           'INSERT INTO public.audit_events(action,metadata) VALUES($1,$2::jsonb)',
           ['recovery.rollback_prepared', JSON.stringify(marker)],
@@ -283,16 +343,28 @@ export async function switchRecovery(
     const runtimeUrl = new URL(value.runtime);
     runtimeUrl.pathname = `/${otherName}`;
     const runtime = createDatabase(runtimeUrl.toString());
+    let retained: Client | undefined;
     try {
       await admin.query(`ALTER DATABASE "${otherName}" ALLOW_CONNECTIONS true`);
-      await runtime.ready();
+      if (action === 'activate') {
+        await runtime.ready();
+      } else {
+        const retainedUrl = new URL(value.operator);
+        retainedUrl.pathname = `/${otherName}`;
+        retained = client(retainedUrl);
+        await retained.connect();
+        if ((await assertMigrationHistory(retained)) !== originalDigest)
+          throw new RecoverySwitchError();
+        // New incompatible retained schemas require explicitly reviewed probes.
+        await assertRecoveryRuntimeReady(runtimeUrl.toString(), originalDigest);
+      }
     } finally {
       try {
         await admin.query(
           `ALTER DATABASE "${otherName}" ALLOW_CONNECTIONS false`,
         );
       } finally {
-        await runtime.close();
+        await Promise.allSettled([runtime.close(), retained?.end()]);
       }
     }
     await idle(admin, names);

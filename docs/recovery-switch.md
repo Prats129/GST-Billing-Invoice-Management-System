@@ -62,7 +62,8 @@ It then briefly opens the candidate for a real API-runtime authentication and
 database-readiness probe, closes that pool and reseals it. Other application
 processes must remain stopped throughout this maintenance window.
 
-A `recovery.cutover_prepared` audit event binds installation, schema, role, names
+A `recovery.cutover_prepared` audit event binds installation, target and original
+schemas, role, names
 and the original/recovered database OIDs. This event records preparation, not
 proof of activation. The maintenance transaction then moves the original aside,
 promotes the recovery copy and enables only the active name. Built-in rename
@@ -89,7 +90,13 @@ pnpm recovery:switch rollback --recovery-database <same-generated-recovery-name>
 Rollback checks the prepared record's installation, schema, role and both OIDs.
 It refuses a substitute previous database, connected clients or missing explicit
 acknowledgement. It also briefly probes the previous database with the runtime
-credential and requires current API readiness before changing names. The recovered
+credential and requires reviewed retained-release readiness before changing names.
+The retained migration history must match the schema recorded at activation; a
+known name/OID alone is insufficient. Supported Phase 5/6 structural probes allow
+returning to the original release after a forward-copy migration without running
+a down migration. Current application startup still requires its current schema.
+Older schema-preserving receipts without an original-schema field are accepted
+only for the matching current schema. The recovered
 copy moves back to its original generated name
 with connections disabled; the previous database regains the active name. Its
 original grants/data remain intact. A `recovery.rollback_prepared` event remains

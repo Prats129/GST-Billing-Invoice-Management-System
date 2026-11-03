@@ -2,12 +2,12 @@ import { lstat, readFile, mkdir, open, rename } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
-import { createDatabase } from '@gst/database';
 import {
   inspectUpdateDatabase,
   updateConnections,
   recoverySwitchStatus,
   switchRecovery,
+  assertRecoveryRuntimeReady,
 } from '@gst/database/operations';
 import type { EntitlementTrust } from '../licensing/entitlement.js';
 import { assertPrivateDirectory, secureDirectory } from './release-staging.js';
@@ -78,6 +78,15 @@ const intentSchema = z
     stagedRoot: z.string(),
     installedVersion: version,
     targetVersion: version,
+    // Legacy schema-preserving journals omit both fields.
+    installedSchemaDigest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+    targetSchemaDigest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
   })
   .strict();
 async function textFile(path: string, maximum: number, optional = false) {
@@ -153,7 +162,11 @@ async function evidence(options: UpdateRecoveryOptions) {
         intent.recoveryDatabase.replace('gst_recovery_', 'gst_previous_') ||
       intent.installedRoot !== options.installedRoot ||
       intent.stagedRoot !== options.stagedRoot ||
-      intent.installedVersion !== options.installed.version)
+      intent.installedVersion !== options.installed.version ||
+      (intent.installedSchemaDigest !== undefined &&
+        intent.installedSchemaDigest !== options.installed.schemaDigest) ||
+      (intent.installedSchemaDigest === undefined) !==
+        (intent.targetSchemaDigest === undefined))
   )
     throw new UpdateRecoveryError();
   return { root, lock, ownerText, records, intent, binding };
@@ -287,15 +300,17 @@ export async function recoverFailedUpdate(
     const expectedState = await readInstallationState(options.journalParent);
     const originalState =
       expectedState.version === options.installed.version &&
-      expectedState.appRoot === options.installedRoot;
+      expectedState.appRoot === options.installedRoot &&
+      expectedState.schemaDigest === options.installed.schemaDigest;
     const selectedState =
       value.intent &&
       expectedState.operationId === options.operationId &&
       expectedState.version === value.intent.targetVersion &&
-      expectedState.appRoot === options.stagedRoot;
+      expectedState.appRoot === options.stagedRoot &&
+      expectedState.schemaDigest ===
+        (value.intent.targetSchemaDigest ?? options.installed.schemaDigest);
     if (
       expectedState.installationId !== options.installationId ||
-      expectedState.schemaDigest !== options.installed.schemaDigest ||
       (!originalState && !selectedState)
     )
       throw new UpdateRecoveryError();
@@ -328,6 +343,7 @@ export async function recoverFailedUpdate(
           confirmActiveDatabase: value.binding.database,
           confirmWritersStopped: true,
           confirmRollbackDataLoss: true,
+          originalSchemaDigest: options.installed.schemaDigest,
         },
         'rollback',
       );
@@ -336,21 +352,20 @@ export async function recoverFailedUpdate(
     }
     await service.restoreOriginal();
     await service.startOriginal();
-    const runtime = createDatabase(options.runtimeConnectionString);
-    try {
-      await runtime.ready();
-    } finally {
-      await runtime.close();
-    }
     await inspectUpdateDatabase(options, async (_db, digest) => {
       if (digest !== options.installed.schemaDigest)
         throw new UpdateRecoveryError();
     });
+    await assertRecoveryRuntimeReady(
+      options.runtimeConnectionString,
+      options.installed.schemaDigest,
+    );
     await service.assertOriginalReady();
     await replaceInstallationState(options.journalParent, expectedState, {
       ...expectedState,
       version: options.installed.version,
       appRoot: options.installedRoot,
+      schemaDigest: options.installed.schemaDigest,
       operationId: options.operationId,
     });
     await service.admitOriginal();
