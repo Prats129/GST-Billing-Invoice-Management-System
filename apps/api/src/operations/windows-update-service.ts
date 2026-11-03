@@ -48,6 +48,10 @@ const serviceSchema = z
       .string()
       .regex(/^GSTBilling-Backup-[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
       .nullable(),
+    backupAccountSid: z
+      .string()
+      .regex(/^S-1-5-21-\d+-\d+-\d+-\d+$/)
+      .optional(),
   })
   .strict();
 export const windowsUpdateServiceSchema = serviceSchema.superRefine(

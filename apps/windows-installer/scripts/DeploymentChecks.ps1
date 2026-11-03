@@ -2,6 +2,22 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function Get-DeploymentServiceAccount([Xml.XmlDocument] $Document) {
+    $accounts = @($Document.service.SelectNodes('serviceaccount'))
+    if ($accounts.Count -ne 1) { throw 'Explicit service identity required.' }
+    $account = $accounts[0]
+    $users = @($account.SelectNodes('user')); $legacy = @($account.SelectNodes('username')); $domains = @($account.SelectNodes('domain'))
+    if ($users.Count -eq 1 -and $domains.Count -eq 1 -and $legacy.Count -eq 0 -and $account.ChildNodes.Count -eq 2) {
+        $domain = $domains[0].InnerText; $user = $users[0].InnerText
+        if ($domain -notin @('NT SERVICE','NT AUTHORITY') -or $user -notmatch '^[a-zA-Z][a-zA-Z0-9]{0,63}$') { throw 'Unsupported service identity.' }
+        return $domain + '\' + $user
+    }
+    # Read compatibility for retained prototype XML only. New definitions always
+    # use WinSW 2.x domain/user; actual registered identity is checked separately.
+    if ($legacy.Count -eq 1 -and $users.Count -eq 0 -and $domains.Count -eq 0 -and $account.ChildNodes.Count -eq 1) { return $legacy[0].InnerText }
+    throw 'Ambiguous or credential-bearing service definition.'
+}
+
 function Get-DeploymentOrigin([string] $Origin, [int] $DatabasePort) {
     $uri = $null
     if (-not [Uri]::TryCreate($Origin, [UriKind]::Absolute, [ref]$uri) -or
@@ -166,7 +182,7 @@ function Get-DeploymentObservations {
             return $xml.service.id -eq 'GSTBillingApiPoC' -and $xml.service.executable -eq $node -and
                 $xml.service.arguments -eq ('"' + (Join-Path $application 'apps/api/dist/main.js') + '"') -and
                 $xml.service.workingdirectory -eq $application -and
-                $xml.service.serviceaccount.username -eq 'NT AUTHORITY\LocalService' -and
+                (Get-DeploymentServiceAccount $xml) -eq 'NT AUTHORITY\LocalService' -and
                 $environments.Count -eq 1 -and $environments[0].name -eq 'ENV_FILE' -and
                 $environments[0].value -eq (Join-Path $root 'service.env')
         }

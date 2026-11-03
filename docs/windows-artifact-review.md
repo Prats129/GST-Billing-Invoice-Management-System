@@ -19,6 +19,18 @@ or a replacement for the postponed Windows acceptance tests.
   account/startup/stop behavior before implementing vendor-specific provisioning.
   Do not silently substitute an alpha release or an arbitrary third-party build.
 
+Implementation targets the stable `WinSW.NET461.exe` variant on a serviced
+.NET Framework 4.8+ Windows host, avoiding the old self-contained runtime in the
+other release variant. The publisher must still independently approve and pin
+the actual executable; no approved binary is added by this change. Stable 2.x
+[XML configuration](https://raw.githubusercontent.com/winsw/winsw/v2.12.0/doc/xmlConfigFile.md)
+uses `serviceaccount/domain` + `user`, correcting the prototype's `username` field.
+The [MIT notice](https://raw.githubusercontent.com/winsw/winsw/v2.12.0/LICENSE.txt),
+[PostgreSQL license](https://www.postgresql.org/about/licence/) and every bundled
+dependency notice must be archived in the signed artifact review. The official
+PostgreSQL Windows page lists tested server platforms; it does not establish
+Windows 11 acceptance for this product.
+
 The repository currently has no approved WinSW executable. Cached PostgreSQL
 executables were found, but their presence is not independent vendor/checksum or
 redistribution approval. No executable was downloaded, installed, approved or
@@ -30,4 +42,6 @@ The shared installed-state record and explicit update recovery are implemented
 independently. The initial installer must create that record only after validating
 the actual host, service identities, protected configuration and database. It must
 not adopt an existing database/service merely because its name matches. See the
-[connected execution plan](phase-6-execution.md) for the remaining workstreams.
+[connected execution plan](phase-6-execution.md) and
+[initial lifecycle](windows-installation.md) for the implemented boundaries and
+remaining workstreams.

@@ -1,5 +1,65 @@
 # Review coverage
 
+## Phase 6 continuation: initial Windows installation and preserving uninstall
+
+Started the initial installer lifecycle against signed, inventory-verified inputs,
+dedicated service/database identities and protected installation state. Official
+vendor review identified a real WinSW compatibility defect: stable 2.x uses
+serviceaccount/domain + user, whereas the prototype emitted username. Correcting
+that contract is part of this batch. No unsigned cached executable is approved,
+no runtime major is changed and no privileged deployment is run on this laptop.
+Actual Windows install/LAN/reboot and redistribution/signing acceptance remain
+external gates; code and safe local verification are in progress.
+
+Resumed after the connection interruption, preserving all existing edits. Added
+the explicit signed-bundle host entrypoint, private cluster initialization,
+reviewed runtime grants, owner provisioning, encrypted backup registration,
+installed-state selection and data-preserving uninstall. Initial network
+admission is protected by a temporary explicit inbound block, process/listener
+identity checks and a pinned real HTTPS probe. Uninstall verifies exact root,
+service accounts/wrappers, task definition/principal and firewall filters;
+interrupted shared maintenance blocks it. It never deletes retained files/data.
+Backups now optionally follow the protected installed-state pointer; updates
+grant the dedicated backup identity read access to the selected release/state.
+
+First checks: all workspace/test TypeScript and lint passed before the new tests;
+existing mocked update/deployment/task suites and the new preserving-uninstall
+decision suite passed. Five installer-preflight tests passed with external
+effects mocked. The fresh-container PostgreSQL test caught a runtime-policy
+validation-before-CONNECT ordering error; corrected the shared helper/caller
+ordering and rerunning. Native effects remain unexecuted. Final integration,
+regression, build and documentation checks are in progress.
+
+The corrected fresh-container PostgreSQL initialization test passed, including
+wrong-directory/equal-password/unexpected-role refusal, migration, actual runtime
+authentication, audited identity, no runtime DDL and repeat refusal. The test
+container/anonymous volume was removed after checking its unique ownership label;
+the development database was not used for initialization. Existing isolated
+runtime-policy integration tests passed (4), followed by update-host and recovery
+switch regressions (9). The full unit run passed 253 tests in 36 files; the final
+changed installer/journal/native-adapter subset passed 17 tests, including new
+cross-operation uninstall exclusion and input-change/entrypoint refusal.
+
+Real harmless ZIP extraction/refusal checks and mocked installer/uninstall,
+installed-backup selection, service/update and deployment suites passed. The
+Windows Task Scheduler XML parser accepted the definition in memory; no task was
+registered. All 24 PowerShell files parsed. Native installation/deployment was
+never run. Workspace/test TypeScript, lint, formatting and production package,
+API and frontend builds passed. Two cold smoke attempts exceeded the existing
+startup retry window; a longer sanitized probe confirmed compiled API startup
+and HTTP 200. The subsequent normal smoke passed frontend/assets, API, real
+database readiness, OpenAPI and Origin rejection. No application, dependency,
+environment or timeout change was made to hide the slow-start observation.
+
+The initial installer and preserving-uninstall command are now documented in
+windows-installation.md. Approved signed vendor payloads, Authenticode signing,
+actual VSA/NTFS/firewall/job/LAN/reboot/power-loss acceptance, retained-data
+repair/reinstallation and interrupted-uninstall reconciliation remain open.
+Uncertain operations preserve their evidence/lock; they are not automatically
+resumed or adopted. This is not a claim that Phase 6 or the commercial installer
+is complete. No UI, product license/compliance gate, production key, customer
+database or Git staging was changed.
+
 ## Phase 6 continuation: controlled HTTPS certificate replacement
 
 Started implementing protected certificate-pair replacement for an existing

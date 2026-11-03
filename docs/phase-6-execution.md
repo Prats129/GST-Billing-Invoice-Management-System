@@ -16,9 +16,12 @@ installer, restart planning after each helper or add unrelated product features.
    approved runtime/PostgreSQL/wrapper artifacts. Connect update/recovery to that
    record. Keep configuration, database and backups outside versioned application
    files. Validate repeat invocation/collisions and interrupted operations.
-   Shared installed-state initialization/replacement is implemented. Native
-   provisioning still needs the reviewed artifacts in windows-artifact-review.md
-   and the postponed host/client environment; no unsigned cached binary is adopted.
+   Shared installed-state initialization/replacement and the operator-run initial
+   install/preserving-uninstall lifecycle are implemented; see windows-installation.md.
+   Native provisioning still needs reviewed artifacts in windows-artifact-review.md
+   and the postponed host/client environment. Retained-data repair/reinstallation,
+   interrupted-uninstall reconciliation and native acceptance remain open; no
+   unsigned cached binary is adopted.
 3. Extend the same update/recovery workflow to supported forward schema changes
    on a separate copy. Original release/database must be recoverable together;
    never require an unsafe down migration. Keep unsupported transitions blocked.

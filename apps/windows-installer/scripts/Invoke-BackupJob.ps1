@@ -2,6 +2,7 @@ param(
     [Parameter(Mandatory = $true)][string] $NodeExecutable,
     [Parameter(Mandatory = $true)][string] $NodeSha256,
     [Parameter(Mandatory = $true)][string] $ApplicationDirectory,
+    [string] $InstallationStateFile,
     [Parameter(Mandatory = $true)][string] $EnvironmentFile,
     [Parameter(Mandatory = $true)][string] $KeyDirectory,
     [Parameter(Mandatory = $true)][string] $OutputDirectory,
@@ -20,13 +21,17 @@ try {
     $node = Get-VerifiedExecutable -Path $NodeExecutable -Sha256 $NodeSha256
     if ((& $node --version) -notmatch '^v24\.') { throw 'Approved Node 24 runtime required.' }
     $release = (Resolve-Path -LiteralPath $ApplicationDirectory).Path
-    $cli = Join-Path $release 'packages/database/dist/backup-cli.js'
-    if (-not (Test-Path -LiteralPath $cli -PathType Leaf)) { throw 'Build the application before scheduling backups.' }
     $env:ENV_FILE = (Resolve-Path -LiteralPath $EnvironmentFile).Path
     $keyRoot = (Resolve-Path -LiteralPath $KeyDirectory).Path
     $installationId = (Get-Content -LiteralPath (Join-Path $keyRoot 'installation-id.txt') -Raw).Trim()
     $parsedId = [Guid]::Empty
     if (-not [Guid]::TryParse($installationId, [ref]$parsedId)) { throw 'Invalid installation identity.' }
+    if ($InstallationStateFile) {
+        . "$PSScriptRoot/BackupInstallation.ps1"
+        $release = Get-BackupInstalledRelease $InstallationStateFile $installationId
+    }
+    $cli = Join-Path $release 'packages/database/dist/backup-cli.js'
+    if (-not (Test-Path -LiteralPath $cli -PathType Leaf)) { throw 'Build the application before scheduling backups.' }
     $output = [IO.Path]::GetFullPath($OutputDirectory)
     if (-not (Test-Path -LiteralPath $output)) { $null = New-PrivateDirectory -Path $output }
     # Hold an exclusive open handle for the entire backup + restore drill. The

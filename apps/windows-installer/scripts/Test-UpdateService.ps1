@@ -11,7 +11,7 @@ $config = [PSCustomObject]@{
     backupTaskName = 'GSTBilling-Backup-test'
 }
 $script:xml = @'
-<service><id>GSTBillingApi</id><executable>C:\GST\node.exe</executable><arguments>"C:\GST\old\apps\api\dist\main.js"</arguments><workingdirectory>C:\GST\old</workingdirectory><serviceaccount><username>NT SERVICE\GSTBillingApi</username></serviceaccount><env name="ENV_FILE" value="C:\GST\runtime.env"/></service>
+<service><id>GSTBillingApi</id><executable>C:\GST\node.exe</executable><arguments>"C:\GST\old\apps\api\dist\main.js"</arguments><workingdirectory>C:\GST\old</workingdirectory><serviceaccount><domain>NT SERVICE</domain><user>GSTBillingApi</user></serviceaccount><env name="ENV_FILE" value="C:\GST\runtime.env"/></service>
 '@
 $script:fixture = @{
     state = 'Running'; mode = 'Auto'; account = 'NT SERVICE\GSTBillingApi'; blocked = $false
@@ -116,4 +116,10 @@ if ($script:fixture.calls -ne $beforeAudit) { throw 'Certificate inspection muta
 Assert-Rejected { Invoke-UpdateService TlsInspect $config }
 $script:xml = $oldXml.Replace('</service>', '<env name="WEB_ROOT" value="C:\WrongWebRoot"/></service>')
 Assert-Rejected { Invoke-UpdateService TlsInspect $certificate }
+$script:xml=$oldXml
+$wrongBackup=$config.PSObject.Copy();$wrongBackup|Add-Member backupAccountSid 'S-1-5-21-1-2-3-1001'
+function Get-ScheduledTask {return [PSCustomObject]@{Principal=[PSCustomObject]@{UserId='S-1-5-21-1-2-3-9999'}}}
+$before=$script:fixture.calls
+Assert-Rejected {Invoke-UpdateService Stop $wrongBackup}
+if($before -ne $script:fixture.calls){throw 'Wrong backup principal modified the machine.'}
 Write-Output 'PASS: mocked Windows update/certificate service identity, inspection, stop/start/admission, failure and secure XML checks. No machine changes.'

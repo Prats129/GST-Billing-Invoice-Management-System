@@ -10,6 +10,7 @@ param(
     [string] $EnvironmentFile
 )
 . "$PSScriptRoot/Common.ps1"
+. "$PSScriptRoot/DeploymentChecks.ps1"
 $root = [IO.Path]::GetFullPath($ServiceRoot)
 $wrapper = Join-Path $root 'GSTBillingApiPoC.exe'
 $markerPath = Join-Path $root 'gst-billing-poc-service.json'
@@ -61,9 +62,9 @@ if ($Action -eq 'Prepare') {
     $envElement.SetAttribute('value', $serviceEnv)
     $null = $service.AppendChild($envElement)
     $account = $xml.CreateElement('serviceaccount')
-    $username = $xml.CreateElement('username')
-    $username.InnerText = 'NT AUTHORITY\LocalService'
-    $null = $account.AppendChild($username)
+    foreach ($entry in @{ domain = 'NT AUTHORITY'; user = 'LocalService' }.GetEnumerator()) {
+        $element = $xml.CreateElement($entry.Key); $element.InnerText = $entry.Value; $null = $account.AppendChild($element)
+    }
     $null = $service.AppendChild($account)
     $log = $xml.CreateElement('log')
     $log.SetAttribute('mode', 'roll-by-size')
@@ -84,7 +85,7 @@ $marker = Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json
 if ($marker.product -ne 'gst-billing-poc' -or $marker.root -ne $root) { throw 'Service identity mismatch.' }
 $verified = Get-VerifiedExecutable $wrapper $marker.sha256
 $preparedConfig = [xml](Get-Content -LiteralPath (Join-Path $root 'GSTBillingApiPoC.xml') -Raw)
-if ($preparedConfig.service.id -ne 'GSTBillingApiPoC' -or $preparedConfig.service.serviceaccount.username -ne 'NT AUTHORITY\LocalService') {
+if ($preparedConfig.service.id -ne 'GSTBillingApiPoC' -or (Get-DeploymentServiceAccount $preparedConfig) -ne 'NT AUTHORITY\LocalService') {
     throw 'PoC service configuration identity changed; review before installation or service control.'
 }
 if ($PSCmdlet.ShouldProcess('GSTBillingApiPoC only; uninstall preserves all files and customer data', $Action)) {

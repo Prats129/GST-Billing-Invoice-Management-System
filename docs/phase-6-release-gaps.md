@@ -1,12 +1,18 @@
 # Phase 6 remaining release work
 
-Repository review: 2026-11-02. This is a completion checklist, not a new phase or
+Repository review: 2026-11-03. This is a completion checklist, not a new phase or
 an approval to release. Existing local tests do not certify production deployment.
 
 Follow the [connected execution plan](phase-6-execution.md) without restarting
 planning for each helper. Protected installed state and explicit supported forward-copy
 recovery are now implemented locally; remaining native/artifact dependencies are
 recorded in [artifact review](windows-artifact-review.md).
+
+The [initial installation/preserving-uninstall workflow](windows-installation.md)
+now has operator code and local regression coverage. This does not close the
+installer row: approved vendor payloads, signing, actual native deployment,
+retained-data repair/reinstallation and interrupted-uninstall reconciliation
+remain outstanding.
 
 | Remaining work                              | Current boundary                                                                                                                                                     | Required next input or work                                                                                                                                                                                                             | Completion evidence                                                                                                                                                |
 | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

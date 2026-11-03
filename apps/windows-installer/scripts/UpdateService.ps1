@@ -47,7 +47,7 @@ function Get-UpdateServiceXml($Configuration, [Xml.XmlDocument] $Document = $nul
     $xml = $Document
     $root = $xml.DocumentElement
     foreach ($required in @('id','executable','arguments','workingdirectory','serviceaccount')) { if ($root.SelectNodes($required).Count -ne 1) { throw 'Ambiguous service definition.' } }
-    if ($root.get_Name() -ne 'service' -or $root.id -ne 'GSTBillingApi' -or $root.serviceaccount.username -ne 'NT SERVICE\GSTBillingApi') { throw 'Service XML identity mismatch.' }
+    if ($root.get_Name() -ne 'service' -or $root.id -ne 'GSTBillingApi' -or (Get-DeploymentServiceAccount $xml) -ne 'NT SERVICE\GSTBillingApi') { throw 'Service XML identity mismatch.' }
     if ($root.executable -ne $Configuration.nodePath) { throw 'Unexpected service runtime.' }
     $working = [string]$root.workingdirectory
     if ($working -notin @($Configuration.installedRoot, $Configuration.stagedRoot) -or $root.arguments -ne ('"' + (Join-Path $working 'apps\api\dist\main.js') + '"')) { throw 'Unexpected service application.' }
@@ -98,6 +98,15 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
     $operation = [Guid]::Empty
     if (-not [Guid]::TryParseExact($Configuration.operationId, 'D', [ref]$operation)) { throw 'Operation UUID required.' }
     if ($Configuration.backupTaskName -and $Configuration.backupTaskName -notmatch '^GSTBilling-Backup-[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$') { throw 'Invalid backup task identity.' }
+    $backupSid=$null
+    if ($null -ne $Configuration.PSObject.Properties['backupAccountSid']) {
+        $backupSid=[string]$Configuration.backupAccountSid
+        if ($backupSid -notmatch '^S-1-5-21-\d+-\d+-\d+-\d+$' -or -not $Configuration.backupTaskName) {throw 'Invalid backup identity.'}
+        $backupTask=Get-ScheduledTask -TaskName $Configuration.backupTaskName -TaskPath '\' -ErrorAction Stop
+        $principal=[string]$backupTask.Principal.UserId
+        if ($principal -notmatch '^S-1-5-') {$principal=(New-Object Security.Principal.NTAccount($principal)).Translate([Security.Principal.SecurityIdentifier]).Value}
+        if ($principal -cne $backupSid) {throw 'Backup task principal mismatch.'}
+    }
     $uri = Get-DeploymentOrigin $Configuration.origin 1
     if ($Configuration.port -isnot [int] -or $Configuration.port -lt 1024 -or $Configuration.port -gt 65535 -or $uri.Port -ne $Configuration.port) { throw 'Invalid HTTPS listener.' }
     $localAddresses = @(Get-NetIPAddress -ErrorAction Stop | ForEach-Object { $_.IPAddress })
@@ -167,6 +176,10 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
         # DACL-only addition: do not copy or rewrite audit/owner information.
         & (Join-Path $env:SystemRoot 'System32\icacls.exe') $Configuration.stagedRoot '/grant' 'NT SERVICE\GSTBillingApi:(OI)(CI)(RX)' '/Q' *> $null
         if ($LASTEXITCODE -ne 0) { throw 'Service read-access provisioning failed.' }
+        if ($backupSid) {
+            & (Join-Path $env:SystemRoot 'System32\icacls.exe') $Configuration.stagedRoot '/grant' ('*'+$backupSid+':(OI)(CI)(RX)') '/Q' *> $null
+            if ($LASTEXITCODE -ne 0) {throw 'Backup release read access failed.'}
+        }
         $xml = Set-UpdateReleaseXml $xml $Configuration.stagedRoot
         $xmlPath = Join-Path $Configuration.serviceRoot 'GSTBillingApi.xml'
         $temporary = Join-Path $Configuration.serviceRoot ('update-' + $Configuration.operationId + '.xml')
@@ -212,7 +225,14 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
         if ($processes.Count -ne 1) { throw 'Candidate process ownership mismatch.' }
         $listeners = @(Get-NetTCPConnection -State Listen -LocalPort $Configuration.port -ErrorAction Stop)
         if ($listeners.Count -eq 0 -or @($listeners | Where-Object { $_.OwningProcess -ne $processes[0].ProcessId }).Count -gt 0) { throw 'Candidate listener ownership mismatch.' }
-        $uri = Get-DeploymentOrigin $Configuration.origin 1
+        $backupSid=$null
+    if ($null -ne $Configuration.PSObject.Properties['backupAccountSid']) {
+        $backupSid=[string]$Configuration.backupAccountSid
+        if ($backupSid -notmatch '^S-1-5-21-\d+-\d+-\d+-\d+$' -or -not $Configuration.backupTaskName) {throw 'Invalid backup identity.'}
+        $backupTask=Get-ScheduledTask -TaskName $Configuration.backupTaskName -TaskPath '\' -ErrorAction Stop
+        if ($backupTask.Principal.UserId -cne $backupSid) {throw 'Backup task principal mismatch.'}
+    }
+    $uri = Get-DeploymentOrigin $Configuration.origin 1
         $live = Invoke-DeploymentHttp ([Uri]::new($uri, '/api/v1/health'))
         $ready = Invoke-DeploymentHttp ([Uri]::new($uri, '/api/v1/health/ready'))
         $front = Invoke-DeploymentHttp $uri
@@ -223,6 +243,12 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
     $state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
     if ($state.startMode -notin @('Auto','Manual') -or $state.taskEnabled -isnot [bool]) { throw 'Invalid saved maintenance state.' }
     if ($state.startMode -eq 'Auto') { Set-Service -Name GSTBillingApi -StartupType Automatic -ErrorAction Stop }
+    if ($backupSid) {
+        $installedState=Join-Path ([IO.Path]::GetDirectoryName($Configuration.journalDirectory)) 'installation.json'
+        Assert-UpdateProtectedPath $installedState
+        & (Join-Path $env:SystemRoot 'System32\icacls.exe') $installedState '/grant' ('*'+$backupSid+':(R)') '/Q' *> $null
+        if ($LASTEXITCODE -ne 0) {throw 'Backup installed-state read access failed.'}
+    }
     if ($Configuration.backupTaskName -and $state.taskEnabled) { Enable-ScheduledTask -TaskName $Configuration.backupTaskName -TaskPath '\' -ErrorAction Stop | Out-Null }
     Get-NetFirewallRule -Name $ruleName -ErrorAction Stop | Remove-NetFirewallRule -ErrorAction Stop
 }

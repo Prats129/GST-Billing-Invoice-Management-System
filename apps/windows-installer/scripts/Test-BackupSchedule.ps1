@@ -25,6 +25,9 @@ Assert-Value '//t:BootTrigger/t:Delay' 'PT5M'
 Assert-Value '//t:ExecutionTimeLimit' 'PT1H'
 $arguments = $definition.SelectSingleNode('//t:Arguments', $ns).InnerText
 if (-not $arguments.Contains('"C:\Program Files\GST & Billing\node.exe"') -or $arguments -match 'Bypass|EncodedCommand|DockerContainer') { throw 'Unsafe task action.' }
+$dynamic=$parameters.Clone();$dynamic.InstallationStateFile='C:\GST\operations\installation.json'
+[xml]$selected=. "$PSScriptRoot/Set-BackupSchedule.ps1" @dynamic
+if(-not $selected.OuterXml.Contains('-InstallationStateFile') -or -not $selected.OuterXml.Contains('C:\GST\operations\installation.json')) {throw 'Installed state selection missing from task.'}
 # Validate against the actual Windows Task Scheduler parser, in memory only.
 # NewTask does not register anything or execute its action.
 $scheduler = New-Object -ComObject 'Schedule.Service'

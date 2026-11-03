@@ -8,6 +8,7 @@ param(
     [Parameter(Mandatory)][string] $NodeExecutable,
     [Parameter(Mandatory)][ValidatePattern('^[a-fA-F0-9]{64}$')][string] $NodeSha256,
     [Parameter(Mandatory)][string] $ApplicationDirectory,
+    [string] $InstallationStateFile,
     [Parameter(Mandatory)][string] $EnvironmentFile,
     [Parameter(Mandatory)][string] $KeyDirectory,
     [Parameter(Mandatory)][string] $OutputDirectory,
@@ -95,6 +96,7 @@ $argumentValues = @('-NoLogo', '-NoProfile', '-NonInteractive', '-File', $jobScr
     '-NodeExecutable', $node, '-NodeSha256', $NodeSha256,
     '-ApplicationDirectory', $application, '-EnvironmentFile', $environment,
     '-KeyDirectory', $key, '-OutputDirectory', $output, '-WorkDirectory', $work, '-PgBinDirectory', $pg)
+if ($InstallationStateFile) { $argumentValues += @('-InstallationStateFile', (Get-TaskPath $InstallationStateFile)) }
 $arguments = ($argumentValues | ForEach-Object { '"' + $_ + '"' }) -join ' '
 
 # No credentials are serialized. XmlDocument escapes path characters as data.
@@ -150,6 +152,7 @@ foreach ($tree in @($application, $pg, [IO.Path]::GetDirectoryName($node)) | Sel
 foreach ($path in @($environment, (Join-Path $key 'backup.key'), (Join-Path $key 'installation-id.txt'))) {
     Assert-ProtectedTaskPath $path $true $false
 }
+if ($InstallationStateFile) { Assert-ProtectedTaskPath (Get-TaskPath $InstallationStateFile) $true $false }
 foreach ($path in @($output, $work)) { Assert-ProtectedTaskPath $path $true $true }
 if ($PSCmdlet.ShouldProcess($taskName, 'Register daily and boot backup task under the dedicated account; preserve all archives')) {
     # Task Scheduler protects the credential; no password is stored in task XML,

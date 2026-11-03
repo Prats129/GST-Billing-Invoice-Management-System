@@ -3,6 +3,14 @@
 [CmdletBinding()]
 param()
 . "$PSScriptRoot/DeploymentChecks.ps1"
+foreach ($accountXml in @(
+    '<service><serviceaccount><domain>NT SERVICE</domain><user>GSTBillingApi</user><password>unexpected</password></serviceaccount></service>',
+    '<service><serviceaccount><domain>NT SERVICE</domain><user>GSTBillingApi</user><username>other</username></serviceaccount></service>',
+    '<service><serviceaccount><domain>Other</domain><user>GSTBillingApi</user></serviceaccount></service>'
+)) {
+    $rejected=$false;try {$null=Get-DeploymentServiceAccount (ConvertFrom-DeploymentXml $accountXml)}catch{$rejected=$true}
+    if(-not $rejected){throw 'Ambiguous service account accepted.'}
+}
 $parameters = @{
     Mode = 'Host'; Origin = 'https://gst-host:3443'; DatabasePort = 55432
     ServiceRoot = 'C:\GST\service'; NodePath = 'C:\GST\node.exe'; AppRoot = 'C:\GST\application'
@@ -14,7 +22,7 @@ $validXml = @'
   <arguments>"C:\GST\application\apps\api\dist\main.js"</arguments>
   <workingdirectory>C:\GST\application</workingdirectory>
   <env name="ENV_FILE" value="C:\GST\service\service.env"/>
-  <serviceaccount><username>NT AUTHORITY\LocalService</username></serviceaccount>
+  <serviceaccount><domain>NT AUTHORITY</domain><user>LocalService</user></serviceaccount>
 </service>
 '@
 function Reset-Fixture {
@@ -104,7 +112,7 @@ foreach ($case in @(
     Assert-Failed (Get-DeploymentObservations @parameters) $case.check
 }
 foreach ($xml in @(
-    $validXml.Replace('NT AUTHORITY\LocalService', 'LocalSystem'),
+    $validXml.Replace('<user>LocalService</user>', '<user>LocalSystem</user>'),
     $validXml.Replace('service.env', 'other.env'),
     $validXml.Replace('GSTBillingApiPoC', 'AnotherService'),
     '<!DOCTYPE service [<!ENTITY external SYSTEM "file:///C:/private.txt">]><service>&external;</service>'

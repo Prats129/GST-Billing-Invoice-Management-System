@@ -183,6 +183,22 @@ export async function assertRuntimePrivileges(
   }
 }
 
+// Shared reviewed policy for a NEW installer database or a quarantined recovery
+// copy. Callers must independently establish database ownership/exclusion.
+export async function applyRuntimePolicy(db: Client, role: string) {
+  await assertRuntimeRole(db, role);
+  await assertRuntimePrivileges(db, role, false);
+  for (const [table, grants] of Object.entries(policy))
+    if (grants.length)
+      await db.query(
+        `GRANT ${grants.join(',')} ON TABLE public."${table}" TO "${role}"`,
+      );
+  await db.query(
+    `GRANT UPDATE (last_observed_at) ON public.organization_entitlements TO "${role}"`,
+  );
+  await db.query(`GRANT USAGE ON SCHEMA public TO "${role}"`);
+}
+
 export async function provisionRecoveryRuntime(options: {
   connectionString: string;
   database: string;
@@ -287,18 +303,7 @@ export async function provisionRecoveryRuntime(options: {
       ) !== 0
     )
       throw new RuntimeAccessError();
-    await assertRuntimePrivileges(candidate, options.runtimeRole, false);
-    for (const [table, grants] of Object.entries(policy))
-      if (grants.length)
-        await candidate.query(
-          `GRANT ${grants.join(',')} ON TABLE public."${table}" TO "${options.runtimeRole}"`,
-        );
-    await candidate.query(
-      `GRANT UPDATE (last_observed_at) ON public.organization_entitlements TO "${options.runtimeRole}"`,
-    );
-    await candidate.query(
-      `GRANT USAGE ON SCHEMA public TO "${options.runtimeRole}"`,
-    );
+    await applyRuntimePolicy(candidate, options.runtimeRole);
     // Seal before modifying database ACLs: ALTER DATABASE from the maintenance
     // connection must not wait for this transaction's GRANT CONNECT row lock.
     await admin.query(

@@ -88,6 +88,52 @@ test('incomplete/recovery-required operations retain the cross-process lock afte
   ).rejects.toThrow();
 }, 30000);
 
+test('uninstall shares exclusion with updates/certificates and keeps a distinct durable header', async () => {
+  const root = await mkdtemp(join(fixtureParent, 'gst-journal-test-'));
+  roots.push(root);
+  const installationId = randomUUID(),
+    operationId = randomUUID();
+  const lease = await acquireUpdateJournal(
+    root,
+    installationId,
+    operationId,
+    'uninstall',
+  );
+  try {
+    await lease.record({
+      installationId,
+      operationId,
+      version: '1.0.0',
+      phase: 'stopping',
+    });
+    for (const kind of [undefined, 'certificate'] as const)
+      await expect(
+        acquireUpdateJournal(root, installationId, randomUUID(), kind),
+      ).rejects.toThrow();
+    const header = JSON.parse(
+      (await readFile(join(lease.directory, 'events.jsonl'), 'utf8')).split(
+        '\n',
+      )[0]!,
+    );
+    expect(header).toMatchObject({
+      operationKind: 'uninstall',
+      installationId,
+      operationId,
+    });
+    await lease.record({
+      installationId,
+      operationId,
+      version: '1.0.0',
+      phase: 'completed',
+    });
+  } finally {
+    await lease.release();
+  }
+  await expect(lstat(join(root, 'gst-update.lock'))).rejects.toMatchObject({
+    code: 'ENOENT',
+  });
+}, 30000);
+
 test('journal rejects extra secret-bearing fields and foreign operation IDs', async () => {
   const f = await fixture();
   try {

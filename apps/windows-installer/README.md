@@ -1,4 +1,9 @@
-# Offline Windows feasibility prototype
+# Offline Windows operator tools
+
+Initial signed-bundle installation and data-preserving uninstall now have an
+operator entrypoint: [installation workflow](../../docs/windows-installation.md).
+Approved vendor artifacts, distribution signing and native acceptance are still
+required. Do not run privileged deployment on the development laptop.
 
 Runbook and verification status: [docs/windows-offline-spike.md](../../docs/windows-offline-spike.md).
 
@@ -10,13 +15,13 @@ Run their safe decision tests without a service, CA or LAN host:
 powershell -NoProfile -File apps/windows-installer/scripts/Test-DeploymentChecks.ps1
 ```
 
-This directory contains operator-run PowerShell deployment prototypes and backup jobs/scheduling, **not a production installer**. Scripts never download executables, silently install certificate trust, expose PostgreSQL, or delete customer data. Read the runbook before executing privileged deployment steps on a disposable Windows VM.
+This directory contains operator-run deployment code, prototypes and backup jobs/scheduling, **not an approved commercial installer release**. Scripts never download executables, silently install certificate trust, expose PostgreSQL, or delete customer data. Read the runbook before executing privileged deployment steps on a disposable Windows VM.
 
 The [assisted-update core and journal](../../docs/assisted-updates.md) implement
 testable sequencing and interruption handling. A schema-preserving adapter now
 binds real database recovery and Windows service/file operations for an already
-provisioned dedicated service. Native acceptance and the production installer
-entrypoint remain unfinished; there is no installer command to run on this laptop.
+provisioned dedicated service. The initial lifecycle command is documented above;
+native acceptance and retained-data repair/reinstallation remain unfinished.
 
 Safe service-backend decision tests (all machine/network actions mocked):
 
