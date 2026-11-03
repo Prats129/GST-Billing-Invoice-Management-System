@@ -105,4 +105,15 @@ Assert-Rejected { Get-UpdateServiceXml $config }
 Assert-Rejected { ConvertFrom-DeploymentXml '<!DOCTYPE service [<!ENTITY x SYSTEM "file:///invalid">]><service>&x;</service>' }
 $definition = Set-UpdateReleaseXml (ConvertFrom-DeploymentXml $oldXml) 'C:\GST\new & ready'
 if ($definition.service.workingdirectory -ne 'C:\GST\new & ready' -or $definition.OuterXml -notmatch '&amp;' -or $definition.service.SelectNodes('env[@name="WEB_ROOT"]').Count -ne 1 -or $definition.service.SelectSingleNode('env[@name="ENV_FILE"]').GetAttribute('value') -ne $config.environmentFile) { throw 'Service selection changed private configuration or failed to escape paths.' }
-Write-Output 'PASS: mocked Windows update service identity, stop/start/admission, failure and secure XML checks. No machine changes.'
+$script:xml = $oldXml
+$certificate = $config.PSObject.Copy()
+$certificate.stagedRoot = $certificate.installedRoot
+$certificate | Add-Member certificateKeyPath 'C:\GST\private\key.pem'
+$certificate | Add-Member certificateCertPath 'C:\GST\private\cert.pem'
+$beforeAudit = $script:fixture.calls
+Invoke-UpdateService TlsInspect $certificate
+if ($script:fixture.calls -ne $beforeAudit) { throw 'Certificate inspection mutated service state.' }
+Assert-Rejected { Invoke-UpdateService TlsInspect $config }
+$script:xml = $oldXml.Replace('</service>', '<env name="WEB_ROOT" value="C:\WrongWebRoot"/></service>')
+Assert-Rejected { Invoke-UpdateService TlsInspect $certificate }
+Write-Output 'PASS: mocked Windows update/certificate service identity, inspection, stop/start/admission, failure and secure XML checks. No machine changes.'

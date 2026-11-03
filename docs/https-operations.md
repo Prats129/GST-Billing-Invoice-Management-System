@@ -1,4 +1,4 @@
-# HTTPS certificate checks and expiry reporting
+# HTTPS certificate checks, replacement and recovery
 
 The API validates direct-HTTPS configuration before creating database or
 authentication resources. HTTP loopback development is unchanged. This does not
@@ -68,12 +68,111 @@ private-CA prototype, renew through the
 existing approved CA; do not create a different CA merely to replace an expired
 leaf. Keep the CA private key outside the API account's access.
 
-Preserve the previous protected files and reviewed configuration, arrange a
-maintenance window, stage the matching pair with restricted access, then restart
-the service using the approved deployment workflow. Verify trusted HTTPS, API
-readiness and browser access on host/client afterward. Updating only one of the
-key/certificate files or serving a CA key is not a recovery procedure. The code
-does not perform this privileged installation/restart or prove its VM behavior.
+Use the controlled replacement workflow below for an already provisioned,
+dedicated Windows service. It preserves the original pair, holds maintenance
+through both file writes, restarts privately and checks trusted HTTPS before
+admission. It does not obtain a certificate, rotate a CA, install client trust or
+prove native deployment acceptance.
+
+## Controlled replacement and recovery
+
+`pnpm tls:certificate` is a host-operator command, not a customer endpoint or
+development setup command. It requires the existing dedicated
+`NT SERVICE\GSTBillingApi` deployment and protected installation record.
+It never auto-loads the project's environment. No privileged invocation was run
+on the development laptop; native service/file/firewall/task and reboot/power-loss
+acceptance still belong on the postponed disposable host/client environment.
+
+Prepare a protected operator JSON configuration with these exact sections:
+
+- `format`: 1.
+- `options`: `installationId`, a new `operationId`, the installation's existing
+  `journalParent`, `keyPath`, `certPath`, `webRoot`, exact HTTPS `origin`,
+  independently approved public `trustFile` and its `trustSha256`.
+- `windows`: the existing Windows service adapter's `operationId`,
+  `serviceRoot`, `nodePath`, `nodeSha256`, `wrapperSha256`,
+  `installedRoot`, `stagedRoot`, `environmentFile`,
+  `environmentSha256`, `journalDirectory`, `origin`, `port` and
+  `backupTaskName` (null if absent), plus `certificateKeyPath` and
+  `certificateCertPath`.
+- `scripts`: `directory` for the independently trusted operator scripts and a
+  strict `hashes` object containing approved SHA-256 hashes for
+  `Invoke-UpdateService.ps1`, `UpdateService.ps1`, `Common.ps1` and
+  `DeploymentChecks.ps1`. Do not derive expected trust from unverified downloads.
+
+All paths are absolute. Keep the configuration and journal parent in operator-only
+storage (for example, under `C:\GST-operator`), separately from the service-readable
+active pair/runtime environment (for example, under `C:\GST-runtime`) and immutable
+versioned application files. Use the SAME journal parent as application updates:
+both operations exclusively acquire `gst-update.lock`. Do not create a second
+independent lock location for certificate work.
+
+The Windows `installedRoot` and `stagedRoot` must both equal the currently
+installed application root; this operation never selects another app version.
+`webRoot` must be that root's `apps\web\dist`. The operation directory is
+`<journalParent>\gst-update-<operationId>`; its exact path must be the Windows
+`journalDirectory`. Installation/operation IDs, origin, certificate paths and
+environment binding must agree across sections. The configured port must be
+explicit in the origin and match the existing service listener.
+
+The active certificate/key paths must match the existing protected runtime
+environment, remain outside the versioned application, and already have the
+reviewed service-read/administrator-write ACLs. The controller writes those
+existing files in place, preserving identity/ACLs, only after disabling service
+restart/jobs and blocking ingress. Missing/reparse/changed files are refused.
+Both files are revalidated together before private startup; an interrupted write
+never authorizes automatic startup. Preserve the original runtime environment,
+application selection, database credentials and keys.
+
+Stage the replacement key and issuer-provided leaf/intermediate PEM in a private
+operator directory. Preflight validates dates, SAN, usage, pair and ordered chain,
+then exercises real TLS path/hostname/trust validation on an isolated loopback
+listener against the independently pinned approved public trust file. The candidate
+certificate chain is never automatically trusted as a root. The native readiness
+probe must also succeed using the Windows host's existing approved trust.
+
+```powershell
+pnpm tls:certificate replace --configuration 'C:\GST-operator\certificate-operation.json' --source-key 'C:\GST-operator\incoming\server.key.pem' --source-cert 'C:\GST-operator\incoming\server-chain.pem' --confirm-installation <installation-UUID> --maintenance
+```
+
+Private original/replacement snapshots, fingerprints, installation state and
+operation owner are retained under the protected operation journal. Successful
+replacement checks the live HTTPS leaf fingerprint and database readiness before
+admission and lock release. It never prints PEM, private keys, credentials or raw
+TLS errors. The existing monitor starts reporting the newly loaded pair after
+the controlled restart.
+
+After any failed stop/write/start/admission, keep maintenance active and stop the
+replacement operator process before recovery. No automatic retry or guessed
+rollback is performed. Read-only inspection requires protected host access:
+
+```powershell
+pnpm tls:certificate inspect --configuration 'C:\GST-operator\certificate-operation.json'
+pnpm tls:certificate recover --configuration 'C:\GST-operator\certificate-operation.json' --selection previous --expected-key-sha256 <inspected-active-key-hash> --expected-cert-sha256 <inspected-active-cert-hash> --confirm-installation <installation-UUID> --maintenance --operator-stopped
+```
+
+Choose `replacement` instead of `previous` to repair an interrupted pair with
+the already staged validated replacement. Use freshly inspected active hashes;
+stale observations are refused before claiming recovery and checked again after
+stopping. Recovery verifies installation/owner evidence and retained file hashes,
+and validates the chosen pair against the pinned trust and current time. An
+expired original cannot be restored into service; a valid staged replacement can
+be selected explicitly instead. No CA/root policy or hostname check is bypassed.
+
+A successful recovery archives the exact operation lock and recovery receipts
+under its journal. Failed claimed recovery, unknown/missing/contradictory evidence,
+partial initialization or storage failures retain locks/copies for operator
+inspection; there is no timeout-based lock stealing. Application-update recovery
+rejects certificate journals. No database migration or down migration is involved.
+Retained private pairs are not automatically pruned; manage their protection and
+retention through the approved operator procedure.
+
+Local tests cover actual NTFS private fixtures and in-place file identity, real
+ephemeral CA/leaf certificates, trusted loopback HTTPS, wrong trust/hostname,
+fingerprint mismatch, partial-pair recovery, stale observations and maintenance
+exclusion. Windows service/task/firewall/identity decisions are mocked and
+transports execute harmless verified wrappers. These do not certify real native
+deployment, client trust or power-loss durability.
 
 Server preflight verifies configured material, not client trust/revocation policy.
 It cannot monitor a root certificate held only in a client's trust store and

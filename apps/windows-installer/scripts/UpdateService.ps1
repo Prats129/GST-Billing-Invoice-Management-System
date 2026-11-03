@@ -14,7 +14,8 @@ function Assert-UpdateProtectedPath([string] $Path, [bool] $Private = $false) {
         $acl = Get-Acl -LiteralPath $item.FullName
         if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin $trusted) { throw 'Untrusted dependency owner.' }
         foreach ($rule in $acl.Access) {
-            if ($rule.AccessControlType -ne 'Allow' -or ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -ne 0) { continue }
+            if ($rule.AccessControlType -ne 'Allow') { continue }
+            if (-not $first -and ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -ne 0) { continue }
             $sid = $rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
             if ($sid -in $trusted) { continue }
             $rights = [Security.AccessControl.FileSystemRights]'Delete,DeleteSubdirectoriesAndFiles,ChangePermissions,TakeOwnership'
@@ -93,7 +94,7 @@ function Set-UpdateReleaseXml([Xml.XmlDocument] $Document, [string] $Root) {
 }
 function Invoke-UpdateService([string] $Action, $Configuration) {
     Assert-Administrator
-    if ($Action -notin @('Stop','Select','Start','Ready','Admit','Restore','StartOriginal','ReadyOriginal','AdmitOriginal')) { throw 'Unknown update action.' }
+    if ($Action -notin @('Stop','Select','Start','Ready','Admit','Restore','StartOriginal','ReadyOriginal','AdmitOriginal','TlsInspect')) { throw 'Unknown update action.' }
     $operation = [Guid]::Empty
     if (-not [Guid]::TryParseExact($Configuration.operationId, 'D', [ref]$operation)) { throw 'Operation UUID required.' }
     if ($Configuration.backupTaskName -and $Configuration.backupTaskName -notmatch '^GSTBilling-Backup-[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$') { throw 'Invalid backup task identity.' }
@@ -105,7 +106,11 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
     foreach ($address in $resolved) {
         if ((-not [Net.IPAddress]::IsLoopback($address) -and -not (Test-DeploymentPrivateAddress $address)) -or $address.ToString() -notin $localAddresses) { throw 'Private local origin required.' }
     }
-    foreach ($path in @($Configuration.serviceRoot, $Configuration.nodePath, $Configuration.installedRoot, $Configuration.environmentFile, $Configuration.journalDirectory)) { Assert-UpdateProtectedPath $path ($path -eq $Configuration.environmentFile -or $path -eq $Configuration.journalDirectory) }
+    $dependencies = @($Configuration.serviceRoot, $Configuration.nodePath, $Configuration.installedRoot, $Configuration.environmentFile)
+    # Initial read-only certificate inspection precedes operation-directory
+    # creation. Every mutating action still requires that protected directory.
+    if ($Action -ne 'TlsInspect' -or (Test-Path -LiteralPath $Configuration.journalDirectory)) { $dependencies += $Configuration.journalDirectory }
+    foreach ($path in $dependencies) { Assert-UpdateProtectedPath $path ($path -eq $Configuration.environmentFile -or $path -eq $Configuration.journalDirectory) }
     $targetRoot = $Configuration.stagedRoot
     if ($Action.EndsWith('Original') -or $Action -eq 'Restore') { $targetRoot = $Configuration.installedRoot }
     if ($Action -ne 'Stop') {
@@ -115,6 +120,19 @@ function Invoke-UpdateService([string] $Action, $Configuration) {
     $null = Get-VerifiedExecutable $Configuration.nodePath $Configuration.nodeSha256
     $service = Get-UpdateService $Configuration
     $xml = Get-UpdateServiceXml $Configuration
+    if ($null -ne $Configuration.PSObject.Properties['certificateKeyPath']) {
+        foreach ($path in @($Configuration.certificateKeyPath, $Configuration.certificateCertPath)) {
+            Assert-UpdateProtectedPath $path $true
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw 'Certificate file missing.' }
+        }
+        if ($Configuration.installedRoot -ne $Configuration.stagedRoot -or $xml.service.workingdirectory -ne $Configuration.installedRoot) { throw 'Certificate maintenance cannot select another application.' }
+        $web = @($xml.service.SelectNodes('env[@name="WEB_ROOT"]'))
+        if ($web.Count -gt 1 -or ($web.Count -eq 1 -and $web[0].GetAttribute('value') -ne (Join-Path $Configuration.installedRoot 'apps\web\dist'))) { throw 'Unexpected certificate service web root.' }
+    }
+    if ($Action -eq 'TlsInspect') {
+        if ($null -eq $Configuration.PSObject.Properties['certificateKeyPath']) { throw 'Certificate binding required.' }
+        return
+    }
     $statePath = Join-Path $Configuration.journalDirectory 'service-maintenance.json'
     $ruleName = 'GSTBilling-Update-' + $Configuration.operationId
     if ($Action -eq 'Stop') {

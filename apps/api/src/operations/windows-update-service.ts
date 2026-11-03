@@ -16,7 +16,7 @@ const path = z
     'Canonical local path required.',
   );
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
-export const windowsUpdateServiceSchema = z
+const serviceSchema = z
   .object({
     operationId: z.string().uuid(),
     serviceRoot: path,
@@ -49,8 +49,9 @@ export const windowsUpdateServiceSchema = z
       .regex(/^GSTBilling-Backup-[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/)
       .nullable(),
   })
-  .strict()
-  .superRefine((value, context) => {
+  .strict();
+export const windowsUpdateServiceSchema = serviceSchema.superRefine(
+  (value, context) => {
     const within = (a: string, b: string) => {
       const difference = win32.relative(a, b);
       return (
@@ -71,12 +72,34 @@ export const windowsUpdateServiceSchema = z
         message:
           'Installed/staged releases must be separate and journals outside both.',
       });
-  });
+  },
+);
+
+export const windowsCertificateServiceSchema = serviceSchema
+  .extend({
+    certificateKeyPath: path,
+    certificateCertPath: path,
+  })
+  .refine((value) => {
+    const relative = win32.relative(
+      value.installedRoot,
+      value.journalDirectory,
+    );
+    return (
+      value.installedRoot === value.stagedRoot &&
+      (relative === '..' ||
+        relative.startsWith('..\\') ||
+        win32.isAbsolute(relative))
+    );
+  }, 'Certificate maintenance keeps the same application; journals must be outside it.');
 
 // Script digests must come from the separately protected trusted operator release,
 // never from the candidate package or user-entered tenant configuration.
-export function createWindowsUpdateService(
-  configuration: unknown,
+function nativeService(
+  config: z.infer<typeof serviceSchema> & {
+    certificateKeyPath?: string;
+    certificateCertPath?: string;
+  },
   scripts: {
     directory: string;
     hashes: {
@@ -87,8 +110,7 @@ export function createWindowsUpdateService(
     };
   },
   expected: { runtimeConnectionString: string; installationId: string },
-): UpdateService & UpdateRecoveryService {
-  const config = windowsUpdateServiceSchema.parse(configuration);
+) {
   if (new URL(config.origin).port !== String(config.port))
     throw new Error('Explicit matching HTTPS port required.');
   const execute = async (action: string) => {
@@ -131,7 +153,14 @@ export function createWindowsUpdateService(
       environment.DEPLOYMENT_EDITION !== 'offline' ||
       environment.DATABASE_URL !== expected.runtimeConnectionString ||
       environment.OFFLINE_INSTALLATION_ID !== expected.installationId ||
-      environment.MIGRATION_DATABASE_URL !== undefined
+      environment.MIGRATION_DATABASE_URL !== undefined ||
+      (config.certificateKeyPath !== undefined &&
+        (environment.TLS_KEY_PATH !== config.certificateKeyPath ||
+          environment.TLS_CERT_PATH !== config.certificateCertPath ||
+          environment.APP_ORIGIN !== config.origin ||
+          (environment.WEB_ROOT !== undefined &&
+            environment.WEB_ROOT !==
+              win32.join(config.installedRoot, 'apps', 'web', 'dist'))))
     )
       throw new Error('Runtime binding mismatch.');
     const system = process.env.SystemRoot ?? 'C:\\Windows';
@@ -198,5 +227,38 @@ export function createWindowsUpdateService(
     startOriginal: () => execute('StartOriginal'),
     assertOriginalReady: () => execute('ReadyOriginal'),
     admitOriginal: () => execute('AdmitOriginal'),
+    auditCertificates: () => execute('TlsInspect'),
+  };
+}
+
+type Scripts = Parameters<typeof nativeService>[1];
+type Binding = Parameters<typeof nativeService>[2];
+export function createWindowsUpdateService(
+  configuration: unknown,
+  scripts: Scripts,
+  expected: Binding,
+): UpdateService & UpdateRecoveryService {
+  return nativeService(
+    windowsUpdateServiceSchema.parse(configuration),
+    scripts,
+    expected,
+  );
+}
+export function createWindowsCertificateService(
+  configuration: unknown,
+  scripts: Scripts,
+  expected: Binding,
+) {
+  const service = nativeService(
+    windowsCertificateServiceSchema.parse(configuration),
+    scripts,
+    expected,
+  );
+  return {
+    audit: service.auditCertificates,
+    stop: service.stop,
+    startPrivate: service.startOriginal,
+    assertReady: service.assertOriginalReady,
+    admit: service.admitOriginal,
   };
 }

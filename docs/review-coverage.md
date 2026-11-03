@@ -1,5 +1,56 @@
 # Review coverage
 
+## Phase 6 continuation: controlled HTTPS certificate replacement
+
+Started implementing protected certificate-pair replacement for an existing
+dedicated Windows deployment, with staging/trust validation, shared installation
+maintenance locking, retained original files and explicit recovery. The API's
+fixed TLS paths and certificate issuer remain unchanged. No live certificates,
+keys, trust stores, services, firewall/task settings, customer database or Git
+staging are modified. Native deployment/power-loss acceptance remains postponed.
+
+Implemented an operator-only replacement/inspect/recover CLI with strict protected
+configuration and runtime/environment/script binding. It stages both private
+pairs, validates real TLS trust/hostname on an isolated listener, and shares the
+installation update lock. In-place writes preserve the existing service-read
+file identity/ACL while service restart/jobs/ingress remain disabled. Private
+restart, native process/listener/readiness checks and exact live leaf fingerprint
+verification precede admission. No CA trust, issuer, environment, app version or
+database selection is changed. Explicit recovery binds fresh inspected hashes,
+owner/installation evidence and retained snapshots; success archives the exact
+lock/receipts. Stale inspection fails before claiming; unknown or failed claimed
+recovery remains stopped for inspection. Application recovery rejects the distinct
+certificate journal header rather than guessing how to handle TLS files.
+
+All 248 unit tests (35 files) passed, including six real loopback certificate
+lifecycle cases, private NTFS/in-place identity, partial-pair repair, controlled
+expiry rejection, wrong trust/hostname, maintenance exclusion and harmless native
+transport/binding tests. Existing TLS checks/monitoring and issuer tests remain
+green. The first compile identified the HTTPS socket's base type and an optional
+journal reference; corrected explicit TLS/phase typing. Lint caught a type-only
+import and was corrected. Safe mocked native tests and all 18 PowerShell parser
+checks passed before final review; build/smoke, shared database regressions and
+final native/static verification are in progress. No real SCM/firewall/task or
+client trust-store action has been performed.
+
+Final verification passed all workspace/test TypeScript, lint, repository
+formatting and Git whitespace checks; production package/API/web builds and the
+compiled frontend/assets/API/real-database/OpenAPI/Origin smoke passed. Both shared
+database update/recovery integration files passed (9 tests). Safe mocked Windows
+update/certificate and deployment tests, in-memory backup-task checks and parsing
+of all 18 PowerShell files passed after the final adapter changes. The TLS audit
+now permits read-only preflight before its operation directory exists; every
+mutating native action still requires the protected journal. No unrelated full
+database suite or browser UI suite was rerun because no schema/UI changed.
+
+This completes locally verified controlled replacement/inspection/recovery for
+the existing dedicated-service boundary. It does not complete Phase 6, install a
+service on this laptop, acquire/automatically renew issuer certificates, deploy
+client/CA trust or certify Windows crash/reboot behavior. Original/replacement
+private pairs are retained only in protected test/operation storage, never logged.
+All fixture keys are ephemeral. No production key/certificate, runtime environment,
+customer data, machine deployment setting or Git staging changed.
+
 ## Phase 6 continuation: publisher issuance register
 
 Started the next independent commercial-operations item in the connected plan:

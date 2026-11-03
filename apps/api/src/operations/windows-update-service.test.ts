@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import {
   createWindowsUpdateService,
   windowsUpdateServiceSchema,
+  windowsCertificateServiceSchema,
+  createWindowsCertificateService,
 } from './windows-update-service.js';
 
 const roots: string[] = [];
@@ -38,6 +40,26 @@ const base = {
   port: 3443,
   backupTaskName: null,
 };
+
+test('certificate maintenance keeps the same application and strict certificate paths', () => {
+  const config = {
+    ...base,
+    stagedRoot: base.installedRoot,
+    certificateKeyPath: 'C:\\GST\\private\\key.pem',
+    certificateCertPath: 'C:\\GST\\private\\cert.pem',
+  };
+  expect(windowsCertificateServiceSchema.parse(config)).toMatchObject({
+    installedRoot: base.installedRoot,
+  });
+  for (const change of [
+    { stagedRoot: base.stagedRoot },
+    { journalDirectory: base.installedRoot + '\\journal' },
+    { certificateKeyPath: '\\\\remote\\key.pem' },
+  ])
+    expect(() =>
+      windowsCertificateServiceSchema.parse({ ...config, ...change }),
+    ).toThrow();
+});
 test('native service schema rejects remote paths, unsafe identities and origin credentials', () => {
   expect(windowsUpdateServiceSchema.parse(base)).toMatchObject({ port: 3443 });
   for (const change of [
@@ -140,6 +162,42 @@ test.runIf(process.platform === 'win32')(
     await expect(
       createWindowsUpdateService(f.config, f.scripts, f.expected).stop(),
     ).rejects.toThrow('scripts changed');
+  },
+  30000,
+);
+
+test.runIf(process.platform === 'win32')(
+  'certificate audit transports only verified harmless helper bytes and rejects a different TLS binding',
+  async () => {
+    const f = await fixture();
+    const config = {
+      ...f.config,
+      stagedRoot: f.config.installedRoot,
+      certificateKeyPath: 'C:\\GST\\private\\key.pem',
+      certificateCertPath: 'C:\\GST\\private\\cert.pem',
+    };
+    const environment =
+      (await readFile(f.config.environmentFile, 'utf8')) +
+      `TLS_KEY_PATH=${config.certificateKeyPath}\nTLS_CERT_PATH=${config.certificateCertPath}\nAPP_ORIGIN=${config.origin}\n`;
+    await writeFile(f.config.environmentFile, environment);
+    config.environmentSha256 = digest(environment);
+    const wrapper = join(f.root, 'Invoke-UpdateService.ps1');
+    const harmless = (await readFile(wrapper, 'utf8')).replace(
+      "$Action -ne 'Stop'",
+      "$Action -ne 'TlsInspect'",
+    );
+    await writeFile(wrapper, harmless);
+    f.scripts.hashes['Invoke-UpdateService.ps1'] = digest(harmless);
+    await expect(
+      createWindowsCertificateService(config, f.scripts, f.expected).audit(),
+    ).resolves.toBeUndefined();
+    await expect(
+      createWindowsCertificateService(
+        { ...config, certificateKeyPath: 'C:\\GST\\wrong.key' },
+        f.scripts,
+        f.expected,
+      ).audit(),
+    ).rejects.toThrow('Runtime binding');
   },
   30000,
 );

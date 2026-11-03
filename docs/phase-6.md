@@ -44,6 +44,17 @@ commercial Windows release. Independent release/security work can continue.
 
 ## Completed engineering checkpoints
 
+- Controlled HTTPS certificate replacement/inspection/recovery now stages and
+  retains protected pairs, validates independently approved trust, shares the
+  update lock and verifies the exact live certificate before admission. It keeps
+  fixed runtime paths and preserves file identity/ACLs. Partial-pair recovery and
+  refusal of expired originals are verified locally; see https-operations.md and
+  review-coverage.md. Issuer-driven renewal, client trust and real Windows/power-
+  loss acceptance remain external release requirements.
+  All 248 unit tests, 9 targeted database update/recovery integration tests,
+  workspace/test types, production builds, compiled smoke, lint/format checks,
+  safe mocked native suites and all 18 PowerShell parser checks passed.
+
 - Publisher issuance now requires an explicit protected local register and its
   expected identity. Recorded predecessors prevent duplicate first issuance and
   stale renewal; atomic no-overwrite sequence commits prevent concurrent forks.

@@ -33,6 +33,9 @@ installer, restart planning after each helper or add unrelated product features.
    Publisher-only local issuance registration and exact committed-grant export
    are implemented. Production authority/storage/key custody, existing-history
    reconciliation, provider and certificate operations remain external work.
+   Controlled certificate-pair replacement/recovery is implemented for an
+   already provisioned dedicated service. Actual native acceptance, issuer-driven
+   renewal and client/CA trust deployment remain external gates.
 5. Run integrated local regression checks, then collect the postponed disposable
    Windows host/client install/update/failure/recovery/uninstall/LAN/reboot evidence
    and actual SaaS backup/restore evidence before commercial release.

@@ -46,6 +46,7 @@ export async function acquireUpdateJournal(
   parent: string,
   installationId: string,
   operationId: string,
+  operationKind?: 'certificate',
 ): Promise<
   Pick<UpdateHost, 'record'> & { release(): Promise<void>; directory: string }
 > {
@@ -83,6 +84,7 @@ export async function acquireUpdateJournal(
         installationId,
         operationId,
         recordedAt: new Date().toISOString(),
+        ...(operationKind ? { operationKind } : {}),
       }) + '\n',
     );
     await file.sync();
