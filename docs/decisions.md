@@ -1,5 +1,10 @@
 # Implementation decisions
 
+Phase 6 user decision (2026-11-02): offline updates require active maintenance at
+installation time, rather than eligibility based on release publication date.
+Every organization sharing the offline installation must qualify. Optional
+maintenance expiry continues to leave perpetual billing rights intact.
+
 Confirmed product architecture remains in PROJECT_CONTEXT.md; this log selects
 reversible foundation details without changing those decisions.
 

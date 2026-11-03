@@ -91,6 +91,9 @@ This implements signed-file activation and a provider-neutral signed SaaS
 subscription state, plus the publisher command below. Online activation/issuer service, self-service SaaS onboarding,
 provider provisioning/renewal automation, commercial key custody/rotation,
 hardware-transfer workflow and maintenance-gated signed updates are unfinished.
+An [offline update eligibility preflight](signed-releases.md#offline-maintenance-eligibility)
+now checks current signed maintenance for every organization. Its future installer
+integration is still unfinished; it does not affect perpetual billing rights.
 No billing gateway, seat limits or pricing rules were invented. SaaS hosting has
 not been selected. Customer invoice payment tracking remains out of scope.
 

@@ -3,6 +3,9 @@
 Status: implementation in progress. No commercial release or tax-compliance
 approval is implied. Phase 5 issuance gates remain unchanged.
 
+See [remaining release work](phase-6-release-gaps.md) for the reviewed gaps,
+required inputs and completion evidence. No extra product phase is proposed.
+
 ## Execution order and acceptance
 
 1. Encrypted, authenticated custom-format PostgreSQL backup artifacts, bounded
@@ -40,6 +43,11 @@ machines are available. These checks are pending, not passed, and still block
 commercial Windows release. Independent release/security work can continue.
 
 ## Completed engineering checkpoints
+
+- Offline maintenance eligibility preflight enforces active maintenance at install
+  time for every organization, using signed grants and a read-only full-database
+  snapshot. See signed-releases.md. Installer integration and atomic update
+  orchestration remain unfinished; this is not permission to install a package.
 
 - Authenticated backup artifacts, host-only backup/key commands and real
   PostgreSQL 18 restore verification. See backup-recovery.md for exact evidence

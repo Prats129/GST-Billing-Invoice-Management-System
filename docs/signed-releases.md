@@ -38,6 +38,36 @@ Windows Authenticode trust. Never execute files from an unverified package.
 
 ## Remaining commercial installer/update gate
 
+### Offline maintenance eligibility
+
+User-confirmed policy: maintenance must be active **when installing**, for every
+organization sharing the offline installation. Release publication date does not
+preserve update eligibility after maintenance expires. Perpetual billing remains
+available when maintenance expires; this rule only restricts application updates.
+
+`pnpm release:eligibility` performs a host-only, read-only preflight using
+`MIGRATION_DATABASE_URL`, `ENTITLEMENT_TRUST_FILE` and `OFFLINE_INSTALLATION_ID`
+from the protected operator environment (or the existing project `.env`). It
+requires offline configuration and valid signed, active, host-bound grants with
+future `maintenanceUntil` for **all** organizations, including archived/suspended
+ones. No tenant ID argument or development bypass is accepted. Missing maintenance
+also blocks trial/subscription grants; subscription validity alone is not proof
+of maintenance. The operator connection must see the entire installation database.
+RLS-filtered queries fail rather than silently excluding organizations.
+
+Success reports only organization count and check time; failures omit tenant
+identities, grant contents, paths and credentials. Grants/clock markers are not
+modified. This checks the local system clock against stored observations, not an
+independent trusted time service; it does not defeat whole-machine rollback.
+
+Verification/staging commands still check package integrity independently of
+licensing. This new preflight neither installs files nor authorizes a later
+installation: the future assisted updater must call the shared eligibility policy
+again immediately before installation under its maintenance/write-stop protocol,
+prevent organization/grant changes during that operation and refuse if time has
+crossed the expiry boundary. It must separately verify package integrity, backup,
+schema compatibility and service recovery. No production updater is claimed here.
+
 Protected staging is implemented below. Installation/service control, maintenance,
 live forward migration, live recovery/cutover and reboot acceptance remain unfinished.
 Explicit forward migration of an isolated recovery copy is now available through

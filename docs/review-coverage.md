@@ -1,5 +1,48 @@
 # Review coverage
 
+## Phase 6 continuation: offline update maintenance eligibility
+
+User confirmed active maintenance at installation time and eligibility for every
+organization on a shared offline host. Implemented a reusable signed-grant policy
+and a host-only read-only database preflight, with no development bypass or
+tenant/status filter. Rejects missing grants, wrong binding, sequence mismatch,
+clock rollback, inactive entitlement and absent/expired maintenance. Uses a
+repeatable-read database snapshot and disables row-security filtering rather than
+silently checking a tenant subset. Does not update clock markers or grants.
+No installer exists yet: preflight success is not durable installation authority;
+the future updater must recheck under its controlled maintenance/write stop.
+First sandboxed
+Vitest invocation hit child-process EPERM before tests; rerunning with approved
+test-process access. No dependencies, schemas, production configuration, services
+or Git staging are changed.
+
+Verification passed all 196 unit tests (27 files), the new isolated PostgreSQL
+integration test, API production build, application/test TypeScript and lint.
+The database test initially violated the existing active-owner constraint;
+corrected the fixture to create an owner in the organization transaction, then
+reran successfully. It verifies all three organization statuses, missing-grant
+rejection and unchanged stored grants/clock markers. CLI unexpected-argument
+rejection returned sanitized output and exit 1 before database access. Formatting
+found one import-layout issue; final repository formatting and whitespace checks
+passed after correction. Existing unrelated
+integration/browser/Windows workflows were not rerun for this isolated host-only
+addition. Actual installation, service control and Windows acceptance remain
+unfinished or postponed; no package installation is authorized by this check.
+
+## Phase 6 continuation: remaining release requirements review
+
+Reviewed the Phase 6 acceptance list against PROJECT_CONTEXT.md, recorded user
+decisions, licensing operations and signed-release boundaries. Added
+phase-6-release-gaps.md with unfinished implementation, external prerequisites
+and required completion evidence. Distinguished postponed Windows acceptance
+from unfinished installer/update orchestration; neither is complete. Identified
+maintenance update eligibility as the next locally testable implementation,
+pending release-date and multi-organization policy clarification. No commercial
+policy, provider, signing key or tax approval was invented. This batch changes
+documentation only; application tests are not repeated. Prettier formatted the
+three affected documents successfully and git diff --check passed. No application,
+configuration, database or Git staging changes were made.
+
 ## Phase 6 continuation: HTTPS certificate validity and expiry
 
 Reviewed remaining Phase 6 gates after the Windows postponement and dependency/
