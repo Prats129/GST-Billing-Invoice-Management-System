@@ -136,18 +136,27 @@ task XML, install lock and durable events. Protect and back up recovery material
 separately; never publish these files or commit them.
 
 `operations/installation.json` is the shared installed-version/schema pointer.
-Future candidate applications for this layout belong in `releases/<version>`.
+Future candidate applications for this layout belong directly inside `releases`:
+either `<version>` or the protected `gst-release-<six characters>` directory
+returned by release staging. The installed-state pointer selects the actual root.
 Supply `backupAccountSid` in Windows update/certificate service configuration,
 alongside the existing backup task name. The adapter verifies its principal,
 grants selected-release read access and regrants read access after atomic state
 replacement; the scheduled job follows that pointer instead of the original CLI.
+For installer-created service layouts, the native adapter also binds the journal
+parent to this root's `operations` directory and the original runtime/node/task
+identities. A copied state file in another journal directory cannot bypass shared
+update/certificate/repair/uninstall exclusion. Legacy manually provisioned service
+layouts retain their existing explicit configuration boundary.
 
 Failure retains evidence and data, attempts to isolate only proven-owned
 registrations, and never recursively cleans or reinitializes a cluster. An
 interrupted task registration without its ownership receipt needs inspection.
-An existing/partial root blocks initial installation. Retained-data repair or
-reinstallation is not yet an automated operation; do not delete the root or rerun
-initial setup to force it. Its native acceptance remains outstanding.
+An existing/partial root blocks initial installation. Use the explicit repair
+workflow below for a previously completed installation; never delete the root or
+rerun initial setup to force it. An interrupted initial installation without a
+completed installation receipt remains an inspection boundary, not an adopted
+database. Native acceptance remains outstanding.
 
 ## Data-preserving uninstall
 
@@ -170,7 +179,105 @@ material and operation receipts remain. The backup Windows account and host/clie
 certificate trust remain under operator control. An interrupted uninstall retains
 its distinct journal/lock for manual inspection; update recovery does not treat
 that journal as an application rollback. No stale-lock timeout or automatic resume
-is provided. Resolve the verified native state before any further operation.
+is provided. Use the explicit inspection/recovery workflow below for operations
+created by the current host command.
+
+## Repair or reinstall over retained data
+
+`repair` restores a previously completed installation, including one whose
+registrations were removed by uninstall. It requires the **exact installed
+application version and migration digest**, the matching trusted operator release,
+and the same independently approved Node/PostgreSQL/WinSW payloads. This is not an
+upgrade or an opportunity to replace database, identity, origin or licensing.
+The file inventory must also match the original protected installation receipt
+or authenticated original/target inventory saved by the assisted updater. A
+republished package with different files but the same version is refused; repair
+cannot bypass normal maintenance eligibility. Older update records without the
+required inventory evidence are an inspection boundary, not inferred authority.
+
+Supply a new private repair configuration containing exactly:
+
+```json
+{
+  "bundleRoot": "C:\\Publisher\\Bundle",
+  "releaseTrustFile": "C:\\GST-input\\release-public-keys.json",
+  "certificateTrustFile": "C:\\GST-input\\current-ca.crt",
+  "certificateTrustSha256": "<approved lowercase SHA-256 of the current CA file>",
+  "backupCredentialFile": "C:\\GST-input\\backup-credential.xml"
+}
+```
+
+The signed source bundle must be outside the retained installation. The CA is
+independent current trust for the retained TLS pair, including a pair replaced by
+the controlled certificate workflow. The DPAPI credential must still match the
+original ordinary backup account. Initial owner/password input is not needed.
+Keep these files unchanged and available until the operation is resolved.
+
+```powershell
+pnpm offline:host repair --root C:\GST --configuration C:\GST-input\repair.json --confirm-installation 25a3a48f-7f24-4b65-ae13-b55cd3d5fa31 --maintenance
+```
+
+The command acquires shared maintenance exclusion, verifies every present
+registration, isolates ingress, disables the backup job and stops owned services.
+It restores signed application files and the original approved tools. Changed
+files are atomically replaced with originals and target/hash receipts retained in
+the protected operation directory; unchanged files are not overwritten. Unlisted
+application/vendor files are refused, never silently deleted. Trusted operator
+bootstrap/backup helpers and service definitions are restored separately from the
+signed application. Missing proven service/task registrations are recreated;
+same-name registrations belonging to another account/root are never adopted.
+
+PostgreSQL restarts with `ExistingClusterOnly`: missing initialized-cluster
+evidence cannot cause `initdb`. A separately trusted verifier uses read-only
+sessions to check the actual data directory, cluster system identifier, exact
+migration history, database owner and restricted runtime permissions. It never
+migrates, creates/drops a database/role, changes passwords or provisions an owner.
+Application signatures/inventory, process/listener identity, frontend, readiness
+and the current certificate pin are verified before normal operation is restored.
+
+Database contents, installation UUID, settings, TLS pair, entitlement trust,
+credentials, backup key/archives, owner recovery material and installed-state
+pointer remain. Required service/backup read/write permissions are restored to
+the same identities. Failed repair retains evidence and isolation for recovery.
+Damaged/missing protected identity, configuration, key or cluster evidence is
+refused; it is not replaced with defaults or reconstructed by guessing.
+
+## Explicit interrupted-uninstall or repair recovery
+
+Stop the previous operator process and its helper processes before recovery.
+Find the operation ID in the protected lock owner file (do not edit it):
+
+```powershell
+(Get-Content C:\GST\operations\gst-update.lock\owner.json -Raw | ConvertFrom-Json).operationId
+pnpm offline:host inspect --root C:\GST --operation-id <operation-uuid> --confirm-installation 25a3a48f-7f24-4b65-ae13-b55cd3d5fa31
+```
+
+Inspection reads the saved intent, lock, original journal/permit, retained inputs
+and actual owned registration state. It returns `fingerprint` and `actorAlive`;
+it does not start/stop services or change files. A busy native execution guard
+blocks inspection. Once the previous operator is stopped, use its fresh result:
+
+```powershell
+pnpm offline:host recover --root C:\GST --operation-id <operation-uuid> --confirm-installation 25a3a48f-7f24-4b65-ae13-b55cd3d5fa31 --maintenance --operator-stopped --expected-inspection-sha256 <fingerprint>
+```
+
+The command finishes the saved operation: uninstall removes only verified owned
+registrations; repair resumes the exact saved repair inputs and version. There
+is no implicit rollback or switch from one operation kind to another. Live
+operator PIDs (with creation-time checks), stale inspection, changed bindings,
+foreign locks and competing claims fail before mutation. Native actions hold an
+exclusive file handle and replace an execution permit under that handle, so a
+delayed old helper cannot resume after recovery takes over.
+
+Torn final original-journal bytes are retained verbatim. Recovery writes separate
+attempt/completion receipts and archives only the verified resolved lock. If it
+is interrupted again, stop that operator, inspect again and supply the new
+fingerprint; the old fingerprint is invalid after permit replacement. Never
+remove unknown lock contents or use a stale-lock timeout. Old prototype journals
+without a durable offline intent/permit, incomplete initial setup, corrupt
+identity evidence or unavailable/changed repair inputs need operator inspection;
+the command refuses to infer authority from names alone. No commercial license
+or invoice compliance gate is bypassed.
 
 ## Safe local checks
 
@@ -188,6 +295,8 @@ Remove-Item Env:TEST_OFFLINE_INSTALL_DOCKER
 ./apps/windows-installer/scripts/Test-OfflineInstaller.ps1
 ./apps/windows-installer/scripts/Test-OfflineArchive.ps1
 ./apps/windows-installer/scripts/Test-BackupInstallation.ps1
+./apps/windows-installer/scripts/Test-OfflineRepair.ps1
+./apps/windows-installer/scripts/Test-OfflineRepairFlow.ps1
 ./apps/windows-installer/scripts/Test-UpdateService.ps1
 ./apps/windows-installer/scripts/Test-DeploymentChecks.ps1
 ./apps/windows-installer/scripts/Test-BackupSchedule.ps1

@@ -21,7 +21,8 @@ The [assisted-update core and journal](../../docs/assisted-updates.md) implement
 testable sequencing and interruption handling. A schema-preserving adapter now
 binds real database recovery and Windows service/file operations for an already
 provisioned dedicated service. The initial lifecycle command is documented above;
-native acceptance and retained-data repair/reinstallation remain unfinished.
+explicit retained-data repair/reinstallation and interrupted-operation recovery
+are also implemented. Native acceptance remains unfinished.
 
 Safe service-backend decision tests (all machine/network actions mocked):
 

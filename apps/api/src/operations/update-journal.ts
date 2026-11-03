@@ -46,7 +46,7 @@ export async function acquireUpdateJournal(
   parent: string,
   installationId: string,
   operationId: string,
-  operationKind?: 'certificate' | 'uninstall',
+  operationKind?: 'certificate' | 'uninstall' | 'repair',
 ): Promise<
   Pick<UpdateHost, 'record'> & { release(): Promise<void>; directory: string }
 > {

@@ -24,6 +24,7 @@ import type {
 } from './assisted-update.js';
 import type { ReleaseManifest } from './release-package.js';
 import { verifyReleasePackage } from './release-package.js';
+import { verifyOfflineRelease } from './offline-installer.js';
 import {
   readInstallationState,
   replaceInstallationState,
@@ -140,12 +141,22 @@ export function createDatabaseUpdateHost(options: {
         throw new Error(
           'Protected installation state does not match the requested update.',
         );
+      const originalManifest = await verifyOfflineRelease(
+        options.installedRoot,
+        options.releaseTrust,
+      );
+      if (
+        originalManifest.version !== options.installed.version ||
+        originalManifest.toSchemaDigest !== options.installed.schemaDigest
+      )
+        throw new Error('Original release receipt mismatch.');
       journal = await acquireUpdateJournal(
         options.journalParent,
         options.installationId,
         options.operationId,
       );
       try {
+        await save('original-manifest', originalManifest);
         if (
           JSON.stringify(await readInstallationState(options.journalParent)) !==
           JSON.stringify(installedState)
@@ -227,6 +238,7 @@ export function createDatabaseUpdateHost(options: {
           'Update schema does not match the trusted operator release.',
         );
       manifest = structuredClone(target);
+      await save('target-manifest', manifest);
       const prepared = await prepareRecovery(
         options.backup,
         join(journal.directory, 'before-update.gstbackup'),

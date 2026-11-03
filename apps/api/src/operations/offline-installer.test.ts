@@ -9,13 +9,34 @@ import {
   prepareOfflineInstallation,
 } from './offline-installer.js';
 import { certificateHash } from './certificate-probe.js';
+import {
+  prepareOfflineRepair,
+  retainedBinding,
+  offlineRepairSchema,
+} from './offline-repair.js';
+import type * as FileSystem from 'node:fs/promises';
 
 const state = vi.hoisted(() => ({
   files: new Map<string, Buffer>(),
   manifest: undefined as ReleaseManifest | undefined,
   verify: vi.fn(),
   trust: vi.fn(),
+  installation: undefined as Record<string, unknown> | undefined,
 }));
+vi.mock('./installation-state.js', () => ({
+  readInstallationState: async () => state.installation,
+}));
+vi.mock('node:fs/promises', async () => {
+  const actual = await vi.importActual<typeof FileSystem>('node:fs/promises');
+  return {
+    ...actual,
+    lstat: async (path: Parameters<typeof actual.lstat>[0]) => {
+      if (String(path).endsWith('install.lock'))
+        throw Object.assign(new Error(), { code: 'ENOENT' });
+      return actual.lstat(path);
+    },
+  };
+});
 vi.mock('./certificate-replacement.js', () => ({
   readCertificateOperationFile: async (file: string) => {
     const bytes = state.files.get(win32.normalize(file));
@@ -41,7 +62,9 @@ vi.mock('./release-package.js', async () => {
         return {
           ...state.manifest!,
           files: state
-            .manifest!.files.filter((f) => f.path.startsWith('app/'))
+            .manifest!.files.filter(
+              (f) => f.path.startsWith('app/') && f.path !== 'app/release.json',
+            )
             .map((f) => ({ ...f, path: f.path.slice(4) })),
         };
       return state.manifest!;
@@ -94,6 +117,7 @@ function store(file: string, value: unknown) {
 }
 beforeEach(() => {
   state.files.clear();
+  state.installation = undefined;
   state.verify.mockReset();
   state.trust.mockReset();
   const { publicKey } = generateKeyPairSync('ed25519');
@@ -157,6 +181,7 @@ beforeEach(() => {
     },
   };
   const files = [
+    'app/release.json',
     ...[
       'apps/api/dist/main.js',
       'apps/api/dist/security/host-cli.js',
@@ -272,5 +297,181 @@ test('input changes during certificate validation cannot become an accepted plan
   );
   await expect(prepareOfflineInstallation(config)).rejects.toThrow(
     'Installer inputs changed during preflight',
+  );
+});
+
+async function repairFixture() {
+  const plan = await prepareOfflineInstallation(config);
+  const root = config.root;
+  state.installation = {
+    format: 1,
+    installationId: config.installationId,
+    version: '1.0.0',
+    schemaDigest: 'a'.repeat(64),
+    appRoot: win32.join(root, 'releases', '1.0.0'),
+    operationId: null,
+  };
+  store(win32.join(root, 'operator', 'native-installation.json'), plan);
+  const task = Buffer.from('fixture task definition');
+  store(win32.join(root, 'operator', 'backup-task.xml'), task);
+  store(win32.join(root, 'operator', 'installed.json'), {
+    installationId: config.installationId,
+    state: 'installed',
+    taskSha256: certificateHash(task).toUpperCase(),
+  });
+  for (const path of [
+    'operator/database-input.json',
+    'operator/database-receipt.json',
+    'operator/operator.env',
+    'operator/backup.env',
+    'runtime/entitlement-trust.json',
+    'runtime/tls/key.pem',
+    'runtime/tls/cert.pem',
+    'operations/installation.json',
+  ])
+    store(win32.join(root, path), Buffer.from('private retained fixture'));
+  store(win32.join(root, 'backup-key', 'backup.key'), Buffer.alloc(32, 1));
+  store(
+    win32.join(root, 'backup-key', 'installation-id.txt'),
+    Buffer.from(config.installationId + '\n'),
+  );
+  store(
+    win32.join(root, 'runtime', 'runtime.env'),
+    Buffer.from(
+      `NODE_ENV=production\nDEPLOYMENT_EDITION=offline\nDATABASE_URL=postgresql://gst_runtime:fixture@127.0.0.1:55432/gst_billing\nOFFLINE_INSTALLATION_ID=${config.installationId}\nAPP_ORIGIN=${config.origin}\nALLOWED_HOSTS=gst-host:3443\nHOST=127.0.0.1\nPORT=3443\nTLS_KEY_PATH=${win32.join(root, 'runtime', 'tls', 'key.pem')}\nTLS_CERT_PATH=${win32.join(root, 'runtime', 'tls', 'cert.pem')}\n`,
+    ),
+  );
+  return {
+    root,
+    configuration: offlineRepairSchema.parse({
+      bundleRoot: config.bundleRoot,
+      releaseTrustFile: config.releaseTrustFile,
+      certificateTrustFile: config.certificateTrustFile,
+      certificateTrustSha256: config.certificateTrustSha256,
+      backupCredentialFile: config.backupCredentialFile,
+    }),
+  };
+}
+test('repair validates the signed installed version without rereading initial owner credentials', async () => {
+  const f = await repairFixture();
+  state.files.delete(config.ownerInputFile);
+  const result = await prepareOfflineRepair(f.root, f.configuration);
+  expect(result.version).toBe('1.0.0');
+  expect(
+    result.files.every((file) =>
+      file.destination.startsWith('C:\\GST\\releases\\1.0.0\\'),
+    ),
+  ).toBe(true);
+  expect(JSON.stringify(result)).not.toContain('Long fixture password');
+});
+test('repair refuses another release, changed vendor payload or backup identity', async () => {
+  const f = await repairFixture();
+  state.manifest!.version = '1.0.1';
+  await expect(prepareOfflineRepair(f.root, f.configuration)).rejects.toThrow(
+    'exact installed version',
+  );
+  state.manifest!.version = '1.0.0';
+  state.manifest!.files.find(
+    (file) => file.path === 'vendor/node.zip',
+  )!.sha256 = 'f'.repeat(64);
+  await expect(prepareOfflineRepair(f.root, f.configuration)).rejects.toThrow(
+    'Approved vendor payload changed',
+  );
+  store(
+    win32.join(f.root, 'backup-key', 'installation-id.txt'),
+    Buffer.from('another installation'),
+  );
+  await expect(retainedBinding(f.root)).rejects.toThrow(
+    'Wrong backup identity',
+  );
+});
+test('repair refuses moved installed state, invalid key and redirected runtime', async () => {
+  const f = await repairFixture();
+  state.installation!.appRoot = 'C:\\Other\\1.0.0';
+  await expect(prepareOfflineRepair(f.root, f.configuration)).rejects.toThrow(
+    'Wrong retained installation',
+  );
+  state.installation!.appRoot = 'C:\\GST\\releases\\1.0.0';
+  store(win32.join(f.root, 'backup-key', 'backup.key'), Buffer.alloc(31));
+  await expect(retainedBinding(f.root)).rejects.toThrow(
+    'Invalid retained backup key',
+  );
+  store(win32.join(f.root, 'backup-key', 'backup.key'), Buffer.alloc(32));
+  const file = win32.join(f.root, 'runtime', 'runtime.env');
+  store(
+    file,
+    Buffer.from(
+      state.files.get(file)!.toString().replace('PORT=3443', 'PORT=3444'),
+    ),
+  );
+  await expect(prepareOfflineRepair(f.root, f.configuration)).rejects.toThrow(
+    'Retained runtime binding changed',
+  );
+});
+test('repair refuses an unverified source inside retained storage', async () => {
+  const f = await repairFixture();
+  await expect(
+    prepareOfflineRepair(f.root, {
+      ...f.configuration,
+      bundleRoot: 'C:\\GST\\data\\bundle',
+    }),
+  ).rejects.toThrow('outside the retained installation');
+});
+
+test('repair follows a protected release-stage directory after an assisted update', async () => {
+  const f = await repairFixture();
+  state.installation!.appRoot = 'C:\\GST\\releases\\gst-release-Ab123Z';
+  const result = await prepareOfflineRepair(f.root, f.configuration);
+  expect(result.appRoot).toBe(state.installation!.appRoot);
+  expect(
+    result.files.every((file) =>
+      file.destination.startsWith(result.appRoot + '\\'),
+    ),
+  ).toBe(true);
+});
+
+test('repair cannot install republished application contents under the same version', async () => {
+  const f = await repairFixture();
+  state.manifest!.files.find(
+    (file) => file.path === 'app/apps/api/dist/main.js',
+  )!.sha256 = 'f'.repeat(64);
+  await expect(prepareOfflineRepair(f.root, f.configuration)).rejects.toThrow(
+    'cannot change the installed release inventory',
+  );
+});
+
+test('repair binds an updated version to its retained authenticated update inventory', async () => {
+  const f = await repairFixture(),
+    id = 'b24116ce-50b6-4969-a257-91edff707980';
+  state.manifest!.version = '1.0.1';
+  state.installation!.version = '1.0.1';
+  state.installation!.operationId = id;
+  state.installation!.appRoot = 'C:\\GST\\releases\\gst-release-Ab123Z';
+  const receipt = {
+    ...state.manifest!,
+    files: state
+      .manifest!.files.filter(
+        (file) =>
+          file.path.startsWith('app/') && file.path !== 'app/release.json',
+      )
+      .map((file) => ({ ...file, path: file.path.slice(4) })),
+  };
+  store(
+    win32.join(
+      f.root,
+      'operations',
+      'gst-update-' + id,
+      'target-manifest.json',
+    ),
+    receipt,
+  );
+  await expect(
+    prepareOfflineRepair(f.root, f.configuration),
+  ).resolves.toMatchObject({ version: '1.0.1' });
+  state.manifest!.files.find(
+    (file) => file.path === 'app/apps/api/dist/main.js',
+  )!.sha256 = 'f'.repeat(64);
+  await expect(prepareOfflineRepair(f.root, f.configuration)).rejects.toThrow(
+    'cannot change the installed release inventory',
   );
 });

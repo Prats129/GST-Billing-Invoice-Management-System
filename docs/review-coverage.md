@@ -1,5 +1,84 @@
 # Review coverage
 
+## Phase 6 continuation: interrupted uninstall and retained-data repair
+
+Started the explicit inspection/recovery and repair/reinstallation workflow.
+Initial installation remains new-root-only. Repair must retain database identity,
+schema, owner credentials, settings and backup keys; it must not initialize a
+cluster, migrate, provision an owner or adopt unknown registrations. Maintenance
+uses the existing shared lock, with fresh evidence and fenced native execution
+before recovering an interrupted operation. Native effects will remain mocked;
+the postponed Windows host/client acceptance is not run on this laptop.
+
+Implemented distinct uninstall/repair intents under the existing maintenance
+lock, read-only inspection, exact inspection confirmation and explicit recovery.
+Native execution holds an exclusive file handle and checks a rotating permit;
+live owners, busy guards and superseded delayed commands are refused. Recovery
+preserves original/torn journals, records each attempt and archives only the
+verified resolved lock. An interrupted recovery can be retried with fresh evidence.
+
+Repair restores only the signed installed application/version/schema and original
+approved tool archives. Damaged files are retained with target/hash receipts;
+data/configuration/key paths are excluded from the replacement primitive. Service
+and backup registrations are restored only when absent or proven owned. PostgreSQL
+restarts with ExistingClusterOnly; a trusted read-only verifier checks cluster
+system identifier, actual data directory, migration history and owner/runtime
+access. No migration, initial owner provisioning or credential/key reset occurs.
+
+First verification passed 14 targeted unit tests (seven new durable maintenance
+cases plus existing installer preflight), the isolated fresh-container database
+test including new retained-identity/read-only assertions, and the real temporary
+file guard/fence/replacement test with all machine effects mocked. The first
+atomic-replacement fixture run was denied by the sandbox; the same bounded test
+passed outside it. Workspace/test TypeScript passed before the latest tests;
+lint, full regression, additional native orchestration and final build/smoke
+verification remain in progress. No live service, task, firewall or trust change.
+
+The full unit suite passed 267 tests in 37 files. Repair preflight additionally
+checks missing/changed keys, retained identity, redirected runtime, exact release,
+approved tool archives and independent source storage. It caught the initial
+Windows task receipt's uppercase SHA-256 format; comparison now accepts that
+format without rewriting the receipt. Mocked full repair/reinstall sequencing
+passed missing-service restoration, existing-only PostgreSQL, read-only/tree
+verification, HTTPS admission ordering and failed-readiness isolation. Real
+temporary-file tests also verify that missing cluster evidence is never recreated
+and that redirected writable directories/unexpected writers are rejected before
+permission grants. All machine mutations remain mocked.
+
+Final integration review found release staging uses `gst-release-<six characters>`
+roots. Repair and backup selection now accept those protected direct children of
+`releases` as well as semantic-version directories, preserving the selected state
+rather than guessing a path from its version. The installer service backend now
+enforces the authoritative root/operations journal parent and original runtime,
+node and backup identities, preventing alternate configuration from bypassing
+repair/uninstall exclusion. Those mocked native tests and all 12 latest installer/
+repair preflight tests passed. TypeScript, lint, formatting and production builds
+passed before this final integration adjustment; final API compilation, smoke and
+documentation checks follow. No schema, UI, license/tax gate or staging changed.
+
+Final review also bound repair to the exact original installed file inventory,
+not only version/schema. Assisted updates now retain authenticated original and
+target manifests for repair after update or rollback; initial repair uses the
+protected initial inventory. Republished same-version application changes are
+refused, preserving the existing maintenance/update boundary. Missing old
+inventory evidence remains refused. Additional preflight cases verify both
+initial and post-update inventory binding; final shared-adapter regressions are
+being rerun after this integration change.
+
+Final API and test TypeScript, lint, repository formatting, production package/API/
+frontend builds and the compiled frontend/assets/API/real-database/OpenAPI/Origin
+smoke passed. The real isolated update/recovery regressions passed all nine tests
+after the inventory-receipt change. The full unit run exposed two outdated
+fault-injection mocks for original-release verification; corrected the mocks,
+asserted both saved inventories and reran all three affected tests successfully.
+The final full unit rerun passed all 270 tests in 37 files. All 27 PowerShell scripts parse; safe
+repair file/guard/cluster and mocked lifecycle/backup/update/deployment tests pass.
+Read-only Windows service-SID derivation and self-process creation-time probes
+also passed outside the sandbox after its WMI access denial. No service, task,
+firewall, account, certificate trust, production key, customer data or Git staging
+was modified. Actual clean install/uninstall/repair/reboot/LAN/power-loss and
+distribution signing acceptance remain postponed, not certified by these checks.
+
 ## Phase 6 continuation: initial Windows installation and preserving uninstall
 
 Started the initial installer lifecycle against signed, inventory-verified inputs,

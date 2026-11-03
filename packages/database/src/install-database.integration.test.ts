@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { initializeOfflineDatabase } from './install-database.js';
+import { verifyRetainedDatabase } from './verify-retained.js';
 import {
   assertRuntimePrivileges,
   assertRuntimeRole,
@@ -151,6 +152,40 @@ test.skipIf(!enabled)(
       } finally {
         await runtime.end();
       }
+      const verification = {
+        adminConnectionString: connectionString,
+        ownerConnectionString: ownerUrl.toString(),
+        runtimeConnectionString: runtimeUrl.toString(),
+        expectedDataDirectory: directory,
+        systemIdentifier: result.systemIdentifier,
+        schemaDigest: result.schemaDigest,
+      };
+      const before = await admin.query(
+        'SELECT oid,datname FROM pg_database ORDER BY oid',
+      );
+      await expect(verifyRetainedDatabase(verification)).resolves.toEqual({
+        systemIdentifier: result.systemIdentifier,
+        schemaDigest: result.schemaDigest,
+      });
+      await expect(
+        verifyRetainedDatabase({ ...verification, systemIdentifier: '1' }),
+      ).rejects.toThrow();
+      await expect(
+        verifyRetainedDatabase({
+          ...verification,
+          expectedDataDirectory: directory + '/wrong',
+        }),
+      ).rejects.toThrow();
+      await expect(
+        verifyRetainedDatabase({
+          ...verification,
+          schemaDigest: 'f'.repeat(64),
+        }),
+      ).rejects.toThrow();
+      expect(
+        (await admin.query('SELECT oid,datname FROM pg_database ORDER BY oid'))
+          .rows,
+      ).toEqual(before.rows);
       await expect(initializeOfflineDatabase(options)).rejects.toThrow();
       expect(
         (

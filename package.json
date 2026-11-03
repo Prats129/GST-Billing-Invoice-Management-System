@@ -35,7 +35,7 @@
     "license:issue": "pnpm build:packages && tsx scripts/issuer/entitlement-cli.ts",
     "license:register": "pnpm build:packages && tsx scripts/issuer/register-cli.ts",
     "tls:certificate": "pnpm build:packages && tsx apps/api/src/operations/certificate-cli.ts",
-    "offline:host": "pnpm build:packages && tsx apps/api/src/operations/offline-install-cli.ts",
+    "offline:host": "pnpm build:packages && pnpm --filter @gst/api build && tsx apps/api/src/operations/offline-install-cli.ts",
     "release:verify": "tsx apps/api/src/operations/release-cli.ts",
     "release:eligibility": "pnpm build:packages && tsx apps/api/src/operations/update-eligibility-cli.ts",
     "release:stage": "tsx apps/api/src/operations/release-stage-cli.ts",

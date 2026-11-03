@@ -1,7 +1,7 @@
 # Runs only as the dedicated virtual service account. No installer elevation,
 # downloads, service registration or adoption of an unknown cluster occurs here.
 [CmdletBinding()]
-param([Parameter(Mandatory)][string] $Configuration)
+param([Parameter(Mandatory)][string] $Configuration, [switch] $ExistingClusterOnly)
 $ErrorActionPreference = 'Stop'
 try {
     if ([Security.Principal.WindowsIdentity]::GetCurrent().Name -ne 'NT SERVICE\GSTBillingPostgres') { throw 'Wrong database service identity.' }
@@ -11,6 +11,7 @@ try {
         if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ne $config.hashes.$name) { throw 'Unapproved PostgreSQL executable.' }
     }
     $marker = Join-Path $config.data 'gst-cluster.json'
+    if ($ExistingClusterOnly -and -not (Test-Path -LiteralPath $marker)) {throw 'Repair requires an existing cluster; initialization is forbidden.'}
     if (-not (Test-Path -LiteralPath $marker)) {
         if (@(Get-ChildItem -LiteralPath $config.data -Force).Count -ne 0) { throw 'Existing or interrupted cluster requires inspection.' }
         & (Join-Path $config.bin 'initdb.exe') '-D' $config.data '-U' 'gst_cluster_admin' '--pwfile' $config.passwordFile '--auth=scram-sha-256' '--encoding=UTF8' *> $null

@@ -20,7 +20,6 @@ try {
     if ([bool]$PgBinDirectory -eq [bool]$DockerContainer) { throw 'Select exactly one approved PostgreSQL binary directory or local development container.' }
     $node = Get-VerifiedExecutable -Path $NodeExecutable -Sha256 $NodeSha256
     if ((& $node --version) -notmatch '^v24\.') { throw 'Approved Node 24 runtime required.' }
-    $release = (Resolve-Path -LiteralPath $ApplicationDirectory).Path
     $env:ENV_FILE = (Resolve-Path -LiteralPath $EnvironmentFile).Path
     $keyRoot = (Resolve-Path -LiteralPath $KeyDirectory).Path
     $installationId = (Get-Content -LiteralPath (Join-Path $keyRoot 'installation-id.txt') -Raw).Trim()
@@ -29,7 +28,7 @@ try {
     if ($InstallationStateFile) {
         . "$PSScriptRoot/BackupInstallation.ps1"
         $release = Get-BackupInstalledRelease $InstallationStateFile $installationId
-    }
+    } else {$release = (Resolve-Path -LiteralPath $ApplicationDirectory).Path}
     $cli = Join-Path $release 'packages/database/dist/backup-cli.js'
     if (-not (Test-Path -LiteralPath $cli -PathType Leaf)) { throw 'Build the application before scheduling backups.' }
     $output = [IO.Path]::GetFullPath($OutputDirectory)

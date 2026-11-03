@@ -73,6 +73,21 @@ function Get-UpdateService($Configuration) {
     if ($null -ne $registry.PSObject.Properties['FailureActions'] -or ($null -ne $registry.PSObject.Properties['DelayedAutoStart'] -and $registry.DelayedAutoStart -ne 0)) { throw 'Unsupported restart/delayed-start policy.' }
     return $service
 }
+function Assert-UpdateInstallationLayout($Configuration,$Record=$null) {
+    # The initial installer fixes ONE lock namespace. An alternate operator
+    # config must not bypass repair/uninstall exclusion by copying state elsewhere.
+    if(-not $Configuration.serviceRoot.EndsWith('\services\api',[StringComparison]::OrdinalIgnoreCase)){return}
+    $root=[IO.Path]::GetDirectoryName([IO.Path]::GetDirectoryName($Configuration.serviceRoot))
+    if($null-eq $Record) {
+        $path=Join-Path $root 'operator\native-installation.json';Assert-UpdateProtectedPath $path $true
+        if((Get-Item -LiteralPath $path).Length-gt 16777216){throw 'Oversized installation record.'}
+        $Record=Get-Content -LiteralPath $path -Raw|ConvertFrom-Json
+    }
+    if($Record.config.root-cne $root -or [IO.Path]::GetDirectoryName($Configuration.journalDirectory)-cne (Join-Path $root 'operations') -or $Configuration.environmentFile-cne (Join-Path $root 'runtime\runtime.env') -or $Configuration.nodePath-cne (Join-Path $root ('vendor\'+$Record.review.node.directory+'\node.exe')) -or $null-eq $Configuration.PSObject.Properties['backupAccountSid'] -or $Configuration.backupAccountSid-cne $Record.config.backupAccountSid -or $Configuration.backupTaskName-cne ('GSTBilling-Backup-'+$Record.config.installationId)){throw 'Installer maintenance layout mismatch.'}
+    foreach($path in @($Configuration.installedRoot,$Configuration.stagedRoot)) {
+        if([IO.Path]::GetDirectoryName($path)-cne (Join-Path $root 'releases') -or [IO.Path]::GetFileName($path)-notmatch '^(?:\d+\.\d+\.\d+|gst-release-[a-zA-Z0-9]{6})$'){throw 'Release is outside the installed layout.'}
+    }
+}
 function Assert-UpdateBlock($Configuration) {
     $name = 'GSTBilling-Update-' + $Configuration.operationId
     $rule = Get-NetFirewallRule -Name $name -ErrorAction Stop
@@ -94,6 +109,7 @@ function Set-UpdateReleaseXml([Xml.XmlDocument] $Document, [string] $Root) {
 }
 function Invoke-UpdateService([string] $Action, $Configuration) {
     Assert-Administrator
+    Assert-UpdateInstallationLayout $Configuration
     if ($Action -notin @('Stop','Select','Start','Ready','Admit','Restore','StartOriginal','ReadyOriginal','AdmitOriginal','TlsInspect')) { throw 'Unknown update action.' }
     $operation = [Guid]::Empty
     if (-not [Guid]::TryParseExact($Configuration.operationId, 'D', [ref]$operation)) { throw 'Operation UUID required.' }

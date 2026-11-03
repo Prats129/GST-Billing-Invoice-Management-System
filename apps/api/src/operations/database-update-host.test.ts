@@ -17,12 +17,16 @@ const hooks = vi.hoisted(() => ({
   directory: '',
   state: undefined as InstallationState | undefined,
   manifest: {},
+  originalManifest: {},
   prepare: vi.fn(),
   switch: vi.fn(),
   replace: vi.fn(),
 }));
 vi.mock('./release-package.js', () => ({
   verifyReleasePackage: async () => hooks.manifest,
+}));
+vi.mock('./offline-installer.js', () => ({
+  verifyOfflineRelease: async () => hooks.originalManifest,
 }));
 vi.mock('./installation-state.js', () => ({
   readInstallationState: async () => structuredClone(hooks.state),
@@ -112,6 +116,12 @@ async function fixture() {
     postgresMajor: 18,
     files: [],
   };
+  hooks.originalManifest = {
+    ...hooks.manifest,
+    version: '1.0.0',
+    minimumInstalledVersion: '0.0.0',
+    toSchemaDigest: hooks.old,
+  };
   const service = {
     stop: vi.fn(async () => {}),
     selectRelease: vi.fn(async () => {}),
@@ -183,6 +193,16 @@ test('different schemas require the target operator migrations and record both s
     expect.objectContaining({ schemaDigest: hooks.target, version: '1.1.0' }),
   );
   expect(f.service.admit).toHaveBeenCalledOnce();
+  expect(
+    JSON.parse(
+      await readFile(join(f.directory, 'original-manifest.json'), 'utf8'),
+    ),
+  ).toMatchObject({ version: '1.0.0', toSchemaDigest: hooks.old });
+  expect(
+    JSON.parse(
+      await readFile(join(f.directory, 'target-manifest.json'), 'utf8'),
+    ),
+  ).toMatchObject({ version: '1.1.0', toSchemaDigest: hooks.target });
 });
 
 test('migration failure keeps the original selected and never starts or admits the candidate', async () => {

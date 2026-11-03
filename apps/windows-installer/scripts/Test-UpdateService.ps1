@@ -122,4 +122,11 @@ function Get-ScheduledTask {return [PSCustomObject]@{Principal=[PSCustomObject]@
 $before=$script:fixture.calls
 Assert-Rejected {Invoke-UpdateService Stop $wrongBackup}
 if($before -ne $script:fixture.calls){throw 'Wrong backup principal modified the machine.'}
+$layout=$config.PSObject.Copy();$layout.serviceRoot='C:\GST\services\api';$layout.nodePath='C:\GST\vendor\node\node.exe';$layout.environmentFile='C:\GST\runtime\runtime.env'
+$layout.installedRoot='C:\GST\releases\1.0.0';$layout.stagedRoot='C:\GST\releases\gst-release-Ab123Z';$layout.journalDirectory=('C:\GST\operations\gst-update-'+$config.operationId)
+$layout.backupTaskName=('GSTBilling-Backup-'+$config.operationId);$layout|Add-Member backupAccountSid 'S-1-5-21-1-2-3-1001'
+$record=[PSCustomObject]@{config=[PSCustomObject]@{root='C:\GST';installationId=$config.operationId;backupAccountSid=$layout.backupAccountSid};review=[PSCustomObject]@{node=[PSCustomObject]@{directory='node'}}}
+Assert-UpdateInstallationLayout $layout $record
+$layout.journalDirectory='C:\Other\operations\operation';Assert-Rejected {Assert-UpdateInstallationLayout $layout $record}
+if($before -ne $script:fixture.calls){throw 'Alternate journal parent modified the machine.'}
 Write-Output 'PASS: mocked Windows update/certificate service identity, inspection, stop/start/admission, failure and secure XML checks. No machine changes.'

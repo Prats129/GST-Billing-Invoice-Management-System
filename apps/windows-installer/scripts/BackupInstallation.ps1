@@ -30,7 +30,8 @@ function Get-BackupInstalledRelease([string] $StateFile, [string] $InstallationI
     $state = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
     if ($state.format -ne 1 -or $state.installationId -cne $InstallationId -or $state.schemaDigest -notmatch '^[a-f0-9]{64}$' -or $state.version -notmatch '^\d+\.\d+\.\d+$') { throw 'Installed state identity mismatch.' }
     $root = [IO.Path]::GetDirectoryName([IO.Path]::GetDirectoryName($path))
-    $expected = Join-Path $root ('releases\'+$state.version)
-    if ($state.appRoot -cne $expected) { throw 'Installed release escaped the installation.' }
-    return $expected
+    $expected = Join-Path $root 'releases'
+    $selected=[string]$state.appRoot;$name=[IO.Path]::GetFileName($selected)
+    if ([IO.Path]::GetFullPath($selected)-cne $selected -or [IO.Path]::GetDirectoryName($selected)-cne $expected -or ($name-cne $state.version -and $name-notmatch '^gst-release-[a-zA-Z0-9]{6}$')) { throw 'Installed release escaped the installation.' }
+    return $selected
 }

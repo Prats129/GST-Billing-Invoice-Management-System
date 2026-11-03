@@ -2,10 +2,11 @@
 
 The repository contains the update sequencing core, protected file-backed journal
 and bound adapters for supported forward-copy updates of an already provisioned
-dedicated Windows service. It does **not** yet contain an executable production
-installer or initial PostgreSQL/service provisioning. No new install command is
-advertised, and application startup does not invoke this code. Native Windows
-acceptance remains postponed, not passed.
+dedicated Windows service. Operator-run initial PostgreSQL/service provisioning,
+retained-data repair/reinstallation and preserving uninstall are documented in
+[Windows installation](windows-installation.md). Distribution signing and native
+Windows acceptance remain outstanding; no approved commercial installer release
+is implied. Application startup does not invoke these host commands.
 
 ## Implemented sequence
 

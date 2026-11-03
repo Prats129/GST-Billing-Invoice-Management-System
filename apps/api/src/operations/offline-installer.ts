@@ -108,7 +108,7 @@ const artifact = z
     executables: z.record(z.string(), hash),
   })
   .strict();
-const reviewSchema = z
+export const offlineArtifactReviewSchema = z
   .object({
     format: z.literal(1),
     reviewReference: z.string().trim().min(1).max(120),
@@ -128,12 +128,35 @@ const reviewSchema = z
       .strict(),
   })
   .strict();
+export const offlinePlanSchema = z
+  .object({
+    format: z.literal(1),
+    config: offlineInstallSchema,
+    review: offlineArtifactReviewSchema,
+    version: z.string().regex(/^\d+\.\d+\.\d+$/),
+    schemaDigest: hash,
+    leafSha256: hash,
+    inputs: z.record(z.string(), hash),
+    files: z
+      .array(
+        z
+          .object({
+            path: z.string().max(240),
+            destination: z.string().max(240),
+            bytes: z.number().int().nonnegative(),
+            sha256: hash,
+          })
+          .strict(),
+      )
+      .max(10000),
+  })
+  .strict();
 async function json(file: string, maximum = 32768) {
   return JSON.parse(
     (await readCertificateOperationFile(file, maximum)).toString('utf8'),
   ) as unknown;
 }
-async function release(
+export async function verifyOfflineRelease(
   root: string,
   trust: ReturnType<typeof loadEntitlementTrust>,
 ) {
@@ -198,8 +221,11 @@ export async function prepareOfflineInstallation(configuration: unknown) {
     }
   }
   const trust = loadEntitlementTrust(await json(config.releaseTrustFile));
-  const bundle = await release(config.bundleRoot, trust);
-  const application = await release(join(config.bundleRoot, 'app'), trust);
+  const bundle = await verifyOfflineRelease(config.bundleRoot, trust);
+  const application = await verifyOfflineRelease(
+    join(config.bundleRoot, 'app'),
+    trust,
+  );
   if (
     bundle.version !== application.version ||
     bundle.toSchemaDigest !== application.toSchemaDigest ||
@@ -220,7 +246,7 @@ export async function prepareOfflineInstallation(configuration: unknown) {
   ])
     if (!applicationFiles.has(file))
       throw new Error('Required signed application entrypoint missing.');
-  const review = reviewSchema.parse(
+  const review = offlineArtifactReviewSchema.parse(
     await json(join(config.bundleRoot, 'artifact-review.json')),
   );
   if (

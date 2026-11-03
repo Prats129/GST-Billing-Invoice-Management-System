@@ -19,9 +19,10 @@ installer, restart planning after each helper or add unrelated product features.
    Shared installed-state initialization/replacement and the operator-run initial
    install/preserving-uninstall lifecycle are implemented; see windows-installation.md.
    Native provisioning still needs reviewed artifacts in windows-artifact-review.md
-   and the postponed host/client environment. Retained-data repair/reinstallation,
-   interrupted-uninstall reconciliation and native acceptance remain open; no
-   unsigned cached binary is adopted.
+   and the postponed host/client environment. Retained-data repair/reinstallation
+   and interrupted-uninstall/repair inspection and recovery are now implemented
+   locally. Native acceptance, actual signed payload approval and distribution
+   signing remain open; no unsigned cached binary is adopted.
 3. Extend the same update/recovery workflow to supported forward schema changes
    on a separate copy. Original release/database must be recoverable together;
    never require an unsafe down migration. Keep unsupported transitions blocked.

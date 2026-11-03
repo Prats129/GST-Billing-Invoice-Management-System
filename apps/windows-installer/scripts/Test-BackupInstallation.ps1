@@ -20,6 +20,8 @@ $file='C:\GST\operations\installation.json'
 if((Get-BackupInstalledRelease $file $script:identity) -cne 'C:\GST\releases\1.2.3'){throw 'Current release not selected.'}
 $script:state.version='1.2.4';$script:state.appRoot='C:\GST\releases\1.2.4'
 if((Get-BackupInstalledRelease $file $script:identity) -cne 'C:\GST\releases\1.2.4'){throw 'Updated release not selected.'}
+$script:state.appRoot='C:\GST\releases\gst-release-Ab123Z'
+if((Get-BackupInstalledRelease $file $script:identity) -cne $script:state.appRoot){throw 'Protected staged release not selected.'}
 $script:state.appRoot='C:\Other\1.2.4';Assert-Rejected {Get-BackupInstalledRelease $file $script:identity}
 $script:state.appRoot='C:\GST\releases\1.2.4';Assert-Rejected {Get-BackupInstalledRelease $file ([Guid]::NewGuid().ToString())}
 $script:reparse=$true;Assert-Rejected {Get-BackupInstalledRelease $file $script:identity}
