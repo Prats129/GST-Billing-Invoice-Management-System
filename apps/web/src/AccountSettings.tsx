@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { ReactNode } from 'react';
-import type { SessionInfo } from '@gst/contracts';
+import type { Appearance, SessionInfo } from '@gst/contracts';
+import { AppearancePanel } from './AppearancePanel.js';
 import { Dialog, Icon } from './ui.js';
 import { SecurityPanel } from './SecurityPanel.js';
 import { ConnectionPanel } from './connection.js';
@@ -25,6 +26,8 @@ export function AccountSettings({
   recoveryPending,
   onClearError,
   leaveGuard,
+  appearance,
+  onAppearanceSave,
 }: {
   initialTab: 'security' | 'system';
   info: SessionInfo;
@@ -42,8 +45,13 @@ export function AccountSettings({
   recoveryPending: boolean;
   onClearError: () => void;
   leaveGuard: RefObject<(() => boolean) | null>;
+  appearance: Appearance;
+  onAppearanceSave: (value: Appearance) => Promise<void>;
 }) {
-  const [tab, setTab] = useState(initialTab);
+  const [tab, setTab] = useState<'security' | 'system' | 'appearance'>(
+    initialTab,
+  );
+  const [appearanceBusy, setAppearanceBusy] = useState(false);
   const dirty = useRef(false),
     id = useId();
   const pendingSetup = useRef(false);
@@ -51,7 +59,7 @@ export function AccountSettings({
     pendingSetup.current = pending;
   }, []);
   const beforeLeave = () => {
-    if (busy) return false;
+    if (busy || appearanceBusy) return false;
     if (recoveryPending) {
       window.alert(
         'Save your recovery codes and confirm that you have stored them before leaving account settings.',
@@ -63,7 +71,9 @@ export function AccountSettings({
       !window.confirm(
         pendingSetup.current
           ? 'Leave without completing authenticator setup?'
-          : 'Discard the unsaved account-security details?',
+          : tab === 'appearance'
+            ? 'Discard the unsaved appearance settings?'
+            : 'Discard the unsaved account-security details?',
       )
     )
       return false;
@@ -90,7 +100,7 @@ export function AccountSettings({
       title="Settings"
       className="account-settings-dialog"
       wide
-      busy={busy}
+      busy={busy || appearanceBusy}
       onClose={() => {
         if (beforeLeave()) onClose();
       }}
@@ -100,7 +110,7 @@ export function AccountSettings({
         role="tablist"
         aria-label="Settings sections"
         onKeyDown={(event) => {
-          const tabs = ['security', 'system'] as const;
+          const tabs = ['security', 'system', 'appearance'] as const;
           if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key))
             return;
           event.preventDefault();
@@ -108,15 +118,20 @@ export function AccountSettings({
             event.key === 'Home'
               ? 'security'
               : event.key === 'End'
-                ? 'system'
-                : tabs[(tabs.indexOf(tab) + 1) % 2]!;
+                ? 'appearance'
+                : tabs[
+                    (tabs.indexOf(tab) +
+                      (event.key === 'ArrowLeft' ? -1 : 1) +
+                      tabs.length) %
+                      tabs.length
+                  ]!;
           if (next === tab || beforeLeave()) {
             setTab(next);
             document.getElementById(id + '-' + next)?.focus();
           }
         }}
       >
-        {(['security', 'system'] as const).map((item) => (
+        {(['security', 'system', 'appearance'] as const).map((item) => (
           <button
             key={item}
             id={id + '-' + item}
@@ -124,11 +139,24 @@ export function AccountSettings({
             aria-selected={tab === item}
             aria-controls={id + '-panel'}
             tabIndex={tab === item ? 0 : -1}
-            disabled={busy}
+            disabled={busy || appearanceBusy}
             onClick={() => select(item)}
           >
-            <Icon name={item === 'security' ? 'shield' : 'server'} size={18} />
-            {item === 'security' ? 'Account security' : 'System status'}
+            <Icon
+              name={
+                item === 'security'
+                  ? 'shield'
+                  : item === 'system'
+                    ? 'server'
+                    : 'sun'
+              }
+              size={18}
+            />
+            {item === 'security'
+              ? 'Account security'
+              : item === 'system'
+                ? 'System status'
+                : 'Appearance'}
           </button>
         ))}
       </div>
@@ -159,8 +187,17 @@ export function AccountSettings({
             beforeLeave={beforeLeave}
             onPendingSetup={reportPending}
           />
-        ) : (
+        ) : tab === 'system' ? (
           <ConnectionPanel connection={connection} onCheck={onCheck} />
+        ) : (
+          <AppearancePanel
+            appearance={appearance}
+            onSave={onAppearanceSave}
+            onBusy={setAppearanceBusy}
+            onSaved={() => {
+              dirty.current = false;
+            }}
+          />
         )}
       </div>
     </Dialog>

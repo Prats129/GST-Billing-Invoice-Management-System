@@ -32,6 +32,7 @@ import {
   verifyPassword,
 } from './crypto.js';
 import { deny } from './errors.js';
+import type { Appearance } from '@gst/contracts';
 
 export class IdentityService {
   private nextCleanup = 0;
@@ -254,7 +255,18 @@ export class IdentityService {
       mfaEnabled: mfa.enabled,
       mfaMandatory: mfa.mandatory,
       mfaRequired: mfa.required && !record.mfaVerified,
+      appearance: { mode: user.themeMode, accent: user.themeAccent },
     };
+  }
+  async updateAppearance(session: IdentitySession, appearance: Appearance) {
+    return this.db.transaction(async (tx) => {
+      await this.full(session, tx, true);
+      await tx
+        .update(users)
+        .set({ themeMode: appearance.mode, themeAccent: appearance.accent })
+        .where(eq(users.id, session.userId));
+      return appearance;
+    });
   }
   verifyCsrf(session: IdentitySession, supplied: string | undefined) {
     if (!supplied || !secureEqual(csrfToken(session.token), supplied))

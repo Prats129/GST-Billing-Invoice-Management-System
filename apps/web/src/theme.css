@@ -1,0 +1,158 @@
+/* Semantic colors are shared by pages, dialogs and native form controls. */
+:root {
+  color-scheme: light;
+  --page-bg: #f4f7fa;
+  --surface: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --text: #334155;
+  --heading: #172b3a;
+  --text-muted: #526579;
+  --line: #dce4ed;
+  --line-strong: #94a3b8;
+  --accent: #0f766e;
+  --accent-text: #0f766e;
+  --on-accent: #ffffff;
+  --success-bg: #e9f5ee;
+  --success-text: #166349;
+  --warning-bg: #fff5df;
+  --warning-text: #815312;
+  --danger-bg: #fff0f1;
+  --danger-text: #a52b43;
+  --info-bg: #edf2ff;
+  --info-text: #3456a6;
+  --nav-bg: #fafbfc;
+  --nav-text: #334155;
+  --nav-muted: #526579;
+  --accent-soft: color-mix(in srgb, var(--accent-text) 9%, var(--surface));
+  --accent-border: color-mix(in srgb, var(--accent-text) 35%, var(--surface));
+  --nav-active: color-mix(in srgb, var(--accent-text) 9%, var(--nav-bg));
+  --focus: color-mix(in srgb, var(--accent-text) 80%, var(--text));
+  --focus-ring: color-mix(in srgb, var(--accent-text) 18%, transparent);
+  --muted: var(--text-muted);
+  --border: var(--line);
+  --teal: var(--accent);
+  /* The sign-in illustration keeps its dark brand backdrop independently. */
+  --navy: #132b3a;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --page-bg: #0f172a;
+  --surface: #182538;
+  --surface-subtle: #1e2e43;
+  --text: #d8e2ef;
+  --heading: #f1f5f9;
+  --text-muted: #a9b9cc;
+  --line: #35465d;
+  --line-strong: #788ba5;
+  --accent-text: #5eead4;
+  --success-bg: #163b32;
+  --success-text: #86efac;
+  --warning-bg: #3d301b;
+  --warning-text: #f8d085;
+  --danger-bg: #402432;
+  --danger-text: #fda4af;
+  --info-bg: #213353;
+  --info-text: #aecbff;
+  --nav-bg: var(--surface);
+  --nav-text: #d8e2ef;
+  --nav-muted: #a9b9cc;
+  --navy: #0c1827;
+}
+:root[data-accent='blue'] {
+  --accent: #1d4ed8;
+  --accent-text: #1d4ed8;
+}
+:root[data-accent='violet'] {
+  --accent: #6d28d9;
+  --accent-text: #6d28d9;
+}
+:root[data-theme='dark'][data-accent='blue'] {
+  --accent: #2563eb;
+  --accent-text: #93c5fd;
+}
+:root[data-theme='dark'][data-accent='violet'] {
+  --accent: #7c3aed;
+  --accent-text: #c4b5fd;
+}
+.appearance-fieldset {
+  margin: 0 0 20px;
+  padding: 0;
+  border: 0;
+}
+.appearance-fieldset legend {
+  color: var(--heading);
+  font-size: 14px;
+  padding: 0;
+  margin-bottom: 12px;
+}
+.appearance-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.appearance-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 12px;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.appearance-option:has(input:checked) {
+  background: var(--accent-soft);
+  border-color: var(--accent-text);
+}
+.appearance-option input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.accent-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid #ffffff55;
+  flex-shrink: 0;
+}
+.swatch-teal {
+  background: #0f766e;
+}
+.swatch-blue {
+  background: #1d4ed8;
+}
+.swatch-violet {
+  background: #6d28d9;
+}
+.appearance-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+@media (max-width: 650px) {
+  .settings-tabs {
+    gap: 16px;
+  }
+  .settings-tabs button {
+    white-space: nowrap;
+  }
+  .settings-tabs button svg {
+    display: none;
+  }
+  .appearance-options {
+    grid-template-columns: 1fr;
+  }
+}
+@media (forced-colors: active) {
+  .appearance-option:has(input:checked) {
+    outline: 2px solid Highlight;
+  }
+}

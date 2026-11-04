@@ -1,5 +1,96 @@
 # Review coverage
 
+## Dark sidebar: match the breadcrumb header
+
+Replaced the lighter slate sidebar with the shared surface color used by the
+breadcrumb header. Dark navigation now matches the header automatically instead
+of maintaining a separate shade. Light mode retains its neutral sidebar.
+The production build, all seven UI browser tests (including six-palette text
+contrast), formatting and whitespace checks passed. Inspected the dark desktop
+screenshot to confirm the header and sidebar use the same surface color.
+
+## Dark sidebar: clearer separation from page content
+
+Changed the dark sidebar from near-black to a lighter neutral slate so it is
+visibly distinct from the deep page background and raised content cards. This
+uses the shared navigation token for expanded, collapsed and mobile menus;
+light mode and account accent choices are preserved. Added a collapsed dark
+navigation screenshot to the existing browser coverage. Build, six-palette text
+contrast checks, navigation regressions and screenshot review are pending.
+
+Verified the production build and all seven existing UI browser tests, including
+sidebar text contrast for all six mode/accent combinations. Inspected expanded
+and collapsed dark screenshots: the slate menu is clearly separated from the
+deeper page background. Mobile navigation checks use Chrome viewport emulation.
+Formatting and whitespace checks passed. Existing staged work is preserved.
+
+## Sidebar: neutral surfaces with selective accent
+
+Replacing the fixed dark teal sidebar with neutral off-white (light mode) and
+charcoal (dark mode). The selected link uses a subtle accent tint and accent text;
+the full menu no longer carries a brand-color fill. Sidebar labels, account row,
+logo tile, separators and scrollbars use theme tokens in expanded, collapsed and
+mobile layouts. The sign-in illustration retains its separate dark backdrop.
+Existing account accent preferences still control highlights. Build, contrast,
+responsive screenshot and browser regression verification are pending.
+
+The production build and all seven UI browser regressions passed. Extended the
+six-palette contrast check to measure actual sidebar branding, normal/selected
+links and account text against their rendered backgrounds (minimum 4.5:1).
+Color measurements handle CSS color-mix output through the browser canvas.
+Inspected light, dark and collapsed desktop screenshots; mobile navigation and
+settings interaction checks passed using Chrome viewport emulation. Existing
+staged theme/API/database work is preserved; this follow-up changes only sidebar
+styles, browser coverage and this checkpoint.
+Web/test TypeScript, lint for the changed browser test, formatting and whitespace
+checks passed. No new dependencies or preference/database changes were needed.
+
+## Account appearance: light/dark themes and accent colors
+
+Implementing per-user appearance preferences: system/light/dark modes and
+curated teal/blue/violet accents. Preferences belong to the authenticated user,
+persist in the database and are returned by session APIs. The mutation uses
+existing authentication, MFA/password gates, Origin and CSRF checks, accepts no
+target-user ID and does not refresh organization data or discard invoice edits.
+The settings UI and semantic color palette, migration and verification are in
+progress. Printed invoice documents retain their independent paper styling.
+
+The complete build and all 13 browser tests passed, including persistence through
+reload/new login, separate-user defaults, automatic system-mode changes, failed
+save/retry and preserving an unsaved invoice during appearance changes. Inspected
+dark desktop/mobile settings and dark sign-in screenshots. TypeScript, lint and
+repository formatting passed. The first integration invocation passed the new
+preference checks but the host-CLI test requires the documented pnpm script
+environment; rerunning through that script with Docker backup tools enabled so
+runtime-access checks are exercised instead of skipped.
+
+The corrected integration invocation passed all 20 security/runtime-access tests,
+including authenticated-user isolation, invalid/forged preference payloads,
+CSRF rejection, password-change gating and persistence across fresh sessions.
+All six light/dark accent combinations passed browser measurements of normal
+text, headings, input text, primary/secondary actions and status labels against
+their rendered backgrounds (minimum 4.5:1). Migration 0006 was generated from
+the schema with its journal/snapshot; defaults preserve existing users.
+
+Completed: applied the reviewed migration to the verified loopback `gst_dev`
+development database using its migration identity. No customer records were
+edited. Frontend/contract unit checks passed (8 tests); security/runtime-access
+integration checks passed (20 tests); the complete existing/new browser suite
+passed (13 tests), followed by the added six-palette contrast regression (1 test).
+The API/web build, web/test TypeScript, repository lint, formatting and whitespace
+checks passed. README documents the account settings path and upgrade migration.
+No dependencies, signing/installer changes or new organization permissions were
+introduced. Dark-mode screenshots were inspected in Windows Chrome; mobile checks
+use viewport emulation. This checkpoint completes the requested account themes.
+
+Post-shutdown integrity check: all implementation files and migration metadata
+are present and staged. No unstaged edits were present when resuming. A fresh web
+production build and all seven database-independent browser tests passed,
+including palette contrast, navigation, mobile settings and unsaved-edit guards.
+Staged/working-tree whitespace checks passed. No implementation files were
+rewritten and no migration was repeated; earlier database-backed results above
+remain the prior verified run. Only this continuation checkpoint was appended.
+
 ## UI follow-up: consistent spacing and sidebar details
 
 Added a subtle inset divider below the sidebar brand, matching the existing

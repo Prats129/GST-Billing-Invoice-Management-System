@@ -107,6 +107,69 @@ beforeAll(async () => {
 beforeEach(async () => {
   await isolated.database.db.delete(authThrottle);
 });
+test('appearance is persistent, strictly validated and scoped to the fully authenticated user', async () => {
+  const first = `${randomUUID()}@example.test`,
+    second = `${randomUUID()}@example.test`;
+  for (const email of [first, second])
+    await organizationService.provisionOwner({
+      email,
+      name: 'Theme user',
+      organizationName: email,
+      password,
+    });
+  const auth = await login(first),
+    other = await login(second);
+  expect(auth.body.appearance).toEqual({ mode: 'system', accent: 'teal' });
+  const endpoint = '/api/v1/auth/appearance';
+  await http()
+    .put(endpoint)
+    .set(requestHeaders)
+    .send({ mode: 'dark', accent: 'blue' })
+    .expect(401);
+  await http()
+    .put(endpoint)
+    .set({ ...authHeaders(auth), 'x-csrf-token': 'invalid' })
+    .send({ mode: 'dark', accent: 'blue' })
+    .expect(403);
+  for (const invalid of [
+    { mode: 'invalid', accent: 'blue' },
+    { mode: 'dark', accent: '#000' },
+    { mode: 'dark', accent: 'blue', userId: other.body.user.id },
+    { mode: 'dark' },
+  ])
+    await http().put(endpoint).set(authHeaders(auth)).send(invalid).expect(400);
+  await http()
+    .put(endpoint)
+    .set(authHeaders(auth))
+    .send({ mode: 'dark', accent: 'blue' })
+    .expect(200, { mode: 'dark', accent: 'blue' });
+  expect((await login(first)).body.appearance).toEqual({
+    mode: 'dark',
+    accent: 'blue',
+  });
+  expect(
+    (
+      await http()
+        .get('/api/v1/auth/session')
+        .set(authHeaders(other))
+        .expect(200)
+    ).body.appearance,
+  ).toEqual({ mode: 'system', accent: 'teal' });
+  const [stored] = await isolated.database.db
+    .select()
+    .from(users)
+    .where(eq(users.id, auth.body.user.id));
+  expect(stored).toMatchObject({ themeMode: 'dark', themeAccent: 'blue' });
+  await isolated.database.db
+    .update(users)
+    .set({ mustChangePassword: true })
+    .where(eq(users.id, auth.body.user.id));
+  await http()
+    .put(endpoint)
+    .set(authHeaders(auth))
+    .send({ mode: 'light', accent: 'teal' })
+    .expect(403);
+});
 afterAll(async () => {
   await saasApp?.close();
   await app?.close();

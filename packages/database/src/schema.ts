@@ -293,6 +293,10 @@ export const users = pgTable(
     email: varchar('email', { length: 254 }).notNull(),
     name: varchar('name', { length: 120 }).notNull(),
     passwordHash: text('password_hash').notNull(),
+    themeMode: varchar('theme_mode', { length: 8 }).notNull().default('system'),
+    themeAccent: varchar('theme_accent', { length: 8 })
+      .notNull()
+      .default('teal'),
     status: varchar('status', { length: 16 }).notNull().default('active'),
     mustChangePassword: boolean('must_change_password')
       .notNull()
@@ -306,6 +310,14 @@ export const users = pgTable(
     unique('users_edition_email_unique').on(t.edition, t.email),
     check('users_edition_valid', sql`${t.edition} in ('offline', 'saas')`),
     check('users_status_valid', sql`${t.status} in ('active', 'disabled')`),
+    check(
+      'users_theme_mode_valid',
+      sql`${t.themeMode} in ('system', 'light', 'dark')`,
+    ),
+    check(
+      'users_theme_accent_valid',
+      sql`${t.themeAccent} in ('teal', 'blue', 'violet')`,
+    ),
     check(
       'users_email_normalized',
       sql`${t.email} = lower(trim(${t.email})) and length(${t.email}) > 3`,

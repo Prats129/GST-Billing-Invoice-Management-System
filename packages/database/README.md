@@ -35,6 +35,10 @@ It preserves existing memberships/grants and installs append-only classification
 guards and a deferred requirement for an initial catalog classification.
 New Phase 3 runtime privileges and local setup steps are documented in docs/phase-3.md.
 
+0006_user_appearance.sql adds constrained theme mode and accent preferences to
+users, with system/teal defaults for existing accounts. Existing user SELECT/
+UPDATE privileges cover these columns; no additional runtime grants are needed.
+
 0003_serious_paibok.sql adds invoices, counters, financial lines/components and
 immutable snapshots. Reviewed triggers protect finalized rows, reject financial
 mutation/truncation and enforce deferred snapshot/line/component reconciliation.

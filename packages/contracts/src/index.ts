@@ -93,6 +93,14 @@ export const mfaCodeSchema = z
 export type RoleInput = z.infer<typeof roleInputSchema>;
 export type MemberInput = z.infer<typeof memberInputSchema>;
 export type MemberUpdate = z.infer<typeof memberUpdateSchema>;
+export const appearanceSchema = z
+  .object({
+    mode: z.enum(['system', 'light', 'dark']),
+    accent: z.enum(['teal', 'blue', 'violet']),
+  })
+  .strict();
+export type Appearance = z.infer<typeof appearanceSchema>;
+export const defaultAppearance: Appearance = { mode: 'system', accent: 'teal' };
 export const sessionInfoSchema = z.object({
   user: z.object({
     id: z.string().uuid(),
@@ -105,6 +113,7 @@ export const sessionInfoSchema = z.object({
   mfaMandatory: z.boolean(),
   mfaRequired: z.boolean(),
   recoveryCodes: z.array(z.string()).optional(),
+  appearance: appearanceSchema.default(defaultAppearance),
 });
 export type SessionInfo = z.infer<typeof sessionInfoSchema>;
 export const organizationListSchema = z.array(

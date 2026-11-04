@@ -95,6 +95,17 @@ API routes:
 - `/api/v1/organizations/*`: invitations, memberships, roles, owner changes,
   effective permissions and scoped audits (server-enforced authorization).
 
+## Appearance
+
+Open the bottom account menu, choose **Account settings**, then **Appearance**.
+Choose **Light**, **Dark** or **Follow system**, select the teal, blue or violet
+accent, then **Save appearance**. Preferences are saved to your user account
+across organizations and devices. Saving keeps an open invoice draft intact.
+The sign-in page follows the device's system theme; signing out clears the
+previous user's appearance from the page. Printed invoices keep their paper layout.
+Existing installations must apply migration `0006_user_appearance.sql` with
+`pnpm db:migrate` before starting the updated API.
+
 ## Checks and migrations
 
 Phase 6 commercial hardening is in progress. Host-only commands and exact release

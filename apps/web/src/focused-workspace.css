@@ -1,6 +1,8 @@
 /* Daily-work navigation and account settings, composed on the shared controls. */
 .focused-workspace .sidebar {
   padding: 16px 14px 0;
+  border-inline-end: 1px solid var(--line);
+  color: var(--nav-text);
 }
 .focused-workspace .sidebar-brand {
   position: relative;
@@ -10,6 +12,7 @@
   gap: 8px;
   padding: 0 6px 12px;
   margin-bottom: 8px;
+  color: var(--heading);
 }
 .focused-workspace .sidebar-brand::after {
   content: '';
@@ -17,14 +20,22 @@
   inset-inline: 6px;
   bottom: 0;
   height: 1px;
-  background: #ffffff10;
+  background: var(--line);
 }
 .focused-workspace .sidebar-brand .brand {
   font-size: 18px;
   gap: 9px;
 }
+.focused-workspace .sidebar .brand small {
+  color: var(--nav-muted);
+}
+.focused-workspace .sidebar .brand-mark {
+  color: var(--accent-text);
+  background: var(--surface-subtle);
+  border-color: var(--line);
+}
 .focused-workspace .sidebar-toggle {
-  color: #a8c3ca;
+  color: var(--nav-muted);
   padding: 8px;
   flex-shrink: 0;
 }
@@ -68,7 +79,7 @@
   gap: 11px;
   width: 100%;
   text-align: left;
-  color: #e7eff1;
+  color: var(--nav-text);
   background: transparent;
   padding: 6px 8px;
   min-height: 44px;
@@ -76,7 +87,7 @@
 }
 .focused-workspace .account-trigger:hover,
 .focused-workspace .account-trigger[aria-expanded='true'] {
-  background: #ffffff0c;
+  background: var(--surface-subtle);
 }
 .account-avatar {
   position: relative;
@@ -84,14 +95,14 @@
   flex-shrink: 0;
 }
 .account-avatar .avatar {
-  background: #34525d;
-  color: #e3f0ed;
+  background: var(--surface-subtle);
+  color: var(--nav-text);
 }
 .account-connection-dot {
   position: absolute;
   width: 8px;
   height: 8px;
-  border: 2px solid #173341;
+  border: 2px solid var(--nav-bg);
   border-radius: 50%;
   bottom: -1px;
   right: -1px;
@@ -117,13 +128,13 @@
   font-size: 13px;
 }
 .account-identity small {
-  color: #a4bdc8;
+  color: var(--nav-muted);
   font-size: 11px;
   margin-top: 2px;
   font-weight: 400;
 }
 .account-trigger > svg {
-  color: #a4bdc8;
+  color: var(--nav-muted);
 }
 .account-popover {
   position: absolute;
@@ -132,16 +143,16 @@
   z-index: 10;
   width: 264px;
   max-width: calc(100vw - 56px);
-  background: #fff;
-  color: #263f50;
-  border: 1px solid #dde5ec;
+  background: var(--surface);
+  color: var(--heading);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 8px;
   box-shadow: 0 12px 40px #10293930;
 }
 .account-popover-heading {
   padding: 10px 12px 14px;
-  border-bottom: 1px solid #edf0f4;
+  border-bottom: 1px solid var(--surface-subtle);
   margin-bottom: 6px;
   overflow-wrap: anywhere;
 }
@@ -160,8 +171,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #fff;
-  color: #334f61;
+  background: var(--surface);
+  color: var(--text);
   font-size: 13px;
   font-weight: 500;
   width: 100%;
@@ -171,14 +182,14 @@
 }
 .account-popover button:hover,
 .account-popover button:focus-visible {
-  background: #edf4f2;
+  background: var(--accent-soft);
 }
 .account-popover button .status-dot {
   margin-left: auto;
 }
 .account-menu-divider {
   height: 1px;
-  background: #edf0f4;
+  background: var(--surface-subtle);
   margin: 6px 0;
 }
 .sidebar-tooltip {
@@ -203,7 +214,7 @@
   padding: 20px 24px 16px;
 }
 .focused-workspace .topbar .refresh-access {
-  color: #65808c;
+  color: var(--text-muted);
   width: 36px;
   height: 36px;
   font-size: inherit;
@@ -250,7 +261,7 @@
   font-size: 15px;
 }
 .focused-workspace .overview-intro strong {
-  color: #23495a;
+  color: var(--heading);
 }
 .focused-workspace .quick-work {
   display: grid;
@@ -262,22 +273,22 @@
   align-items: center;
   gap: 12px;
   padding: 14px 16px;
-  border: 1px solid #dbe5e8;
-  background: white;
+  border: 1px solid var(--line);
+  background: var(--surface);
   border-radius: 10px;
-  color: #315361;
+  color: var(--text);
   font-size: 14px;
 }
 .focused-workspace .quick-work a:hover {
-  border-color: #7eaaa1;
-  background: #f7fbf9;
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 .focused-workspace .quick-work a > svg:first-child {
-  color: #1c8273;
+  color: var(--accent-text);
 }
 .focused-workspace .quick-work a > svg:last-child {
   margin-left: auto;
-  color: #859ca4;
+  color: var(--text-muted);
 }
 .focused-workspace .recent-documents {
   padding: 0;
@@ -288,7 +299,7 @@
   margin: 0;
 }
 .focused-workspace .recent-documents .table-scroll {
-  border-top: 1px solid #e8edf2;
+  border-top: 1px solid var(--line);
 }
 .focused-workspace .recent-documents table {
   width: 100%;
@@ -320,7 +331,7 @@
 .settings-tabs {
   display: flex;
   gap: 20px;
-  border-bottom: 1px solid #e3e9ee;
+  border-bottom: 1px solid var(--line);
   margin-bottom: 16px;
 }
 .settings-tabs button {
@@ -328,7 +339,7 @@
   align-items: center;
   gap: 9px;
   background: transparent;
-  color: #667b89;
+  color: var(--text-muted);
   border-radius: 0;
   border-bottom: 2px solid transparent;
   padding: 12px 2px;
@@ -336,8 +347,8 @@
   font-weight: 550;
 }
 .settings-tabs button[aria-selected='true'] {
-  color: #13796d;
-  border-bottom-color: #13796d;
+  color: var(--accent-text);
+  border-bottom-color: var(--accent-text);
 }
 .account-settings-dialog [role='tabpanel']:focus {
   outline: none;
@@ -353,9 +364,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #fff;
-  color: #355464;
-  border: 1px solid #e0e7ed;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
   padding: 16px;
   border-radius: 10px;
   width: 100%;
@@ -379,8 +390,8 @@
   font-weight: 400;
 }
 .security-option:hover {
-  border-color: #8ab5aa;
-  background: #f8fbfa;
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 .account-settings-dialog .security-card,
 .account-settings-dialog .sessions-card {

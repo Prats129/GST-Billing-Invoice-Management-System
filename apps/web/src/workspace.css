@@ -1,14 +1,12 @@
 /* Workspace layout: billing, organization administration and personal settings
    share controls, while each task keeps its own page and visual hierarchy. */
 .workspace-refresh {
-  background: #f4f6fa;
-  --border: #e2e7ef;
-  --muted: #607184;
+  background: var(--page-bg);
 }
 .workspace-refresh .sidebar {
   width: 280px;
   padding: 24px 16px 0;
-  background: #132b3a;
+  background: var(--nav-bg);
 }
 .workspace-refresh .sidebar-brand {
   padding-bottom: 24px;
@@ -24,14 +22,14 @@
 }
 .workspace-refresh .sidebar nav {
   padding-bottom: 12px;
-  color-scheme: dark;
+  color-scheme: inherit;
   scrollbar-width: thin;
-  scrollbar-color: #4c6c7b transparent;
+  scrollbar-color: var(--line-strong) transparent;
   scrollbar-gutter: stable;
 }
 .workspace-refresh .sidebar:hover nav,
 .workspace-refresh .sidebar nav:focus-within {
-  scrollbar-color: #7595a4 transparent;
+  scrollbar-color: var(--nav-muted) transparent;
 }
 /* Fallback for browsers using WebKit scrollbar styling. */
 .workspace-refresh .sidebar nav::-webkit-scrollbar {
@@ -41,15 +39,15 @@
   background: transparent;
 }
 .workspace-refresh .sidebar nav::-webkit-scrollbar-thumb {
-  background: #4c6c7b;
+  background: var(--line-strong);
   border-radius: 8px;
 }
 .workspace-refresh .sidebar nav::-webkit-scrollbar-thumb:hover {
-  background: #7595a4;
+  background: var(--nav-muted);
 }
 .workspace-refresh .sidebar:hover nav::-webkit-scrollbar-thumb,
 .workspace-refresh .sidebar nav:focus-within::-webkit-scrollbar-thumb {
-  background: #7595a4;
+  background: var(--nav-muted);
 }
 .workspace-refresh .sidebar nav::-webkit-scrollbar-button {
   display: none;
@@ -87,14 +85,19 @@
   margin: 3px 0;
   font-size: 13px;
   border-radius: 8px;
+  color: var(--nav-text);
+}
+.workspace-refresh .sidebar nav a:hover {
+  background: var(--surface-subtle);
+  color: var(--heading);
 }
 .workspace-refresh .sidebar nav a[aria-current] {
-  background: #25554f;
+  background: var(--nav-active);
   box-shadow: none;
-  color: #fff;
+  color: var(--accent-text);
 }
 .workspace-refresh .sidebar-bottom {
-  border-top: 1px solid #ffffff10;
+  border-top: 1px solid var(--line);
 }
 .workspace-refresh .sidebar-connection {
   padding: 14px 8px;
@@ -112,7 +115,7 @@
 .workspace-refresh .topbar {
   height: 72px;
   padding: 0 32px;
-  background: #fff;
+  background: var(--surface);
 }
 .workspace-refresh .breadcrumb {
   font-size: 12px;
@@ -143,7 +146,7 @@
 }
 .workspace-refresh .eyebrow {
   font-size: 10px;
-  color: #566d7d;
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 .workspace-refresh .button {
@@ -182,7 +185,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 .workspace-refresh td {
   font-size: 13px;
@@ -190,7 +193,7 @@
   padding-bottom: 12px;
 }
 .workspace-refresh .table-toolbar {
-  background: #fbfcfe;
+  background: var(--surface-subtle);
   border-top: 1px solid var(--border);
 }
 .workspace-refresh .badge {
@@ -202,7 +205,7 @@
   flex-wrap: wrap;
   padding-bottom: 12px;
   margin-bottom: 16px;
-  border-bottom: 1px solid #dde4ed;
+  border-bottom: 1px solid var(--line);
 }
 .workspace-refresh .section-navigation a {
   display: inline-flex;
@@ -212,16 +215,16 @@
   border: 1px solid transparent;
   border-radius: 8px;
   font-size: 13px;
-  color: #586b7b;
+  color: var(--text-muted);
 }
 .workspace-refresh .section-navigation a:hover {
-  background: #e9edf4;
-  color: #1d384c;
+  background: var(--surface-subtle);
+  color: var(--text);
 }
 .workspace-refresh .section-navigation a[aria-current] {
-  background: #fff;
-  color: #126b61;
-  border-color: #d4e4e0;
+  background: var(--surface);
+  color: var(--accent-text);
+  border-color: var(--accent-border);
   box-shadow: 0 2px 4px #142c3e04;
   font-weight: 650;
 }
@@ -235,28 +238,28 @@
   align-items: center;
   gap: 28px;
   padding: 28px 30px;
-  background: #e9f2f0;
-  border: 1px solid #dce9e5;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
   border-radius: 14px;
 }
 .workspace-refresh .home-welcome h2 {
   font-size: 26px;
-  color: #173f3b;
+  color: var(--accent-text);
   letter-spacing: -0.6px;
   margin-bottom: 8px;
 }
 .workspace-refresh .home-welcome p:not(.eyebrow) {
   max-width: 490px;
   font-size: 14px;
-  color: #506d69;
+  color: var(--text-muted);
 }
 .workspace-refresh .home-organization {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 18px;
-  border-left: 1px solid #ccddd7;
-  color: #2a5b53;
+  border-left: 1px solid var(--accent-border);
+  color: var(--accent-text);
   min-width: 0;
   max-width: 320px;
 }
@@ -269,7 +272,7 @@
   display: block;
   font-size: 12px;
   margin-top: 3px;
-  color: #5d7971;
+  color: var(--text-muted);
 }
 .workspace-refresh .home-group-heading {
   display: flex;
@@ -304,7 +307,7 @@
   align-items: flex-start;
   gap: 14px;
   padding: 24px 20px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 12px;
   transition:
@@ -314,12 +317,12 @@
   min-width: 0;
 }
 .workspace-refresh .task-card:hover {
-  border-color: #8eb6ad;
+  border-color: var(--accent-border);
   box-shadow: 0 5px 15px #172f4510;
   transform: translateY(-2px);
 }
 .workspace-refresh .task-card > svg {
-  color: #8a9ba8;
+  color: var(--text-muted);
   margin-left: auto;
   margin-top: 10px;
 }
@@ -327,19 +330,19 @@
   width: 44px;
   height: 44px;
   border-radius: 11px;
-  background: #e9f3ef;
-  color: #147466;
+  background: var(--accent-soft);
+  color: var(--accent-text);
   display: grid;
   place-items: center;
   flex-shrink: 0;
 }
 .workspace-refresh .task-icon-business {
-  background: #edf1fa;
-  color: #536a9a;
+  background: var(--info-bg);
+  color: var(--info-text);
 }
 .workspace-refresh .task-icon-account {
-  background: #f1eef7;
-  color: #776092;
+  background: var(--info-bg);
+  color: var(--info-text);
 }
 .workspace-refresh .task-copy {
   min-width: 0;
@@ -347,7 +350,7 @@
 .workspace-refresh .task-copy strong {
   display: block;
   font-size: 15px;
-  color: #203a4b;
+  color: var(--heading);
   margin: 2px 0 6px;
 }
 .workspace-refresh .task-copy > span {
@@ -395,32 +398,32 @@
   margin-bottom: 16px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
 }
 .workspace-refresh .form-outline button {
   display: inline-flex;
   align-items: center;
   gap: 9px;
   background: transparent;
-  color: #536779;
+  color: var(--text-muted);
   font-weight: 500;
   font-size: 12px;
   padding: 7px 12px;
   min-height: 38px;
 }
 .workspace-refresh .form-outline button:hover {
-  background: #edf3f4;
-  color: #126b61;
+  background: var(--surface-subtle);
+  color: var(--accent-text);
 }
 .workspace-refresh .form-outline button > span {
   display: grid;
   place-items: center;
   width: 23px;
   height: 23px;
-  border: 1px solid #dbe4ea;
+  border: 1px solid var(--line);
   border-radius: 50%;
   font-size: 11px;
-  background: #f8fafc;
+  background: var(--surface-subtle);
 }
 .workspace-refresh .business-profile-form {
   display: grid;
@@ -445,7 +448,7 @@
   overflow: visible;
   clip-path: none;
   font-size: 15px;
-  color: #263f52;
+  color: var(--heading);
   padding: 0 8px;
   font-weight: 650;
 }
@@ -473,27 +476,27 @@
 }
 .workspace-refresh .invoice-section .section-heading {
   padding-bottom: 12px;
-  border-bottom: 1px solid #edf0f5;
+  border-bottom: 1px solid var(--surface-subtle);
   margin-bottom: 16px;
 }
 .workspace-refresh .invoice-customer {
-  background: #f7fafb;
+  background: var(--surface-subtle);
   border-style: solid;
 }
 .workspace-refresh .invoice-scope {
   font-size: 12px;
   line-height: 1.7;
-  color: #617386;
+  color: var(--text-muted);
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
 .workspace-refresh .invoice-line {
-  border-left: 3px solid #c3dcd5;
+  border-left: 3px solid var(--accent-border);
 }
 .workspace-refresh .invoice-line-title {
   font-size: 14px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #edf0f5;
+  border-bottom: 1px solid var(--surface-subtle);
   margin-bottom: 12px;
 }
 .workspace-refresh [id^='business-'],
@@ -595,7 +598,7 @@
   }
   .workspace-refresh .home-organization {
     border-left: 0;
-    border-top: 1px solid #ccddd7;
+    border-top: 1px solid var(--accent-border);
     padding: 14px 0 0;
     max-width: none;
     width: 100%;

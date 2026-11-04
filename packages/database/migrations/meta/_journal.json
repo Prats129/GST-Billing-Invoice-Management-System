@@ -43,6 +43,13 @@
       "when": 1793300688187,
       "tag": "0005_workable_mathemanic",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793812513280,
+      "tag": "0006_user_appearance",
+      "breakpoints": true
     }
   ]
 }

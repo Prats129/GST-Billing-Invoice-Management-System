@@ -163,6 +163,152 @@ async function openAccount(page: Page) {
     .getByRole('button', { name: 'Manage two-step verification', exact: true })
     .click();
 }
+test('account appearance persists across logins, follows system mode and preserves unsaved invoices', async ({
+  page,
+}, testInfo) => {
+  const service = new OrganizationsService(
+    new IdentityService(
+      isolated.database,
+      parseConfig({
+        DATABASE_URL: isolated.connectionString,
+        AUTH_DATA_KEY: 'ab'.repeat(32),
+      }),
+    ),
+  );
+  const email = `theme-${randomUUID()}@example.test`,
+    otherEmail = `theme-${randomUUID()}@example.test`;
+  for (const account of [email, otherEmail])
+    await service.provisionOwner({
+      email: account,
+      name: 'Appearance user',
+      password: ownerPassword,
+      organizationName: 'Appearance workspace',
+    });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await signIn(page, email, ownerPassword);
+  await expect(page.locator('.overview-intro')).toBeVisible();
+  const settings = page.getByRole('dialog', { name: 'Settings', exact: true });
+  const openAppearance = async () => {
+    await page.getByRole('button', { name: /^Account menu for/ }).click();
+    await page
+      .getByRole('menuitem', { name: 'Account settings', exact: true })
+      .click();
+    await settings
+      .getByRole('tab', { name: 'Appearance', exact: true })
+      .click();
+  };
+  await openAppearance();
+  await settings.getByRole('radio', { name: 'Dark', exact: true }).check();
+  await settings.getByRole('radio', { name: 'Blue', exact: true }).check();
+  await settings
+    .getByRole('button', { name: 'Save appearance', exact: true })
+    .click();
+  await expect(
+    settings.getByText('Appearance saved.', { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'blue');
+  await page.screenshot({
+    path: testInfo.outputPath('appearance-dark-blue.png'),
+  });
+  await page.keyboard.press('Escape');
+  await page
+    .getByRole('navigation', { name: 'Workspace navigation', exact: true })
+    .getByRole('link', { name: 'Invoices', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'New invoice', exact: true }).click();
+  await page
+    .getByLabel('Notes', { exact: true })
+    .fill('Preserve my draft when changing colors');
+  await openAppearance();
+  await settings.getByRole('radio', { name: 'Violet', exact: true }).check();
+  // Failed saves keep the currently applied preference and allow a retry.
+  await page.route('**/api/v1/auth/appearance', (route) =>
+    route.fulfill({
+      status: 503,
+      json: {
+        error: {
+          code: 'UNAVAILABLE',
+          message: 'Appearance temporarily unavailable.',
+        },
+      },
+    }),
+  );
+  await settings
+    .getByRole('button', { name: 'Save appearance', exact: true })
+    .click();
+  await expect(settings.getByRole('alert')).toHaveText(
+    'Appearance temporarily unavailable.',
+  );
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'blue');
+  await page.unroute('**/api/v1/auth/appearance');
+  await settings
+    .getByRole('button', { name: 'Save appearance', exact: true })
+    .click();
+  await expect(
+    settings.getByText('Appearance saved.', { exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByLabel('Notes', { exact: true })).toHaveValue(
+    'Preserve my draft when changing colors',
+  );
+  await page.reload();
+  await expect(
+    page.getByRole('button', { name: /^Account menu for/ }),
+  ).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'violet');
+  await openAppearance();
+  await settings
+    .getByRole('radio', { name: 'Follow system', exact: true })
+    .check();
+  await settings
+    .getByRole('button', { name: 'Save appearance', exact: true })
+    .click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(
+    settings.getByText('Appearance saved.', { exact: true }),
+  ).toBeVisible();
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath('appearance-dark-mobile.png'),
+  });
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole('button', { name: /^Account menu for/ }).click();
+  await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Sign in to your workspace',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'teal');
+  await page.screenshot({ path: testInfo.outputPath('sign-in-dark.png') });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await signIn(page, otherEmail, ownerPassword);
+  await expect(page.locator('.overview-intro')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'teal');
+  await page.getByRole('button', { name: /^Account menu for/ }).click();
+  await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
+  await expect(
+    page.getByRole('heading', {
+      name: 'Sign in to your workspace',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await signIn(page, email, ownerPassword);
+  await expect(page.locator('.overview-intro')).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'violet');
+});
 test('owner manages roles and employees; employee changes password; suspension revokes access', async ({
   page,
   browser,

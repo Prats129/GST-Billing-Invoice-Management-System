@@ -22,6 +22,7 @@ import {
 import type { SchemaObject } from '@nestjs/swagger';
 import {
   changePasswordSchema,
+  appearanceSchema,
   loginSchema,
   memberInputSchema,
   memberUpdateSchema,
@@ -169,6 +170,18 @@ export class IdentityController extends SecurityController {
   })
   async session(@Req() req: Request) {
     return this.identity.sessionInfo(await this.authenticated(req));
+  }
+  @Put('appearance')
+  @ApiOperation({
+    summary: 'Save appearance preferences for the signed-in user',
+  })
+  @contractBody(appearanceSchema)
+  @contractResponse(appearanceSchema)
+  async appearance(@Body() body: unknown, @Req() req: Request) {
+    return this.identity.updateAppearance(
+      await this.authenticated(req, true),
+      input(appearanceSchema, body),
+    );
   }
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {

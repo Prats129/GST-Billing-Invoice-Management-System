@@ -55,6 +55,97 @@ test.afterAll(async () => {
   );
 });
 
+test('all theme palettes keep normal text and active controls readable', async ({
+  page,
+}) => {
+  await workspace(page);
+  const results = await page.evaluate(() => {
+    const root = document.documentElement;
+    const previous = { theme: root.dataset.theme, accent: root.dataset.accent };
+    const probe = document.createElement('section');
+    probe.className = 'surface';
+    probe.innerHTML =
+      '<h2>Heading</h2><p class="muted">Supporting text</p><button class="button button-primary">Primary action</button><button class="secondary">Secondary action</button><input aria-label="Contrast probe" value="Input text"><p class="error">Error message</p><span class="badge badge-green">Success</span><span class="badge badge-amber">Warning</span><span class="badge badge-blue">Information</span>';
+    document.body.append(probe);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d')!;
+    const luminance = (color: string) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      const rgb = Array.from(context.getImageData(0, 0, 1, 1).data)
+        .slice(0, 3)
+        .map((channel) => {
+          const v = channel / 255;
+          return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        });
+      return rgb[0]! * 0.2126 + rgb[1]! * 0.7152 + rgb[2]! * 0.0722;
+    };
+    const values: {
+      mode: string;
+      accent: string;
+      element: string;
+      contrast: number;
+    }[] = [];
+    try {
+      for (const mode of ['light', 'dark'])
+        for (const accent of ['teal', 'blue', 'violet']) {
+          root.dataset.theme = mode;
+          root.dataset.accent = accent;
+          const surface = getComputedStyle(probe).backgroundColor;
+          for (const element of Array.from(probe.children)) {
+            const style = getComputedStyle(element);
+            const background =
+              style.backgroundColor === 'rgba(0, 0, 0, 0)'
+                ? surface
+                : style.backgroundColor;
+            const first = luminance(style.color),
+              second = luminance(background);
+            values.push({
+              mode,
+              accent,
+              element: element.className || element.tagName,
+              contrast:
+                (Math.max(first, second) + 0.05) /
+                (Math.min(first, second) + 0.05),
+            });
+          }
+          const sidebar = document.querySelector('.sidebar')!;
+          const navigationBackground =
+            getComputedStyle(sidebar).backgroundColor;
+          for (const element of sidebar.querySelectorAll(
+            '.brand, .brand small, .primary-navigation a, .account-identity strong, .account-identity small',
+          )) {
+            const style = getComputedStyle(element);
+            const background =
+              style.backgroundColor === 'rgba(0, 0, 0, 0)'
+                ? navigationBackground
+                : style.backgroundColor;
+            const first = luminance(style.color),
+              second = luminance(background);
+            values.push({
+              mode,
+              accent,
+              element: 'Sidebar: ' + element.textContent?.trim(),
+              contrast:
+                (Math.max(first, second) + 0.05) /
+                (Math.min(first, second) + 0.05),
+            });
+          }
+        }
+    } finally {
+      probe.remove();
+      if (previous.theme) root.dataset.theme = previous.theme;
+      else delete root.dataset.theme;
+      if (previous.accent) root.dataset.accent = previous.accent;
+      else delete root.dataset.accent;
+    }
+    return values;
+  });
+  expect(results.filter((result) => result.contrast < 4.5)).toEqual([]);
+});
+
 async function workspace(
   page: Page,
   permissions: Permission[] = [...permissionKeys],
@@ -153,6 +244,14 @@ test('desktop uses compact navigation, a persistent icon rail and one page actio
     path: testInfo.outputPath('workspace-desktop.png'),
     fullPage: true,
   });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.screenshot({
+    path: testInfo.outputPath('workspace-neutral-dark.png'),
+    fullPage: true,
+  });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page
     .getByRole('button', { name: 'Collapse sidebar', exact: true })
     .click();
@@ -167,6 +266,14 @@ test('desktop uses compact navigation, a persistent icon rail and one page actio
     path: testInfo.outputPath('workspace-collapsed.png'),
     fullPage: true,
   });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.screenshot({
+    path: testInfo.outputPath('workspace-collapsed-dark.png'),
+    fullPage: true,
+  });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await page.reload();
   await expect(
     page.getByRole('button', { name: 'Expand sidebar' }),

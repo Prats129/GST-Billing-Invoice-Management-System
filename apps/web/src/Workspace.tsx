@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { organizationListSchema, sessionInfoSchema } from '@gst/contracts';
+import {
+  appearanceSchema,
+  organizationListSchema,
+  sessionInfoSchema,
+} from '@gst/contracts';
 import type {
   MemberView,
   OrganizationAccess,
   OrganizationSummary,
   RoleView,
   SessionInfo,
+  Appearance,
 } from '@gst/contracts';
 import { ApiError, securityRequest } from './security-api.js';
 import {
@@ -36,6 +41,7 @@ import {
 import type { View } from './workspace-navigation.js';
 import { ConnectionIndicator, ConnectionPanel } from './connection.js';
 import type { ConnectionState } from './connection.js';
+import { useAppearance } from './appearance.js';
 
 function activityText(action: string) {
   const labels: Record<string, string> = {
@@ -62,6 +68,17 @@ export function Workspace({
   onCheck: () => void;
 }) {
   const [info, setInfo] = useState<SessionInfo | null>();
+  // Appearance saves must not replace the session object: tenant-loading effects
+  // depend on it and would unmount an editor with unsaved changes.
+  const [appearanceOverride, setAppearanceOverride] = useState<{
+    userId: string;
+    value: Appearance;
+  } | null>(null);
+  const appearance =
+    appearanceOverride?.userId === info?.user.id
+      ? appearanceOverride?.value
+      : info?.appearance;
+  useAppearance(appearance);
   const identityRef = useRef<string | undefined>(undefined);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -207,6 +224,7 @@ export function Workspace({
   const applySession = useCallback(
     (data: unknown) => {
       const next = sessionInfoSchema.parse(data);
+      setAppearanceOverride(null);
       const changed = identityRef.current !== next.user.id;
       identityRef.current = next.user.id;
       setInfo(next);
@@ -1038,6 +1056,13 @@ export function Workspace({
           recovery={recovery}
           recoveryPending={recoveryCodes.length > 0}
           onClearError={() => setError('')}
+          appearance={appearance ?? info.appearance}
+          onAppearanceSave={async (value: Appearance) => {
+            const next = appearanceSchema.parse(
+              await mutate('/auth/appearance', value, 'PUT'),
+            );
+            setAppearanceOverride({ userId: info.user.id, value: next });
+          }}
         />
       )}
       {connectionDialog}
