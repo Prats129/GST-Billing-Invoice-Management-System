@@ -23,8 +23,41 @@ export function financialYear(date: string) {
 export function indianToday() {
   return new Date(Date.now() + 330 * 60 * 1000).toISOString().slice(0, 10);
 }
-export function assertCalculationReleased() {
-  // Deliberately no environment/HTTP/admin override. A reviewed release must
-  // replace the pending policy before real documents can be issued.
-  if (!CALCULATION_POLICY.issuanceAllowed) deny('ISSUANCE_BLOCKED');
+function released(documentType: string, action: 'issue' | 'cancel') {
+  // Only ordinary invoices are included in this release. Neither configuration
+  // nor an HTTP/admin input can expand this to correction or cancellation policy.
+  return (
+    CALCULATION_POLICY.issuanceAllowed &&
+    documentType === 'invoice' &&
+    action === 'issue'
+  );
+}
+export function issuanceBlockers(
+  documentType: string,
+  applicability: 'unknown' | 'required' | 'not_required',
+) {
+  return [
+    ...(!released(documentType, 'issue')
+      ? [
+          documentType === 'invoice'
+            ? 'Invoice issuance has not been released.'
+            : 'Credit and debit note issuance is not included in the current release.',
+        ]
+      : []),
+    ...(applicability === 'unknown'
+      ? [
+          'Confirm whether this business requires e-invoicing in Business setup before finalizing.',
+        ]
+      : applicability === 'required'
+        ? [
+            'This business requires e-invoicing. Issuance is blocked while IRP integration is on hold.',
+          ]
+        : []),
+  ];
+}
+export function assertCalculationReleased(
+  documentType: string = 'invoice',
+  action: 'issue' | 'cancel' = 'issue',
+) {
+  if (!released(documentType, action)) deny('ISSUANCE_BLOCKED');
 }

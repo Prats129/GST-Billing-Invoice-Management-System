@@ -369,8 +369,8 @@ export function InvoicesScreen(props: BusinessScreenProps) {
         </PageActions>
         <FormError message={error || loadError} />
         <div className="invoice-list-banner">
-          Draft billing is available. Real issuance awaits the tax and
-          compliance release.
+          Create and review drafts, then finalize supported invoices for
+          businesses assessed as not requiring e-invoicing.
         </div>
         {loading ? (
           <p role="status" className="invoice-padding">
@@ -1008,8 +1008,8 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                   )}
                 {(!editor || editor.status === 'draft') && !preview && (
                   <p className="invoice-gate">
-                    Draft only · issuance awaits professional tax approval and
-                    compliance release.
+                    Save the draft and calculate a fresh preview to check
+                    whether this document is ready to finalize.
                   </p>
                 )}
                 {preview?.issuanceBlockers.map((message) => (

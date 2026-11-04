@@ -32,7 +32,7 @@ const errors = {
   ],
   ISSUANCE_BLOCKED: [
     409,
-    'Issuance is blocked pending professional tax approval and compliance release. Draft previews remain available.',
+    'Issuance is blocked for this document or action because it is outside the current release scope. Draft previews remain available.',
   ],
   EINVOICE_BLOCKED: [
     409,

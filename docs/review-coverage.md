@@ -1,5 +1,63 @@
 # Review coverage
 
+## Ordinary invoice release after owner-confirmed CA review
+
+The project owner confirmed on 2026-11-05 that their CA reviewed and approved the
+tax calculations, rounding, invoice fields and numbering, and authorized moving
+forward. This records the owner's statement, not an independently verified review
+report or a government certification. E-invoice integration remains explicitly on
+hold. Enabling only the existing supported ordinary domestic invoice scope;
+credit/debit note issuance and issued cancellation retain their release gates.
+Calculation/rounding semantics and tax rates are unchanged; the engine patch
+version records the release-metadata change. Policy, UI and finalization
+regressions are in progress. No real customer invoice will be issued by tests.
+
+First batch: engine and release-policy unit checks passed (86 tests). Replaced
+hardcoded pending-approval preview/UI messages with document/applicability-aware
+blockers. Ordinary finalization tests no longer use a release spy; retained spies
+are limited to exercising unreleased correction/cancellation internals. Added
+negative HTTP checks for unknown/required e-invoicing, correction-note issuance
+and missing finalize permission. Real browser finalization/printing is added to
+the existing draft workflow. Full build and integration/browser checks follow.
+
+Second batch: production API/web build passed. All 16 invoice integration tests
+passed against a disposable database, including ordinary issuance without policy
+spies, consecutive concurrent numbering, retry/idempotency, transaction rollback,
+historical immutability, permission rejection and no allocation for e-invoice or
+unreleased note/cancellation gates. The initial compiler check caught database
+document types represented as strings; the release predicate now safely accepts
+stored strings and denies every type except `invoice`, including unknown types.
+Web/test TypeScript, repository lint and formatting passed. Browser issuance and
+the final unit/renderer checks are continuing. No schema migration is required.
+
+The first browser pass correctly kept finalization disabled because the historical
+browser business fixture left e-invoice applicability unassessed. Updated only
+that synthetic business setup to explicitly select `not_required`; no real
+business profile is changed. The unknown/required HTTP gates remain verified.
+Final calculation/contract/renderer/frontend unit checks passed (97 tests).
+
+The browser continuation also exposed a test-navigation issue: the editor and
+invoice list share a hash, so navigating to that same URL could retain the old
+cancelled editor. The test now explicitly reloads the list after API fixture
+creation. The real UI issuance flow then passed: the button requires a saved draft
+and fresh preview, finalization returned `INV/2627/000001`, the numbered Tax invoice
+copy contained no draft heading, and the immutable print copy reopened after
+reload. The ordinary issuance request uses the real policy and API, not mocks.
+
+Completed verification: production package/API/web builds, 97 selected financial,
+contract, renderer, API-policy and frontend unit tests, all 16 invoice integration
+tests and all 14 browser regressions passed. Final web/test TypeScript, repository
+lint, formatting and whitespace checks passed. Browser checks include actual
+ordinary finalization and numbered historical printing, plus the existing draft,
+PDF pagination, correction-dialog, entitlement, identity/MFA and theme workflows.
+Database tests use randomly named disposable databases that are cleaned up; no
+development/customer invoice was issued and no business applicability or grants
+were changed. No schema, dependency or deployment changes are required. Rebuild/
+restart the development app, save a supported draft and calculate a fresh preview
+before finalizing. Required/unknown e-invoicing and issued notes/cancellation stay
+blocked as documented. Native printer/Windows installer and commercial deployment
+acceptance remain outside this locally verified release change.
+
 ## Dark sidebar: match the breadcrumb header
 
 Replaced the lighter slate sidebar with the shared surface color used by the

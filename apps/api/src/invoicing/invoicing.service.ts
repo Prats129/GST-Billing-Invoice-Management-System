@@ -54,6 +54,7 @@ import {
   financialYear,
   indianToday,
   assertCalculationReleased,
+  issuanceBlockers,
 } from './policy.js';
 
 interface Snapshot {
@@ -549,14 +550,10 @@ export class InvoicingService {
         return {
           digest: this.digest(prepared),
           print: prepared.snapshot.print,
-          issuanceBlockers: [
-            'Professional tax approval and compliance release are pending.',
-            ...(prepared.profile.eInvoiceApplicability !== 'not_required'
-              ? [
-                  'E-invoice applicability is unknown or requires unavailable IRP integration.',
-                ]
-              : []),
-          ],
+          issuanceBlockers: issuanceBlockers(
+            row?.documentType ?? 'invoice',
+            prepared.profile.eInvoiceApplicability,
+          ),
         };
       },
     );
@@ -664,7 +661,7 @@ export class InvoicingService {
           deny('BILLING_REVIEW_REQUIRED');
         if (prepared.profile.eInvoiceApplicability !== 'not_required')
           deny('EINVOICE_BLOCKED');
-        assertCalculationReleased();
+        assertCalculationReleased(row.documentType);
         const fy = financialYear(row.issueDate);
         const seriesScope = and(
           eq(invoiceSeries.organizationId, orgId),
@@ -1057,7 +1054,7 @@ export class InvoicingService {
           const profile = await this.profile(tx, orgId);
           if (profile.eInvoiceApplicability !== 'not_required')
             deny('EINVOICE_BLOCKED');
-          assertCalculationReleased();
+          assertCalculationReleased(row.documentType, 'cancel');
         }
         const children = await tx
           .select({ id: invoices.id })

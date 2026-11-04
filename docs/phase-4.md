@@ -1,5 +1,12 @@
 # Phase 4 — deterministic GST calculation engine
 
+Release update (2026-11-05): the owner confirmed CA approval for the supported
+ordinary-invoice scope. Engine 1.0.1 updates release metadata without changing
+the financial algorithms below. Ordinary invoice issuance is now available
+through the guarded API; e-invoicing, issued corrections and issued cancellation
+remain outside that release. See [Phase 5](phase-5.md). Dated preview-only
+acceptance records below describe the earlier implementation state.
+
 Scope: a pure, versioned, browser/server-compatible package. No HTTP, database,
 invoice numbering, finalization or printing. Phase 5 connects the engine to the
 authorized invoice lifecycle. Existing master data and credentials remain unchanged.

@@ -1,5 +1,13 @@
 # Implementation decisions
 
+2026-11-05 ordinary invoice release: the project owner confirms CA review and
+approval of calculations, rounding, invoice fields and numbering. Record this as
+owner-confirmed approval, without inventing a reviewer identity or independently
+verified report. Enable only supported ordinary domestic invoices assessed as not
+requiring e-invoicing. IRP integration is postponed; unknown/required applicability,
+issued credit/debit notes and issued cancellation remain blocked. This supersedes
+the blanket pending-approval statements in earlier dated implementation records.
+
 Phase 6 user decision (2026-11-02): offline updates require active maintenance at
 installation time, rather than eligibility based on release publication date.
 Every organization sharing the offline installation must qualify. Optional
@@ -51,7 +59,7 @@ reversible foundation details without changing those decisions.
   Billing read/write/override permissions require privileged SaaS MFA; upgrades
   insert permission definitions without silently expanding non-owner grants.
 
-Unresolved: professional approval of calculation/rounding and commercial GST/e-invoice scope, exact session/MFA
+Unresolved: e-invoice integration and correction/cancellation release scope, exact session/MFA
 policies, Windows compatibility matrix, installer redistribution and signing,
 certificate renewal UX, commercial backup policy, SaaS provider and pricing.
 

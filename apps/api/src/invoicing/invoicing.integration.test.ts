@@ -169,9 +169,13 @@ async function preview(own: Setup, id: string): Promise<InvoicePreview> {
 }
 async function finalizeSynthetic(own: Setup, id: string, version = 1) {
   const p = await preview(own, id);
-  // Tests ONLY: exercise dormant transaction machinery, never expose a release
-  // bypass in the application/config. Production HTTP gate is tested separately.
-  vi.spyOn(policy, 'assertCalculationReleased').mockImplementation(() => {});
+  const record = (
+    await http().get(`${own.path}/${id}`).set(own.auth).expect(200)
+  ).body;
+  // Ordinary invoices exercise the real release policy. A test-only spy keeps
+  // unreleased correction transaction regressions covered without enabling them.
+  if (record.documentType !== 'invoice')
+    vi.spyOn(policy, 'assertCalculationReleased').mockImplementation(() => {});
   const data = { version, requestKey: randomUUID(), previewDigest: p.digest };
   const response = await http()
     .post(`${own.path}/${id}/finalize`)
@@ -195,7 +199,7 @@ test('server calculation, persisted drafts, create retries, stale versions and H
     total: '295.00',
   });
   expect(p.body.print.number).toBeNull();
-  expect(p.body.issuanceBlockers.length).toBeGreaterThan(0);
+  expect(p.body.issuanceBlockers).toEqual([]);
   const row = await create(own, own.draft, key);
   expect((await create(own, own.draft, key)).id).toBe(row.id);
   await http()
@@ -365,6 +369,16 @@ test('permission revocation immediately blocks reads and price overrides use cur
     .set({ isOwner: false })
     .where(eq(memberships.id, own.membershipId));
   await http().get(`${own.path}/${row.id}`).set(own.auth).expect(200);
+  const reviewed = await preview(own, row.id);
+  await http()
+    .post(`${own.path}/${row.id}/finalize`)
+    .set(own.auth)
+    .send({
+      version: row.version,
+      requestKey: randomUUID(),
+      previewDigest: reviewed.digest,
+    })
+    .expect(403);
   const response = await http()
     .post(`${own.path}/preview`)
     .set(own.auth)
@@ -389,7 +403,7 @@ test('permission revocation immediately blocks reads and price overrides use cur
     );
   await http().get(`${own.path}/${row.id}`).set(own.auth).expect(403);
 });
-test('real release gate, changed preview and e-invoice gates allocate no numbers', async () => {
+test('changed previews and unknown/required e-invoicing allocate no numbers after ordinary release', async () => {
   const own = await setup();
   const row = await create(own);
   const p = await preview(own, row.id);
@@ -398,12 +412,7 @@ test('real release gate, changed preview and e-invoice gates allocate no numbers
     requestKey: randomUUID(),
     previewDigest: p.digest,
   };
-  const blocked = await http()
-    .post(`${own.path}/${row.id}/finalize`)
-    .set(own.auth)
-    .send(data)
-    .expect(409);
-  expect(blocked.body.error.code).toBe('ISSUANCE_BLOCKED');
+  expect(p.issuanceBlockers).toEqual([]);
   await isolated.database.db
     .update(catalogItems)
     .set({ price: '200' })
@@ -414,16 +423,25 @@ test('real release gate, changed preview and e-invoice gates allocate no numbers
     .send(data)
     .expect(409);
   expect(changed.body.error.code).toBe('BILLING_REVIEW_REQUIRED');
-  await isolated.database.db.execute(
-    sql`update business_profiles set e_invoice_applicability='required' where organization_id=${own.organizationId}`,
-  );
-  const current = await preview(own, row.id);
-  const irp = await http()
-    .post(`${own.path}/${row.id}/finalize`)
-    .set(own.auth)
-    .send({ ...data, previewDigest: current.digest })
-    .expect(409);
-  expect(irp.body.error.code).toBe('EINVOICE_BLOCKED');
+  for (const applicability of ['unknown', 'required']) {
+    await isolated.database.db.execute(
+      sql`update business_profiles set e_invoice_applicability=${applicability} where organization_id=${own.organizationId}`,
+    );
+    const current = await preview(own, row.id);
+    expect(current.issuanceBlockers).toHaveLength(1);
+    const unsaved = await http()
+      .post(`${own.path}/preview`)
+      .set(own.auth)
+      .send(own.draft)
+      .expect(201);
+    expect(unsaved.body.issuanceBlockers).toEqual(current.issuanceBlockers);
+    const irp = await http()
+      .post(`${own.path}/${row.id}/finalize`)
+      .set(own.auth)
+      .send({ ...data, previewDigest: current.digest })
+      .expect(409);
+    expect(irp.body.error.code).toBe('EINVOICE_BLOCKED');
+  }
   expect(
     await isolated.database.db
       .select()
@@ -431,7 +449,61 @@ test('real release gate, changed preview and e-invoice gates allocate no numbers
       .where(eq(invoiceSeries.organizationId, own.organizationId)),
   ).toHaveLength(0);
 });
-test('synthetic release transaction assigns numbers once, retries safely and stores immutable historical values', async () => {
+test.each(['credit_note', 'debit_note'] as const)(
+  'ordinary release does not issue %s documents or allocate their numbers',
+  async (documentType) => {
+    const own = await setup();
+    const original = await create(own);
+    await finalizeSynthetic(own, original.id);
+    const draft = (
+      await http()
+        .post(`${own.path}/${original.id}/corrections`)
+        .set(own.auth)
+        .send({
+          version: 0,
+          requestKey: randomUUID(),
+          documentType,
+          issueDate: '2026-10-29',
+          reason: 'Synthetic release boundary test',
+          lines: [{ lineId: 'line-1', supplyValue: '10' }],
+        })
+        .expect(201)
+    ).body;
+    const calculated = await preview(own, draft.id);
+    expect(calculated.issuanceBlockers).toEqual([
+      expect.stringContaining('not included'),
+    ]);
+    const result = await http()
+      .post(`${own.path}/${draft.id}/finalize`)
+      .set(own.auth)
+      .send({
+        version: draft.version,
+        requestKey: randomUUID(),
+        previewDigest: calculated.digest,
+      })
+      .expect(409);
+    expect(result.body.error.code).toBe('ISSUANCE_BLOCKED');
+    const series = await isolated.database.db
+      .select()
+      .from(invoiceSeries)
+      .where(eq(invoiceSeries.organizationId, own.organizationId));
+    expect(series).toHaveLength(1);
+    expect(series[0]).toMatchObject({
+      documentType: 'invoice',
+      nextCounter: 2,
+    });
+    const unchanged = (
+      await http().get(`${own.path}/${draft.id}`).set(own.auth).expect(200)
+    ).body;
+    expect(unchanged).toMatchObject({
+      status: 'draft',
+      number: null,
+      snapshot: null,
+    });
+  },
+);
+
+test('released ordinary transaction assigns numbers once, retries safely and stores immutable historical values', async () => {
   const own = await setup();
   const row = await create(own);
   const { record, data } = await finalizeSynthetic(own, row.id);
@@ -490,13 +562,12 @@ test('synthetic release transaction assigns numbers once, retries safely and sto
   ])
     await expect(operation).rejects.toThrow();
 });
-test('synthetic concurrent finalization is consecutive and transaction rollback reuses uncommitted allocation', async () => {
+test('released concurrent finalization is consecutive and transaction rollback reuses uncommitted allocation', async () => {
   const own = await setup();
   const a = await create(own);
   const b = await create(own);
   const pa = await preview(own, a.id);
   const pb = await preview(own, b.id);
-  vi.spyOn(policy, 'assertCalculationReleased').mockImplementation(() => {});
   const responses = await Promise.all(
     [a, b].map((row, i) =>
       http()
@@ -712,7 +783,6 @@ test('deferred guards reject missing snapshots and mismatched normalized financi
       .where(eq(invoices.id, row.id)),
   ).rejects.toThrow();
   const p = await preview(own, row.id);
-  vi.spyOn(policy, 'assertCalculationReleased').mockImplementation(() => {});
   await isolated.database.db.execute(
     sql`create function public.corrupt_test_line() returns trigger language plpgsql as $$ begin NEW.supply_value=NEW.supply_value+1; NEW.total=NEW.total+1; return NEW; end $$`,
   );
@@ -835,6 +905,8 @@ test('concurrent credits revalidate capacity and roll back the losing number all
   const own = await setup();
   const original = await create(own);
   await finalizeSynthetic(own, original.id);
+  // This test exercises correction internals; ordinary release does not enable notes.
+  vi.spyOn(policy, 'assertCalculationReleased').mockImplementation(() => {});
   const createCredit = async () =>
     (
       await http()

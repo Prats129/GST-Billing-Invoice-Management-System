@@ -6,8 +6,10 @@ and permission-based administration. Phase 3 adds business/GST setup, customers
 and a product/service catalog with classification review. Phase 4 adds a pure,
 decimal-safe GST calculation preview library. Phase 5 adds the invoice workspace,
 saved drafts, server calculation, value corrections, cancellation, logos and A4
-printing, with gated finalization. Real issuance remains blocked; no legal-compliance or
-production-readiness claim is made.
+printing. Ordinary domestic invoice issuance is enabled following the owner's
+confirmation of CA approval. E-invoicing, correction-note issuance and issued
+cancellation remain gated; no blanket legal-compliance or production-readiness
+claim is made.
 
 ## Prerequisites
 
@@ -153,8 +155,9 @@ pnpm start
 Open http://localhost:3000 for this loopback-only compiled smoke test.
 Production/LAN requires TLS key/cert paths, HTTPS APP_ORIGIN, exact ALLOWED_HOSTS
 authorities (including port), and an explicitly chosen HOST. The API never trusts
-forwarded Host/Origin or enables wildcard CORS. Commercial issuance remains gated;
-complete the documented deployment/security validation before production use.
+forwarded Host/Origin or enables wildcard CORS. Complete the documented
+deployment/security validation before production use; enabling ordinary invoices
+does not complete the separate deployment release requirements.
 
 Integration and browser tests use separate random databases and deliberately fail
 when no admin URL is supplied. With the development container running, PowerShell:
@@ -195,7 +198,8 @@ remote workflow execution is separate from locally observed results.
 validation, and `packages/billing-engine` the versioned exact GST preview engine.
 Identity/admin, master data and the invoice workspace are implemented. Invoices have
 transactional finalization infrastructure, immutable history, value corrections,
-cancellation and A4 printing; commercial issuance remains gated.
+cancellation and A4 printing. Ordinary invoices can be finalized within the
+released scope; e-invoicing and issued corrections/cancellation remain gated.
 
 Read [architecture](docs/architecture.md), [requirements](docs/requirements.md),
 [decisions](docs/decisions.md), [execution plan](docs/development-plan.md), and
@@ -207,7 +211,7 @@ See [Phase 3 scope and setup](docs/phase-3.md) for business setup, catalog revie
 upgrade permissions and the boundaries of local GST validation.
 See [Phase 4 policy/source review](docs/phase-4.md) and the
 [engine example](packages/billing-engine/README.md) for supported arithmetic,
-discount bases, rounding and remaining professional approval gates.
+discount bases, rounding and the recorded ordinary-invoice release scope.
 
 [Windows spike runbook](docs/windows-offline-spike.md) provides executable PoC
 scripts for a dedicated PostgreSQL instance, checksum-verified Windows API service,
@@ -232,10 +236,14 @@ notes and terms belong to the draft.
 Owners receive the new permissions through their existing owner authority.
 Existing non-owner roles retain their grants: explicitly grant invoice permissions
 and customer/catalog read access as needed. Invoice access is MFA-sensitive on SaaS.
-Finalization is intentionally disabled while professional tax approval and the
-compliance release are pending; unknown/required e-invoicing also blocks issuance.
+The owner confirmed CA approval on 2026-11-05. For supported ordinary domestic
+invoices, save the draft, calculate a fresh preview, then **Finalize invoice**.
+Business setup must be complete and e-invoice applicability must be assessed as
+**Not required**; **Unknown** and **Required** remain blocked while IRP integration
+is on hold. Do not change applicability merely to unlock finalization.
 Partial/full value credits and debit notes use original invoice tax details;
-correction drafts can be edited before finalization. Drafts can be discarded with a
+correction drafts can be edited, but issuing credit/debit notes remains outside
+this release. Drafts can be discarded with a
 recorded reason. Issued cancellation remains compliance-gated and never reuses a
 number. Grant `invoices.cancel` separately; existing non-owner grants are unchanged.
 Upload a PNG logo in Business setup; new documents snapshot it for historical printing.

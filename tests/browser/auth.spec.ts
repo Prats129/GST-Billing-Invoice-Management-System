@@ -537,6 +537,10 @@ test('business setup, customer archive/restore and catalog classification review
   await page
     .getByRole('checkbox', { name: /I have checked the registration status/ })
     .check();
+  // This synthetic business is explicitly assessed as outside e-invoicing.
+  await page
+    .getByLabel('E-invoice applicability', { exact: true })
+    .selectOption('not_required');
   await page
     .getByRole('button', { name: 'Save business details', exact: true })
     .click();
@@ -838,7 +842,7 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
     .click();
   await expect(
     page.getByRole('button', { name: 'Finalize invoice', exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   await expect(
     page.getByRole('button', { name: 'Print draft', exact: true }),
   ).toBeEnabled();
@@ -939,6 +943,83 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
   await expect(
     page.getByRole('button', { name: 'Save draft', exact: true }),
   ).toHaveCount(0);
+  // A separate fixture preserves draft-discard coverage while exercising real
+  // ordinary issuance through the UI, without a release spy or mocked API.
+  const listed = await (await page.request.get(`${base}/invoices`)).json();
+  const discarded = await (
+    await page.request.get(
+      `${base}/invoices/${listed.items.find((record: { customerName: string }) => record.customerName === 'Invoice browser buyer').id}`,
+    )
+  ).json();
+  const fresh = await page.request.post(`${base}/invoices`, {
+    headers,
+    data: { ...discarded.draft, version: 0, requestKey: randomUUID() },
+  });
+  expect(fresh.status()).toBe(201);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  // The invoice editor uses the same hash as the list. Reload explicitly so an
+  // API-created fixture is shown in the list rather than retaining that editor.
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Invoices', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('row')
+    .filter({ has: page.getByText('Draft', { exact: true }) })
+    .getByRole('button', { name: 'Open document', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Finalize invoice', exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole('button', { name: 'Calculate & preview', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Finalize invoice', exact: true }),
+  ).toBeEnabled();
+  page.once('dialog', (dialog) => void dialog.accept());
+  const issuedResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/finalize') &&
+      response.request().method() === 'POST',
+  );
+  await page
+    .getByRole('button', { name: 'Finalize invoice', exact: true })
+    .click();
+  const issued = await issuedResponse;
+  expect(issued.status()).toBe(201);
+  const issuedRecord = await issued.json();
+  expect(issuedRecord.number).toBe('INV/2627/000001');
+  await expect(
+    page.getByRole('button', { name: 'Finalize invoice', exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Save draft', exact: true }),
+  ).toHaveCount(0);
+  const issuedFrame = page.frameLocator('iframe[title="Invoice A4 preview"]');
+  await expect(issuedFrame.locator('.document-heading')).toContainText(
+    issuedRecord.number,
+  );
+  await expect(
+    issuedFrame.getByRole('heading', { name: 'Tax invoice', exact: true }),
+  ).toBeVisible();
+  await expect(
+    issuedFrame.getByRole('heading', {
+      name: 'DRAFT — NOT A TAX INVOICE',
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page.reload();
+  await page
+    .getByRole('row')
+    .filter({ hasText: issuedRecord.number })
+    .getByRole('button', { name: 'Open document', exact: true })
+    .click();
+  await expect(
+    page
+      .frameLocator('iframe[title="Invoice A4 preview"]')
+      .locator('.document-heading'),
+  ).toContainText(issuedRecord.number);
 });
 
 test('correction dialogs submit and edit versioned original-line value adjustments', async ({

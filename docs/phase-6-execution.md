@@ -1,5 +1,11 @@
 # Phase 6 remaining execution plan
 
+Invoice release update (2026-11-05): owner-confirmed CA approval now covers the
+supported ordinary-invoice release in phase-5.md. IRP integration is explicitly
+postponed; issued correction/cancellation and separate deployment/signing gates
+remain outside that release. Earlier pending professional-review references below
+describe the original release plan.
+
 Execute this as one connected release workflow, preserving checkpoints in
 review-coverage.md. Do not turn individual helpers into claims of a finished
 installer, restart planning after each helper or add unrelated product features.

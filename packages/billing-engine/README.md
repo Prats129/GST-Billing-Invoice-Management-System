@@ -23,7 +23,8 @@ import { calculateInvoice } from '@gst/billing-engine';
 import type { CalculationRequest } from '@gst/contracts';
 
 const result = calculateInvoice(validatedMasterDataSnapshot);
-// result.policy.issuanceAllowed is always false in this phase.
+// result.policy describes the owner-confirmed ordinary-invoice release.
+// The API still enforces business setup, permissions and e-invoice applicability.
 ```
 
 `calculateInvoice` validates unknown input and returns canonical quantity (6dp),
@@ -57,7 +58,7 @@ the rounded amount and signed adjustment; it never changes preview invoice total
 and does not determine which statutory liability or document should be rounded.
 
 See [Phase 4 policy and source review](../../docs/phase-4.md) for supported scenarios,
-date/amount limits, allocation/rounding conventions and professional approval gates.
+date/amount limits, allocation/rounding conventions and the recorded release scope.
 Phase 5 implements authorized drafts/finalization/snapshots/corrections/printing.
 
 `calculateValueCorrection(original, correction, prior)` consumes trusted immutable
@@ -67,5 +68,5 @@ credits proportionally consume remaining original plus debit values and componen
 paise after earlier credits. A final reversal consumes exact residuals. It never
 changes physical quantities, infers replacement rates or authorizes tax reduction.
 Server adapters must authorize, serialize, revalidate caps at finalization and retain
-the original/prior snapshot identities. Commercial issuance stays blocked by the
-same pending policy. See [Phase 5](../../docs/phase-5.md) for precise boundaries.
+the original/prior snapshot identities. Issued correction notes remain outside
+the ordinary-invoice release. See [Phase 5](../../docs/phase-5.md) for precise boundaries.

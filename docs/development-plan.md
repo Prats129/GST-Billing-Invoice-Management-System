@@ -1,5 +1,11 @@
 # Development plan
 
+Release update (2026-11-05): the owner confirmed CA approval and ordinary domestic
+invoice issuance is released within the existing supported scope. E-invoice
+integration is postponed; unknown/required applicability, issued credit/debit notes
+and issued cancellation stay blocked. See phase-5.md for the superseding release
+record; earlier phase acceptance statements below describe the original gate state.
+
 1. Repository audit and architecture requirements checkpoint.
 2. Workspace, API/contracts, React connectivity shell and config tests.
 3. PostgreSQL schema/migration, isolated DB integration and CI.

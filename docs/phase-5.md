@@ -1,5 +1,25 @@
 # Phase 5 — invoice workflow
 
+## Ordinary invoice release (2026-11-05)
+
+The project owner reports that their CA reviewed and approved the supported
+calculations, rounding, invoice fields and numbering, and authorized release.
+This records their confirmation; no independent report, reviewer identity or
+government approval is asserted. The source policy now permits ordinary domestic
+invoices within the existing supported boundary. No tax rates, calculations or
+rounding semantics changed. Engine version 1.0.1 records the release metadata.
+
+Business setup/registration confirmation, reviewed classifications, current
+permissions, fresh preview digest, version checks, transaction locks, consecutive
+numbering and immutable snapshots still apply. E-invoice applicability must be
+assessed as `not_required`; unknown/required remain blocked. IRP integration is
+explicitly postponed. Credit/debit note issuance and issued cancellation remain
+outside this release; their drafts/engineering coverage remain available.
+
+Save a supported draft, calculate/review a fresh preview and choose **Finalize
+invoice**. Tests issue only synthetic documents in disposable databases. The
+dated records below describe the original implementation and earlier gate state.
+
 Status: the Phase 5 engineering scope is implemented: invoice drafts, transactional
 finalization/snapshots, full and partial value credits, debit notes, cancellation,
 logo customization and A4 printing. Commercial issuance remains disabled pending

@@ -129,7 +129,7 @@ export async function createApp(
     new DocumentBuilder()
       .setTitle('GST Platform API')
       .setDescription(
-        'Identity, tenant authorization, master data and invoice drafts/calculation/printing. Commercial issuance remains gated.',
+        'Identity, tenant authorization, master data and ordinary invoice drafts/calculation/issuance/printing. E-invoicing and issued correction/cancellation remain gated.',
       )
       .setVersion('1')
       .addCookieAuth('__Host-gst_session')

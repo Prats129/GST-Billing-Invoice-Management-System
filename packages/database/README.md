@@ -46,7 +46,8 @@ Never reset/delete issued counters. New permission definitions do not expand
 existing grants. Runtime needs SELECT/INSERT/UPDATE on invoices and invoice_series,
 SELECT/INSERT on invoice_lines, invoice_tax_components and invoice_snapshots, plus
 existing identity/master-data/audit privileges; no DDL, ownership, DELETE or
-TRUNCATE. Commercial issuance remains blocked in the service release policy.
+TRUNCATE. The current ordinary-invoice release scope is documented in
+docs/phase-5.md; issued corrections/cancellation and e-invoicing remain gated.
 
 0004_mute_vapor.sql extends existing storage with PNG logos, correction drafts and
 append-only invoice_cancellations. It replaces the single-reversal index with a

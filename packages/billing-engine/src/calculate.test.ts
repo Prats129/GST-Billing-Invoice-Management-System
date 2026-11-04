@@ -90,7 +90,7 @@ test.each([
     taxTotal: tax,
     total,
   });
-  expect(result.policy.issuanceAllowed).toBe(false);
+  expect(result.policy.issuanceAllowed).toBe(true);
   expect(result.lines[0]!.taxSource.reference).toBe(
     'Synthetic arithmetic test source',
   );
