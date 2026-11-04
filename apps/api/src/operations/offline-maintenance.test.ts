@@ -17,7 +17,9 @@ import {
   recoverOfflineMaintenance,
 } from './offline-maintenance.js';
 import type { OfflineMaintenanceHost } from './offline-maintenance.js';
-vi.setConfig({ testTimeout: 30000 });
+// A recovery scenario performs several real Windows ACL inspections. Keep a
+// bounded scenario budget without treating PowerShell startup as a deadlock.
+vi.setConfig({ testTimeout: process.platform === 'win32' ? 90000 : 30000 });
 const parent =
   process.platform === 'win32'
     ? (process.env.LOCALAPPDATA ?? tmpdir())

@@ -8,6 +8,10 @@
     "pnpm": "10.34.9"
   },
   "scripts": {
+    "bundle:prepare": "pnpm build && tsx scripts/issuer/windows-bundle-cli.ts prepare",
+    "bundle:seal": "pnpm build:packages && tsx scripts/issuer/windows-bundle-cli.ts seal",
+    "bundle:verify": "tsx scripts/issuer/windows-bundle-cli.ts verify",
+    "bundle:smoke": "tsx scripts/issuer/windows-bundle-cli.ts smoke",
     "setup:env": "node scripts/setup-env.mjs",
     "identity:host": "pnpm build:packages && tsx apps/api/src/security/host-cli.ts",
     "smoke": "node --env-file=.env scripts/smoke.mjs",
@@ -55,7 +59,8 @@
     "tsx": "^4.20.6",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.1",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "zod": "4.6.7"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

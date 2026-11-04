@@ -23,6 +23,10 @@ installer, restart planning after each helper or add unrelated product features.
    and interrupted-uninstall/repair inspection and recovery are now implemented
    locally. Native acceptance, actual signed payload approval and distribution
    signing remain open; no unsigned cached binary is adopted.
+   Publisher assembly, approval-gated nested sealing, verification and isolated
+   application smoke tooling are implemented in windows-bundle.md. Candidate
+   preparation is separate from distribution approval and native installation
+   acceptance; review-coverage.md records actual current verification.
 3. Extend the same update/recovery workflow to supported forward schema changes
    on a separate copy. Original release/database must be recoverable together;
    never require an unsafe down migration. Keep unsupported transitions blocked.

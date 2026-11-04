@@ -1,5 +1,73 @@
 # Review coverage
 
+## Phase 6 continuation: actual Windows bundle assembly
+
+Started publisher-side assembly of a self-contained Windows application and the
+existing installer helpers, with nested application/bundle signatures and vendor
+input verification. No service installation, global toolchain change or production
+key generation is authorized by this work. Existing local PostgreSQL cache is an
+older beta package and is excluded. Official Node 24.22.1 publishes a Windows x64
+ZIP checksum; the WinSW 2.12.0 release asset API exposes no digest. EDB's official
+18.6 Windows ZIP link is being checked. Cached/downloaded bytes are not silently
+promoted to independent approval. Work and local verification are in progress.
+
+Continuation checkpoint: production builds passed. Official Node 24.22.1,
+PostgreSQL 18.6-5 and WinSW 2.12.0 inputs and complete notices are retained under
+the ignored `.local/windows-bundle-inputs-20261104` directory. Node's ZIP matches
+its published checksum. PostgreSQL's server/tools-only ZIP was derived without
+running vendor executables; static ZIP bounds, paths, required executable hashes
+and PE architecture inspection passed. Observed PostgreSQL/WinSW hashes are not
+independent approval. No approval receipt or production signing key was created.
+
+New tests cover dependency-version conflicts, missing dependencies, private-file
+rejection, output preservation, migration binding, approval gating and nested
+test signatures. Initial assembly correctly refused the shared E: drive ancestor
+ACL. Partial outputs are retained; private-profile candidate assembly and the
+updated tests are in progress. Windows Temp also has an additional worker access
+grant, so these fixtures use a private profile parent without mocking ACL checks.
+No service, task, firewall, certificate trust or customer database was changed.
+
+Private candidate assembly completed at
+`C:\Users\Lenovo\AppData\Local\GST-windows-candidate-20261104\bundle`:
+5,925 ordinary files, 132,527,445 bytes, 144 dependency packages. The build report
+outside the bundle explicitly lists independent vendor approval, Ed25519 release
+signatures, Authenticode distribution signing and native acceptance as pending.
+Original E: partial outputs are preserved. Five targeted tests passed; two more
+cases now cover redirected package contents and optional/cyclic dependencies.
+Test TypeScript and lint passed. The first full run exposed default five-second
+timeouts for PowerShell ACL checks under concurrent worker load; these native
+fixture tests now have a bounded 30-second timeout. Final regression and isolated
+candidate startup checks remain in progress.
+
+The real candidate smoke passed API startup, frontend/assets, native Argon2
+loading and Origin rejection with ESM/CommonJS resolution restricted to the
+assembled app. Its deliberately unavailable dummy database reported 503 as
+expected; no real database or installer/service acceptance is claimed. Estimated
+inner/outer signed-envelope sizes are below the existing 2 MiB limit. All seven
+new tests passed separately. The unrestricted full regression run was interrupted
+after native maintenance/ACL timeouts; a two-worker rerun is being reviewed.
+
+Final publisher checks: all eight new bundle tests pass, including rejection of
+a changed unsigned runtime before execution. Production builds, test TypeScript,
+lint and repository formatting passed. The bounded two-worker full suite finished
+with 276 passed and one existing maintenance scenario timing out at 30 seconds;
+no assertion failure was reported. That scenario runs many real PowerShell ACL
+checks. Its Windows-only test budget is now 90 seconds (non-Windows stays 30;
+production command timeouts and security checks are unchanged). All seven
+maintenance tests are being rerun with that bounded budget. No tests were skipped
+or native checks mocked to hide the timeout.
+
+The maintenance rerun passed all seven tests with real temporary-file/ACL checks
+and mocked machine effects. Together with the full run's other passing files and
+the final eight bundle tests, all 278 distinct unit cases have passed across
+these runs; a fresh combined all-green run is not claimed. Final TypeScript and
+lint passed after the last test changes; formatting and staged/unstaged whitespace
+checks passed. The unsigned candidate and prior staged changes are preserved.
+Publisher tooling/local candidate work is complete; independent artifact and
+redistribution approval, production Ed25519 signing, Authenticode distribution
+signing and disposable Windows host/client acceptance remain external blockers.
+No privileged installer execution or real-database acceptance occurred here.
+
 ## Phase 6 continuation: interrupted uninstall and retained-data repair
 
 Started the explicit inspection/recovery and repair/reinstallation workflow.

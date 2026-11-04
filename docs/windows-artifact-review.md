@@ -45,3 +45,14 @@ not adopt an existing database/service merely because its name matches. See the
 [connected execution plan](phase-6-execution.md) and
 [initial lifecycle](windows-installation.md) for the implemented boundaries and
 remaining workstreams.
+
+## Candidate observations, 2026-11-04
+
+Bundle work now downloads official Node 24.22.1, EDB PostgreSQL 18.6-5 and WinSW
+2.12.0 inputs into ignored local storage. The earlier no-download statement
+describes the initial review, not this continuation. Node's ZIP matches its
+published checksum. PostgreSQL's server/tools subset is derived with retained
+source/derived hashes and notices. Static ZIP/PE inspection passed without running
+vendor executables. WinSW's release asset API exposes no independently published
+digest. No self-calculated hash becomes approval, and no real approval receipt or
+signing key is created. See [bundle preparation](windows-bundle.md).

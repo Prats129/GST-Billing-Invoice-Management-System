@@ -204,6 +204,10 @@ private-CA TLS and scoped firewall. Actual elevated service install, CA trust,
 LAN browsers and recovery require a disposable Windows VM. Parser checks are
 not deployment proof; the runbook labels each unverified item.
 
+For publisher assembly of the actual operator-run installation directory, see
+[Windows bundle preparation](docs/windows-bundle.md). An unsigned candidate is
+separate from vendor approval, production signing and native Windows acceptance.
+
 ## Invoice workspace (Phase 5)
 
 After updating dependencies, run `pnpm db:migrate` and restart `pnpm dev`. Sign in

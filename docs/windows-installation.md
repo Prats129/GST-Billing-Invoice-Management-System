@@ -19,7 +19,8 @@ Windows Firewall must already run with all profiles enabled; a LAN interface
 must already use the Private network category. The installer does not weaken
 firewall policy or silently change the network category.
 
-The publisher must assemble and sign the following bundle with the existing
+The publisher can assemble and verify this bundle with the
+[Windows bundle workflow](windows-bundle.md), which reuses the existing
 [release-signing workflow](signed-releases.md). Dependencies must be ordinary
 production files, not workspace symlinks. Keep signing keys outside the bundle.
 
