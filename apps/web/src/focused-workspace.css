@@ -1,0 +1,538 @@
+/* Daily-work navigation and account settings, composed on the shared controls. */
+.focused-workspace .sidebar {
+  padding: 16px 14px 0;
+}
+.focused-workspace .sidebar-brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 6px 12px;
+  margin-bottom: 8px;
+}
+.focused-workspace .sidebar-brand::after {
+  content: '';
+  position: absolute;
+  inset-inline: 6px;
+  bottom: 0;
+  height: 1px;
+  background: #ffffff10;
+}
+.focused-workspace .sidebar-brand .brand {
+  font-size: 18px;
+  gap: 9px;
+}
+.focused-workspace .sidebar-toggle {
+  color: #a8c3ca;
+  padding: 8px;
+  flex-shrink: 0;
+}
+.focused-workspace .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+.focused-workspace .primary-navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+  padding: 4px 0 18px;
+}
+.focused-workspace .primary-navigation a {
+  min-height: 46px;
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  gap: 13px;
+  white-space: nowrap;
+}
+.focused-workspace .primary-navigation a svg {
+  height: 20px;
+  width: 20px;
+}
+.focused-workspace .sidebar-settings {
+  margin-top: auto;
+  padding-top: 16px;
+}
+.focused-workspace .sidebar-bottom {
+  flex-shrink: 0;
+  padding: 6px 0;
+}
+.account-menu {
+  position: relative;
+}
+.focused-workspace .account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  text-align: left;
+  color: #e7eff1;
+  background: transparent;
+  padding: 6px 8px;
+  min-height: 44px;
+  border-radius: 9px;
+}
+.focused-workspace .account-trigger:hover,
+.focused-workspace .account-trigger[aria-expanded='true'] {
+  background: #ffffff0c;
+}
+.account-avatar {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+.account-avatar .avatar {
+  background: #34525d;
+  color: #e3f0ed;
+}
+.account-connection-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #173341;
+  border-radius: 50%;
+  bottom: -1px;
+  right: -1px;
+}
+.is-connected {
+  background: #3cb593;
+}
+.needs-attention {
+  background: #e5a455;
+}
+.account-identity {
+  min-width: 0;
+  flex: 1;
+}
+.account-identity strong,
+.account-identity small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-identity strong {
+  font-size: 13px;
+}
+.account-identity small {
+  color: #a4bdc8;
+  font-size: 11px;
+  margin-top: 2px;
+  font-weight: 400;
+}
+.account-trigger > svg {
+  color: #a4bdc8;
+}
+.account-popover {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  z-index: 10;
+  width: 264px;
+  max-width: calc(100vw - 56px);
+  background: #fff;
+  color: #263f50;
+  border: 1px solid #dde5ec;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 12px 40px #10293930;
+}
+.account-popover-heading {
+  padding: 10px 12px 14px;
+  border-bottom: 1px solid #edf0f4;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+.account-popover-heading strong,
+.account-popover-heading small {
+  display: block;
+}
+.account-popover-heading strong {
+  font-size: 14px;
+}
+.account-popover-heading small {
+  margin-top: 3px;
+  font-size: 12px;
+}
+.account-popover button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  color: #334f61;
+  font-size: 13px;
+  font-weight: 500;
+  width: 100%;
+  text-align: left;
+  padding: 12px;
+  border-radius: 7px;
+}
+.account-popover button:hover,
+.account-popover button:focus-visible {
+  background: #edf4f2;
+}
+.account-popover button .status-dot {
+  margin-left: auto;
+}
+.account-menu-divider {
+  height: 1px;
+  background: #edf0f4;
+  margin: 6px 0;
+}
+.sidebar-tooltip {
+  position: fixed;
+  transform: translateY(-50%);
+  z-index: 30;
+  background: #203e4c;
+  color: #fff;
+  border: 1px solid #466370;
+  box-shadow: 0 4px 14px #142c3e20;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.focused-workspace .topbar {
+  height: 60px;
+  padding-inline: 24px;
+}
+.focused-workspace .workspace-content {
+  padding: 20px 24px 16px;
+}
+.focused-workspace .topbar .refresh-access {
+  color: #65808c;
+  width: 36px;
+  height: 36px;
+  font-size: inherit;
+  padding: 8px;
+}
+.focused-workspace .page-heading {
+  margin-bottom: 20px;
+  align-items: center;
+}
+.focused-workspace .page-heading .eyebrow {
+  display: none;
+}
+.focused-workspace .page-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.focused-workspace .page-actions:empty {
+  display: none;
+}
+.focused-workspace .page-actions .badge {
+  max-width: 200px;
+  white-space: normal;
+}
+.focused-workspace .section-navigation {
+  margin-top: -4px;
+}
+.focused-workspace .directory .table-toolbar {
+  border-top: 0;
+}
+.focused-workspace .directory > .directory-tools {
+  padding-top: 16px;
+}
+.focused-workspace .invoice-list-banner {
+  margin-top: 20px;
+}
+.focused-workspace .overview-workspace {
+  display: grid;
+  gap: 16px;
+}
+.focused-workspace .overview-intro {
+  font-size: 15px;
+}
+.focused-workspace .overview-intro strong {
+  color: #23495a;
+}
+.focused-workspace .quick-work {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.focused-workspace .quick-work a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #dbe5e8;
+  background: white;
+  border-radius: 10px;
+  color: #315361;
+  font-size: 14px;
+}
+.focused-workspace .quick-work a:hover {
+  border-color: #7eaaa1;
+  background: #f7fbf9;
+}
+.focused-workspace .quick-work a > svg:first-child {
+  color: #1c8273;
+}
+.focused-workspace .quick-work a > svg:last-child {
+  margin-left: auto;
+  color: #859ca4;
+}
+.focused-workspace .recent-documents {
+  padding: 0;
+  overflow: hidden;
+}
+.focused-workspace .recent-documents > .section-heading {
+  padding: 16px 20px;
+  margin: 0;
+}
+.focused-workspace .recent-documents .table-scroll {
+  border-top: 1px solid #e8edf2;
+}
+.focused-workspace .recent-documents table {
+  width: 100%;
+}
+.focused-workspace .recent-error {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+.focused-workspace .overview-settings-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 12px;
+}
+.focused-workspace .overview-settings-note svg {
+  margin-top: 1px;
+}
+.focused-workspace .workspace-footer {
+  margin-top: 24px;
+}
+.account-settings-dialog {
+  width: min(820px, calc(100% - 40px));
+}
+.account-settings-dialog .dialog-body {
+  padding: 0 20px 20px;
+}
+.settings-tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid #e3e9ee;
+  margin-bottom: 16px;
+}
+.settings-tabs button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: transparent;
+  color: #667b89;
+  border-radius: 0;
+  border-bottom: 2px solid transparent;
+  padding: 12px 2px;
+  font-size: 14px;
+  font-weight: 550;
+}
+.settings-tabs button[aria-selected='true'] {
+  color: #13796d;
+  border-bottom-color: #13796d;
+}
+.account-settings-dialog [role='tabpanel']:focus {
+  outline: none;
+}
+.account-settings-dialog .security-layout {
+  display: block;
+}
+.settings-intro {
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.security-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  color: #355464;
+  border: 1px solid #e0e7ed;
+  padding: 16px;
+  border-radius: 10px;
+  width: 100%;
+  text-align: left;
+  margin-top: 8px;
+}
+.security-option > span {
+  flex: 1;
+  min-width: 0;
+}
+.security-option strong,
+.security-option small {
+  display: block;
+}
+.security-option strong {
+  font-size: 15px;
+}
+.security-option small {
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 400;
+}
+.security-option:hover {
+  border-color: #8ab5aa;
+  background: #f8fbfa;
+}
+.account-settings-dialog .security-card,
+.account-settings-dialog .sessions-card {
+  padding: 16px 0 0;
+  box-shadow: none;
+  border: 0;
+}
+.account-settings-dialog .security-card > .feature-icon {
+  display: none;
+}
+.account-settings-dialog .security-card > p {
+  margin-bottom: 16px;
+}
+.account-settings-dialog .security-card form {
+  max-width: 520px;
+}
+.account-settings-dialog .settings-back {
+  padding-left: 0;
+}
+.account-settings-dialog .settings-back svg {
+  transform: rotate(180deg);
+}
+.account-settings-dialog .connection-panel {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+.account-settings-dialog .recovery-codes {
+  margin-bottom: 24px;
+}
+@media (min-width: 901px) {
+  .focused-workspace.sidebar-is-collapsed > .sidebar {
+    width: 72px;
+    padding: 16px 10px 0;
+  }
+  .focused-workspace.sidebar-is-collapsed > .sidebar .sidebar-brand {
+    flex-direction: column;
+    padding: 0 0 10px;
+    gap: 8px;
+  }
+  .focused-workspace.sidebar-is-collapsed > .sidebar .brand > span:last-child {
+    display: none;
+  }
+  .focused-workspace.sidebar-is-collapsed > .sidebar .brand-mark {
+    width: 36px;
+    height: 38px;
+  }
+  .focused-workspace.sidebar-is-collapsed > .sidebar .sidebar-toggle svg {
+    transform: none;
+  }
+  .focused-workspace.sidebar-is-collapsed > .sidebar nav a {
+    justify-content: center;
+    padding: 12px;
+  }
+  .focused-workspace.sidebar-is-collapsed > .sidebar .primary-navigation {
+    padding-inline: 6px;
+    margin-inline: -6px;
+  }
+  .focused-workspace.sidebar-is-collapsed > .sidebar .sidebar-link-label,
+  .focused-workspace.sidebar-is-collapsed
+    > .sidebar
+    .account-trigger
+    .account-identity,
+  .focused-workspace.sidebar-is-collapsed > .sidebar .account-trigger > svg {
+    display: none;
+  }
+  .focused-workspace.sidebar-is-collapsed > .sidebar .account-trigger {
+    padding: 6px;
+    justify-content: center;
+  }
+}
+@media (max-width: 1100px) {
+  .focused-workspace .quick-work a {
+    padding: 14px;
+    font-size: 13px;
+  }
+}
+@media (max-width: 650px) {
+  .focused-workspace .topbar {
+    padding-inline: 16px;
+  }
+  .focused-workspace .workspace-content {
+    padding: 16px;
+  }
+  .focused-workspace .sidebar-mobile {
+    width: 100%;
+    padding: 6px 0 0;
+    min-height: min(68dvh, 560px);
+  }
+  .focused-workspace .sidebar-mobile .sidebar-brand {
+    padding: 0 10px 12px;
+  }
+  .focused-workspace .sidebar-mobile .sidebar-bottom {
+    margin-top: 8px;
+  }
+  .focused-workspace .sidebar-mobile .primary-navigation a {
+    min-height: 46px;
+  }
+  .focused-workspace .page-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .focused-workspace .page-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .focused-workspace .quick-work {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .focused-workspace .quick-work a {
+    padding: 14px 16px;
+  }
+  .focused-workspace .recent-documents > .section-heading {
+    padding: 16px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .focused-workspace .recent-documents th,
+  .focused-workspace .recent-documents td {
+    padding: 12px;
+    white-space: normal;
+  }
+  .focused-workspace .recent-documents td:first-child {
+    min-width: 110px;
+  }
+  .account-settings-dialog {
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    max-width: 100%;
+    border-radius: 0;
+    margin: 0;
+  }
+  .account-settings-dialog .dialog-header {
+    padding: 16px;
+  }
+  .account-settings-dialog .dialog-body {
+    padding: 0 16px 16px;
+  }
+  .settings-tabs {
+    gap: 20px;
+  }
+  .settings-tabs button {
+    font-size: 13px;
+  }
+  .security-option {
+    padding: 14px;
+    gap: 12px;
+  }
+  .security-option small {
+    font-size: 12px;
+  }
+}

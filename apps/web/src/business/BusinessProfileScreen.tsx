@@ -16,6 +16,7 @@ import {
 } from './shared.js';
 import type { BusinessScreenProps } from './shared.js';
 import { LogoField } from './LogoField.js';
+import { useUnsavedChanges } from '../PageActions.js';
 export function BusinessProfileScreen({
   readOnly = false,
   basePath,
@@ -28,6 +29,8 @@ export function BusinessProfileScreen({
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty);
   const canManage = !readOnly && permissions.includes('organization.manage');
   useEffect(() => {
     let active = true;
@@ -87,7 +90,26 @@ export function BusinessProfileScreen({
           </p>
         )}
         <FormError message={error} />
+        <nav className="form-outline" aria-label="Business setup sections">
+          {[
+            ['business-identity', 'Business identity'],
+            ['business-address', 'Address'],
+            ['business-tax', 'GST registration'],
+            ['business-bank', 'Bank details'],
+          ].map(([id, label], index) => (
+            <button
+              type="button"
+              key={id}
+              onClick={() => document.getElementById(id!)?.focus()}
+            >
+              <span>{index + 1}</span>
+              {label}
+            </button>
+          ))}
+        </nav>
         <form
+          onChange={() => setDirty(true)}
+          className="business-profile-form"
           key={profile?.version ?? 0}
           onSubmit={(event) => {
             const data = formValues(event);
@@ -132,10 +154,16 @@ export function BusinessProfileScreen({
               );
               setProfile(next);
               setSaved(true);
+              setDirty(false);
             });
           }}
         >
-          <fieldset className="form-section" disabled={!canManage || busy}>
+          <fieldset
+            id="business-identity"
+            tabIndex={-1}
+            className="form-section"
+            disabled={!canManage || busy}
+          >
             <legend>Business identity</legend>
             <LogoField
               key={profile?.version ?? 0}
@@ -178,7 +206,30 @@ export function BusinessProfileScreen({
                 />
               </label>
             </div>
+          </fieldset>
+          <fieldset
+            id="business-address"
+            tabIndex={-1}
+            className="form-section"
+            disabled={!canManage || busy}
+          >
+            <legend>Business address</legend>
+            <p className="form-section-description">
+              The principal address on your GST registration.
+            </p>
             <AddressFields {...(current ? { address: current.address } : {})} />
+          </fieldset>
+          <fieldset
+            id="business-tax"
+            tabIndex={-1}
+            className="form-section"
+            disabled={!canManage || busy}
+          >
+            <legend>GST registration</legend>
+            <p className="form-section-description">
+              Review registration and e-invoice applicability before issuing
+              documents.
+            </p>
             <div className="form-grid">
               <label>
                 GSTIN
@@ -229,6 +280,17 @@ export function BusinessProfileScreen({
                 </small>
               </span>
             </label>
+          </fieldset>
+          <fieldset
+            id="business-bank"
+            tabIndex={-1}
+            className="form-section"
+            disabled={!canManage || busy}
+          >
+            <legend>Invoice bank details</legend>
+            <p className="form-section-description">
+              Optional payment instructions printed on your invoices.
+            </p>
             <details className="bank-settings">
               <summary>Bank details (optional)</summary>
               <div className="form-grid">

@@ -1,3 +1,4 @@
+import { PageActions, useUnsavedChanges } from '../PageActions.js';
 import { useEffect, useRef, useState } from 'react';
 import {
   catalogPageSchema,
@@ -246,6 +247,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
   const [preview, setPreview] = useState<InvoicePreview | null>(null);
   const [recordPrint, setRecordPrint] = useState<InvoicePrintData | null>(null);
   const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty);
   const [createKey, setCreateKey] = useState(() => crypto.randomUUID());
   const [finalizeKey, setFinalizeKey] = useState(() => crypto.randomUUID());
   const form = useRef<HTMLFormElement>(null);
@@ -354,14 +356,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
   if (editor === undefined)
     return (
       <section className="surface directory business-directory">
-        <div className="section-heading">
-          <div>
-            <h2>Invoices</h2>
-            <p>
-              Create a draft, review GST, and keep your billing documents
-              together.
-            </p>
-          </div>
+        <PageActions>
           {canManage && (
             <button
               className="button button-primary"
@@ -371,7 +366,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
               New invoice
             </button>
           )}
-        </div>
+        </PageActions>
         <FormError message={error || loadError} />
         <div className="invoice-list-banner">
           Draft billing is available. Real issuance awaits the tax and
@@ -457,7 +452,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
     );
   return (
     <div className="invoice-workspace">
-      <div className="invoice-toolbar">
+      <PageActions>
         <button
           className="button button-quiet"
           onClick={() => {
@@ -481,7 +476,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                 : 'Credit note draft'
               : 'New invoice draft')}
         </Badge>
-      </div>
+      </PageActions>
       <FormError message={error} />
       <form
         ref={form}
@@ -509,9 +504,33 @@ export function InvoicesScreen(props: BusinessScreenProps) {
           });
         }}
       >
+        <nav className="form-outline" aria-label="Invoice sections">
+          {[
+            ['invoice-details', 'Customer & supply'],
+            [
+              'invoice-items',
+              editor?.originalId ? 'Adjustment' : 'Items & pricing',
+            ],
+            ['invoice-notes', 'Notes & terms'],
+            ['invoice-summary', 'Review & save'],
+          ].map(([id, label], index) => (
+            <button
+              type="button"
+              key={id}
+              onClick={() => document.getElementById(id!)?.focus()}
+            >
+              <span>{index + 1}</span>
+              {label}
+            </button>
+          ))}
+        </nav>
         <div className="invoice-builder-grid">
           <div className="invoice-main">
-            <section className="card invoice-section">
+            <section
+              id="invoice-details"
+              tabIndex={-1}
+              className="card invoice-section"
+            >
               <div className="section-heading">
                 <div>
                   <h2>
@@ -625,7 +644,11 @@ export function InvoicesScreen(props: BusinessScreenProps) {
               </fieldset>
             </section>
             {!editor?.originalId ? (
-              <section className="card invoice-section">
+              <section
+                id="invoice-items"
+                tabIndex={-1}
+                className="card invoice-section"
+              >
                 <div className="section-heading">
                   <div>
                     <h2>Items</h2>
@@ -770,7 +793,11 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                 )}
               </section>
             ) : (
-              <section className="card invoice-section">
+              <section
+                id="invoice-items"
+                tabIndex={-1}
+                className="card invoice-section"
+              >
                 <div className="section-heading">
                   <div>
                     <h2>Value adjustment</h2>
@@ -794,7 +821,11 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                 </div>
               </section>
             )}
-            <section className="card invoice-section">
+            <section
+              id="invoice-notes"
+              tabIndex={-1}
+              className="card invoice-section"
+            >
               <div className="section-heading">
                 <div>
                   <h2>Notes & terms</h2>
@@ -824,7 +855,11 @@ export function InvoicesScreen(props: BusinessScreenProps) {
             </section>
           </div>
           <aside className="invoice-sidebar">
-            <section className="card invoice-section">
+            <section
+              id="invoice-summary"
+              tabIndex={-1}
+              className="card invoice-section"
+            >
               <div className="section-heading">
                 <div>
                   <h2>Summary</h2>

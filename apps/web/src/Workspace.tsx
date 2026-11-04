@@ -18,98 +18,25 @@ import {
 import type { Mutate } from './security-forms.js';
 import { MembersPanel } from './MembersPanel.js';
 import { RolesPanel } from './RolesPanel.js';
-import { SecurityPanel } from './SecurityPanel.js';
+import { AccountSettings } from './AccountSettings.js';
+import { WorkspaceSidebar } from './WorkspaceSidebar.js';
+import { PageActionsContext, UnsavedChangesContext } from './PageActions.js';
 import { BusinessProfileScreen } from './business/BusinessProfileScreen.js';
 import { CustomersScreen } from './business/CustomersScreen.js';
 import { CatalogScreen } from './business/CatalogScreen.js';
 import { InvoicesScreen } from './billing/InvoicesScreen.js';
+import { Brand, Dialog, EmptyState, Icon, formatDate } from './ui.js';
+import { WorkspaceHome } from './WorkspaceHome.js';
 import {
-  Avatar,
-  Badge,
-  Brand,
-  Dialog,
-  EmptyState,
-  Icon,
-  PermissionList,
-  formatDate,
-} from './ui.js';
-import type { IconName } from './ui.js';
+  businessViews,
+  canOpenView,
+  currentView,
+  viewInfo,
+} from './workspace-navigation.js';
+import type { View } from './workspace-navigation.js';
 import { ConnectionIndicator, ConnectionPanel } from './connection.js';
 import type { ConnectionState } from './connection.js';
 
-const views = [
-  'overview',
-  'business',
-  'customers',
-  'catalog',
-  'invoices',
-  'members',
-  'roles',
-  'security',
-  'activity',
-  'system',
-] as const;
-type View = (typeof views)[number];
-const viewInfo: Record<
-  View,
-  { title: string; description: string; icon: IconName }
-> = {
-  invoices: {
-    title: 'Invoices',
-    description:
-      'Create drafts, review totals and prepare your billing documents.',
-    icon: 'roles',
-  },
-  business: {
-    title: 'Business setup',
-    description: 'Your business identity, registration and contact details.',
-    icon: 'building',
-  },
-  customers: {
-    title: 'Customers',
-    description: 'A home for your customer details and addresses.',
-    icon: 'users',
-  },
-  catalog: {
-    title: 'Catalog',
-    description: 'Products, services, pricing and tax classifications.',
-    icon: 'roles',
-  },
-  overview: {
-    title: 'Workspace overview',
-    description: 'A clear view of your organization and its access.',
-    icon: 'home',
-  },
-  members: {
-    title: 'Members',
-    description: 'The people who can access your organization.',
-    icon: 'users',
-  },
-  roles: {
-    title: 'Roles & permissions',
-    description: 'Give each person the right level of access.',
-    icon: 'roles',
-  },
-  security: {
-    title: 'Account security',
-    description: 'Protect your sign-in and manage active sessions.',
-    icon: 'shield',
-  },
-  activity: {
-    title: 'Activity log',
-    description: 'Security and access changes in your organization.',
-    icon: 'activity',
-  },
-  system: {
-    title: 'System status',
-    description: 'Check that your workspace services are available.',
-    icon: 'server',
-  },
-};
-function currentView(): View {
-  const value = window.location.hash.replace(/^#\/?/, '');
-  return views.includes(value as View) ? (value as View) : 'overview';
-}
 function activityText(action: string) {
   const labels: Record<string, string> = {
     'organization.provisioned': 'Organization created',
@@ -155,7 +82,39 @@ export function Workspace({
     { id: string; action: string; createdAt: string }[]
   >([]);
   const [auditLoading, setAuditLoading] = useState(false);
-  const [view, setView] = useState<View>(currentView);
+  const [view, setView] = useState<View>(() =>
+    ['security', 'system'].includes(currentView()) ? 'overview' : currentView(),
+  );
+  const lastView = useRef<View>(view);
+  const [settingsTab, setSettingsTab] = useState<'security' | 'system' | null>(
+    () => {
+      const route = currentView();
+      return route === 'security' || route === 'system' ? route : null;
+    },
+  );
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('gst.ui.sidebar-collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [pageActions, setPageActions] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    try {
+      localStorage.setItem('gst.ui.sidebar-collapsed', String(collapsed));
+    } catch {
+      /* Storage is optional in private/restricted browsers. */
+    }
+  }, [collapsed]);
+  const unsaved = useRef(false);
+  const settingsLeaveGuard = useRef<(() => boolean) | null>(null);
+  const reportUnsaved = useCallback((dirty: boolean) => {
+    unsaved.current = dirty;
+  }, []);
+  const discardWorkspace = () =>
+    !unsaved.current ||
+    window.confirm('Discard the unsaved changes in this workspace?');
   const [mobileNav, setMobileNav] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
   const ready = Boolean(info && !info.mustChangePassword && !info.mfaRequired);
@@ -167,6 +126,24 @@ export function Workspace({
     setAudit([]);
   }, []);
   const navigate = useCallback((next: View) => {
+    if (next === 'security' || next === 'system') {
+      setSettingsTab(next);
+      setMobileNav(false);
+      return;
+    }
+    if (next === lastView.current && currentView() === next) {
+      setMobileNav(false);
+      return;
+    }
+    if (
+      next !== lastView.current &&
+      unsaved.current &&
+      !window.confirm('Discard the unsaved changes in this workspace?')
+    )
+      return;
+    unsaved.current = false;
+    lastView.current = next;
+    setSettingsTab(null);
     setView(next);
     window.location.hash = `/${next}`;
     setMobileNav(false);
@@ -176,15 +153,51 @@ export function Workspace({
   }, []);
   useEffect(() => {
     const changed = () => {
-      setView(currentView());
+      const next = currentView();
+      if (next === 'security' || next === 'system') {
+        setSettingsTab(next);
+        window.history.replaceState(
+          window.history.state,
+          '',
+          '#/' + lastView.current,
+        );
+        return;
+      }
+      if (settingsLeaveGuard.current && !settingsLeaveGuard.current()) {
+        window.history.replaceState(
+          window.history.state,
+          '',
+          '#/' + lastView.current,
+        );
+        return;
+      }
+      if (
+        next !== lastView.current &&
+        unsaved.current &&
+        !window.confirm('Discard the unsaved changes in this workspace?')
+      ) {
+        window.history.replaceState(
+          window.history.state,
+          '',
+          '#/' + lastView.current,
+        );
+        return;
+      }
+      if (next !== lastView.current) unsaved.current = false;
+      setSettingsTab(null);
+      lastView.current = next;
+      setView(next);
       setRoleOffset(0);
       setMemberOffset(0);
       setMobileNav(false);
     };
+    if (['security', 'system'].includes(currentView())) changed();
     window.addEventListener('hashchange', changed);
     return () => window.removeEventListener('hashchange', changed);
   }, []);
   const logout = () => {
+    unsaved.current = false;
+    setSettingsTab(null);
     setInfo(null);
     identityRef.current = undefined;
     clearTenant();
@@ -330,21 +343,14 @@ export function Workspace({
       (p) => p === 'catalog.read' || p === 'catalog.manage',
     ),
   );
-  const allowed =
-    view === 'invoices'
-      ? Boolean(context?.access.permissions.includes('invoices.read'))
-      : view === 'customers'
-        ? canCustomers
-        : view === 'catalog'
-          ? canCatalog
-          : view === 'members'
-            ? canMembers
-            : view === 'roles'
-              ? canRoles
-              : view === 'activity'
-                ? canAudit
-                : true;
+  const allowed = canOpenView(view, context?.access.permissions ?? []);
   const activeView = !tenantLoading && context && !allowed ? 'overview' : view;
+  useEffect(() => {
+    if (!ready) return;
+    lastView.current = activeView;
+    document.title = `${viewInfo[activeView].title} · GST Billing`;
+    document.getElementById('page-title')?.focus({ preventScroll: true });
+  }, [activeView, ready]);
   useEffect(() => {
     let active = true;
     if (activeView !== 'activity' || !canAudit || !selected) return;
@@ -651,111 +657,63 @@ export function Workspace({
       </main>
     );
 
-  const navigation = (
-    <>
-      <div className="sidebar-brand">
-        <Brand />
-      </div>
-      <div className="sidebar-workspace">
-        <span className="workspace-symbol">
-          <Icon name="building" />
-        </span>
-        <div>
-          <strong title={context?.organization.name ?? 'Your organization'}>
-            {context?.organization.name ?? 'Your organization'}
-          </strong>
-          <small>
-            {context?.access.isOwner ? 'Owner workspace' : 'Business workspace'}
-          </small>
-        </div>
-      </div>
-      <nav aria-label="Workspace navigation">
-        <p className="nav-label">WORKSPACE</p>
-        {(
-          [
-            'overview',
-            'business',
-            ...(canCustomers ? ['customers'] : []),
-            ...(canCatalog ? ['catalog'] : []),
-            ...(context?.access.permissions.includes('invoices.read')
-              ? ['invoices']
-              : []),
-            ...(canMembers ? ['members'] : []),
-            ...(canRoles ? ['roles'] : []),
-            ...(canAudit ? ['activity'] : []),
-          ] as View[]
-        ).map((item) => (
-          <a
-            key={item}
-            href={`#/${item}`}
-            aria-current={activeView === item ? 'page' : undefined}
-            onClick={(event) => {
-              event.preventDefault();
-              navigate(item);
-            }}
-          >
-            <Icon name={viewInfo[item].icon} />
-            <span>
-              {viewInfo[item].title === 'Workspace overview'
-                ? 'Overview'
-                : viewInfo[item].title}
-            </span>
-            {activeView === item && <span className="nav-active-dot" />}
-          </a>
-        ))}
-        <p className="nav-label nav-label-settings">SETTINGS</p>
-        {(['security', 'system'] as const).map((item) => (
-          <a
-            key={item}
-            href={`#/${item}`}
-            aria-current={activeView === item ? 'page' : undefined}
-            onClick={(event) => {
-              event.preventDefault();
-              navigate(item);
-            }}
-          >
-            <Icon name={viewInfo[item].icon} />
-            <span>{viewInfo[item].title}</span>
-          </a>
-        ))}
-      </nav>
-      <div className="sidebar-bottom">
-        <button
-          className="sidebar-connection"
-          onClick={() => navigate('system')}
-        >
-          <ConnectionIndicator connection={connection} />
-        </button>
-        <div className="sidebar-user">
-          <Avatar name={info.user.name} small />
-          <div>
-            <strong>{info.user.name}</strong>
-            <small title={info.user.email}>{info.user.email}</small>
-          </div>
-          <button
-            className="icon-button"
-            aria-label="Sign out"
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                await mutate('/auth/logout');
-                logout();
-              })
-            }
-          >
-            <Icon name="logout" size={18} />
-          </button>
-        </div>
-      </div>
-    </>
+  const settingsViews = businessViews.filter((item) =>
+    canOpenView(item, context?.access.permissions ?? []),
   );
-  const countText = (count: number) => (count === 50 ? '50+' : String(count));
+  const inBusinessSettings = settingsViews.includes(activeView);
+  const openSettings = (tab: 'security' | 'system') => {
+    setMobileNav(false);
+    setError('');
+    requestAnimationFrame(() => setSettingsTab(tab));
+  };
+  const accountRun: typeof run = async (action) => {
+    if (
+      unsaved.current &&
+      !window.confirm(
+        'This security change refreshes your workspace and discards unsaved changes. Continue?',
+      )
+    )
+      return;
+    await run(action);
+  };
+  const navigation = (mobile = false) => (
+    <WorkspaceSidebar
+      view={activeView}
+      permissions={context?.access.permissions ?? []}
+      collapsed={collapsed}
+      mobile={mobile}
+      onToggle={() => setCollapsed((value) => !value)}
+      onNavigate={navigate}
+      info={info}
+      connection={connection}
+      busy={busy}
+      onSettings={openSettings}
+      onLogout={() =>
+        void accountRun(async () => {
+          await mutate('/auth/logout');
+          logout();
+        })
+      }
+    />
+  );
   return (
-    <div className="app-shell">
-      <a href="#main-content" className="skip-link">
+    <div
+      className={
+        'app-shell workspace-refresh focused-workspace' +
+        (collapsed ? ' sidebar-is-collapsed' : '')
+      }
+    >
+      <a
+        href="#main-content"
+        className="skip-link"
+        onClick={(event) => {
+          event.preventDefault();
+          document.getElementById('main-content')?.focus();
+        }}
+      >
         Skip to content
       </a>
-      <aside className="sidebar">{navigation}</aside>
+      <aside className="sidebar">{navigation()}</aside>
       <div className="main-column">
         <header className="topbar">
           <div className="breadcrumb">
@@ -766,7 +724,9 @@ export function Workspace({
             >
               <Icon name="menu" />
             </button>
-            <span className="breadcrumb-root">Workspace</span>
+            <span className="breadcrumb-root">
+              {inBusinessSettings ? 'Business settings' : 'Workspace'}
+            </span>
             <Icon name="chevron" size={14} />
             <strong>
               {viewInfo[activeView].title === 'Workspace overview'
@@ -785,6 +745,8 @@ export function Workspace({
                 value={selected}
                 onChange={(event) => {
                   if (event.target.value === selected) return;
+                  if (!discardWorkspace()) return;
+                  unsaved.current = false;
                   clearTenant(false);
                   setSelected(event.target.value);
                   setRoleOffset(0);
@@ -803,36 +765,63 @@ export function Workspace({
               </select>
             </div>
             <button
-              className="profile-button"
-              aria-label="Open account settings"
-              onClick={() => navigate('security')}
+              className="icon-button refresh-access"
+              aria-label="Refresh access"
+              title="Refresh access"
+              disabled={busy}
+              onClick={() => {
+                if (discardWorkspace()) {
+                  unsaved.current = false;
+                  void refresh();
+                }
+              }}
             >
-              <Avatar name={info.user.name} small />
+              <Icon name="refresh" size={18} />
             </button>
           </div>
         </header>
-        <main id="main-content" className="workspace-content">
+        <main id="main-content" tabIndex={-1} className="workspace-content">
           <div className="page-heading">
             <div>
               <p className="eyebrow">
-                {activeView === 'security' || activeView === 'system'
-                  ? 'PERSONAL SETTINGS'
-                  : 'YOUR ORGANIZATION'}
+                {inBusinessSettings ? 'ORGANIZATION' : 'YOUR WORKSPACE'}
               </p>
-              <h1>{viewInfo[activeView].title}</h1>
-              <p>{viewInfo[activeView].description}</p>
+              <h1 id="page-title" tabIndex={-1}>
+                {inBusinessSettings
+                  ? 'Business settings'
+                  : viewInfo[activeView].title}
+              </h1>
+              <p>
+                {inBusinessSettings
+                  ? 'Manage your organization details and team access.'
+                  : viewInfo[activeView].description}
+              </p>
             </div>
-            <button
-              className="button button-secondary refresh-access"
-              disabled={busy}
-              onClick={() => void refresh()}
-            >
-              <Icon name="refresh" size={16} />
-              Refresh access
-            </button>
+            <div className="page-actions" ref={setPageActions} />
           </div>
-          {errorBanner}
-          {recovery}
+          {inBusinessSettings && (
+            <nav
+              className="section-navigation"
+              aria-label="Business settings sections"
+            >
+              {settingsViews.map((item) => (
+                <a
+                  key={item}
+                  href={'#/' + item}
+                  aria-current={item === activeView ? 'page' : undefined}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    navigate(item);
+                  }}
+                >
+                  <Icon name={viewInfo[item].icon} size={17} />
+                  {viewInfo[item].title}
+                </a>
+              ))}
+            </nav>
+          )}
+          {!settingsTab && errorBanner}
+          {!settingsTab && recovery}
           {context?.entitlement &&
             !['active', 'development'].includes(context.entitlement.status) && (
               <div className="warning-note" role="status">
@@ -874,303 +863,152 @@ export function Workspace({
               </div>
             </section>
           )}
-          {activeView === 'security' ? (
-            <SecurityPanel
-              info={info}
-              busy={busy}
-              run={run}
-              mutate={mutate}
-              onSession={applySession}
-              onRefresh={refresh}
-              onLogout={logout}
-            />
-          ) : activeView === 'system' ? (
-            <ConnectionPanel connection={connection} onCheck={onCheck} />
-          ) : orgLoading || tenantLoading ? (
-            <div className="workspace-loading" role="status">
-              <span className="spinner" />
-              <h2>Opening your organization</h2>
-              <p>Loading your team's workspace and access.</p>
-            </div>
-          ) : !context ? (
-            <section className="surface">
-              <EmptyState
-                icon="building"
-                title={
-                  organizations.length
-                    ? 'Organization access unavailable'
-                    : 'No active organization'
-                }
-              >
-                {' '}
-                {organizations.length
-                  ? 'Refresh access or contact an organization owner for help.'
-                  : 'You have no active organization memberships. Contact your organization owner.'}
-              </EmptyState>
-            </section>
-          ) : (
-            <>
-              {activeView === 'overview' && (
+          <UnsavedChangesContext value={reportUnsaved}>
+            <PageActionsContext value={pageActions}>
+              {orgLoading || tenantLoading ? (
+                <div className="workspace-loading" role="status">
+                  <span className="spinner" />
+                  <h2>Opening your organization</h2>
+                  <p>Loading your team's workspace and access.</p>
+                </div>
+              ) : !context ? (
+                <section className="surface">
+                  <EmptyState
+                    icon="building"
+                    title={
+                      organizations.length
+                        ? 'Organization access unavailable'
+                        : 'No active organization'
+                    }
+                  >
+                    {' '}
+                    {organizations.length
+                      ? 'Refresh access or contact an organization owner for help.'
+                      : 'You have no active organization memberships. Contact your organization owner.'}
+                  </EmptyState>
+                </section>
+              ) : (
                 <>
-                  <div className="overview-greeting">
-                    <div>
-                      <span className="organization-emblem">
-                        <Icon name="building" size={26} />
-                      </span>
-                      <div>
-                        <h2>{context.organization.name}</h2>
-                        <p>Your team and access, all in one place.</p>
-                      </div>
-                    </div>
-                    <Badge tone={context.access.isOwner ? 'green' : 'blue'}>
-                      {context.access.isOwner
-                        ? 'Protected owner'
-                        : 'Organization member'}
-                    </Badge>
-                  </div>
-                  <div className="metric-grid">
-                    <div className="metric-card">
-                      <span className="metric-icon">
-                        <Icon name="users" />
-                      </span>
-                      <p>Team members</p>
-                      <strong>
-                        {context.access.permissions.includes('members.read')
-                          ? countText(members.length)
-                          : 'Restricted'}
-                      </strong>
-                      <small>
-                        {members.length === 50
-                          ? 'First 50 members loaded'
-                          : 'In your organization'}
-                      </small>
-                    </div>
-                    <div className="metric-card">
-                      <span className="metric-icon blue">
-                        <Icon name="roles" />
-                      </span>
-                      <p>Access roles</p>
-                      <strong>
-                        {context.access.permissions.includes('roles.read')
-                          ? countText(roles.length)
-                          : 'Restricted'}
-                      </strong>
-                      <small>
-                        {roles.length === 50
-                          ? 'First 50 roles loaded'
-                          : 'Permission-based team access'}
-                      </small>
-                    </div>
-                    <div className="metric-card">
-                      <span className="metric-icon amber">
-                        <Icon name="shield" />
-                      </span>
-                      <p>Two-step verification</p>
-                      <strong className="metric-word">
-                        {info.mfaEnabled ? 'Enabled' : 'Not enabled'}
-                      </strong>
-                      <small>
-                        {info.mfaEnabled
-                          ? 'An extra layer of account protection'
-                          : 'Add protection in account security'}
-                      </small>
-                    </div>
-                  </div>
-                  <div className="overview-grid">
+                  {activeView === 'overview' && (
+                    <WorkspaceHome
+                      key={selected}
+                      context={context}
+                      info={info}
+                      navigate={navigate}
+                    />
+                  )}
+                  {activeView === 'members' && canMembers && (
+                    <MembersPanel
+                      members={members}
+                      roles={roles}
+                      access={context.access}
+                      basePath={`/organizations/${selected}`}
+                      currentUserId={info.user.id}
+                      busy={busy}
+                      run={run}
+                      mutate={mutate}
+                      reload={reloadTenant}
+                      offset={memberOffset}
+                      setOffset={setMemberOffset}
+                      error={error}
+                      onClearError={() => setError('')}
+                    />
+                  )}
+                  {activeView === 'business' && (
+                    <BusinessProfileScreen key={selected} {...businessProps} />
+                  )}
+                  {activeView === 'customers' && canCustomers && (
+                    <CustomersScreen key={selected} {...businessProps} />
+                  )}
+                  {activeView === 'catalog' && canCatalog && (
+                    <CatalogScreen key={selected} {...businessProps} />
+                  )}
+                  {activeView === 'invoices' && (
+                    <InvoicesScreen key={selected} {...businessProps} />
+                  )}
+                  {activeView === 'roles' && canRoles && (
+                    <RolesPanel
+                      roles={roles}
+                      access={context.access}
+                      basePath={`/organizations/${selected}`}
+                      busy={busy}
+                      run={run}
+                      mutate={mutate}
+                      reload={reloadTenant}
+                      offset={roleOffset}
+                      setOffset={setRoleOffset}
+                      error={error}
+                      onClearError={() => setError('')}
+                    />
+                  )}
+                  {activeView === 'activity' && canAudit && (
                     <section className="surface">
                       <div className="section-heading">
                         <div>
-                          <h2>Your workspace access</h2>
-                          <p>
-                            Permissions available to you in this organization.
-                          </p>
+                          <h2>Recent activity</h2>
+                          <p>Latest 50 recorded security events.</p>
                         </div>
-                        <span className="feature-icon">
-                          <Icon name="key" />
-                        </span>
-                      </div>
-                      <PermissionList
-                        permissions={context.access.permissions}
-                      />
-                      <div className="card-footer">
-                        <span className="muted">
-                          {context.access.isOwner
-                            ? 'Owner access is protected.'
-                            : 'Your roles determine your access.'}
-                        </span>
-                        {canRoles && (
-                          <button
-                            className="button button-quiet"
-                            onClick={() => navigate('roles')}
-                          >
-                            View roles
-                            <Icon name="arrow" size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </section>
-                    <section className="surface workspace-actions">
-                      <h2>Make yourself at home</h2>
-                      <p>Everything you need to manage your workspace.</p>
-                      {canMembers && (
                         <button
-                          className="action-row"
-                          onClick={() => navigate('members')}
+                          className="button button-secondary"
+                          disabled={busy || auditLoading}
+                          onClick={() =>
+                            void run(async () =>
+                              setAudit(
+                                await securityRequest(
+                                  `/organizations/${selected}/audit`,
+                                  undefined,
+                                ),
+                              ),
+                            )
+                          }
                         >
-                          <span className="feature-icon">
-                            <Icon name="users" />
-                          </span>
-                          <span>
-                            <strong>Manage your team</strong>
-                            <small>
-                              Members, invitations and assigned roles
-                            </small>
-                          </span>
-                          <Icon name="arrow" size={18} />
+                          <Icon name="refresh" size={16} />
+                          Refresh activity
                         </button>
-                      )}
-                      <button
-                        className="action-row"
-                        onClick={() => navigate('security')}
-                      >
-                        <span className="feature-icon blue">
-                          <Icon name="shield" />
-                        </span>
-                        <span>
-                          <strong>Secure your account</strong>
-                          <small>Password, authenticator and sessions</small>
-                        </span>
-                        <Icon name="arrow" size={18} />
-                      </button>
-                      {canAudit && (
-                        <button
-                          className="action-row"
-                          onClick={() => navigate('activity')}
+                      </div>
+                      {auditLoading ? (
+                        <div className="loading-state" role="status">
+                          <span className="spinner" />
+                          Loading activity…
+                        </div>
+                      ) : audit.length ? (
+                        <ol className="activity-list">
+                          {audit.map((event) => (
+                            <li key={event.id}>
+                              <span className="activity-icon">
+                                <Icon
+                                  name={
+                                    event.action.startsWith('roles.')
+                                      ? 'roles'
+                                      : 'users'
+                                  }
+                                  size={18}
+                                />
+                              </span>
+                              <div>
+                                <strong>{activityText(event.action)}</strong>
+                                <p>Organization access and security</p>
+                              </div>
+                              <time dateTime={event.createdAt}>
+                                {formatDate(event.createdAt)}
+                              </time>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <EmptyState
+                          icon="activity"
+                          title="No activity recorded yet"
                         >
-                          <span className="feature-icon amber">
-                            <Icon name="activity" />
-                          </span>
-                          <span>
-                            <strong>Review recent activity</strong>
-                            <small>Stay informed about access changes</small>
-                          </span>
-                          <Icon name="arrow" size={18} />
-                        </button>
+                          Security and access changes will appear here.
+                        </EmptyState>
                       )}
                     </section>
-                  </div>
+                  )}
                 </>
               )}
-              {activeView === 'members' && canMembers && (
-                <MembersPanel
-                  members={members}
-                  roles={roles}
-                  access={context.access}
-                  basePath={`/organizations/${selected}`}
-                  currentUserId={info.user.id}
-                  busy={busy}
-                  run={run}
-                  mutate={mutate}
-                  reload={reloadTenant}
-                  offset={memberOffset}
-                  setOffset={setMemberOffset}
-                  error={error}
-                  onClearError={() => setError('')}
-                />
-              )}
-              {activeView === 'business' && (
-                <BusinessProfileScreen key={selected} {...businessProps} />
-              )}
-              {activeView === 'customers' && canCustomers && (
-                <CustomersScreen key={selected} {...businessProps} />
-              )}
-              {activeView === 'catalog' && canCatalog && (
-                <CatalogScreen key={selected} {...businessProps} />
-              )}
-              {activeView === 'invoices' && (
-                <InvoicesScreen key={selected} {...businessProps} />
-              )}
-              {activeView === 'roles' && canRoles && (
-                <RolesPanel
-                  roles={roles}
-                  access={context.access}
-                  basePath={`/organizations/${selected}`}
-                  busy={busy}
-                  run={run}
-                  mutate={mutate}
-                  reload={reloadTenant}
-                  offset={roleOffset}
-                  setOffset={setRoleOffset}
-                  error={error}
-                  onClearError={() => setError('')}
-                />
-              )}
-              {activeView === 'activity' && canAudit && (
-                <section className="surface">
-                  <div className="section-heading">
-                    <div>
-                      <h2>Recent activity</h2>
-                      <p>Latest 50 recorded security events.</p>
-                    </div>
-                    <button
-                      className="button button-secondary"
-                      disabled={busy || auditLoading}
-                      onClick={() =>
-                        void run(async () =>
-                          setAudit(
-                            await securityRequest(
-                              `/organizations/${selected}/audit`,
-                              undefined,
-                            ),
-                          ),
-                        )
-                      }
-                    >
-                      <Icon name="refresh" size={16} />
-                      Refresh activity
-                    </button>
-                  </div>
-                  {auditLoading ? (
-                    <div className="loading-state" role="status">
-                      <span className="spinner" />
-                      Loading activity…
-                    </div>
-                  ) : audit.length ? (
-                    <ol className="activity-list">
-                      {audit.map((event) => (
-                        <li key={event.id}>
-                          <span className="activity-icon">
-                            <Icon
-                              name={
-                                event.action.startsWith('roles.')
-                                  ? 'roles'
-                                  : 'users'
-                              }
-                              size={18}
-                            />
-                          </span>
-                          <div>
-                            <strong>{activityText(event.action)}</strong>
-                            <p>Organization access and security</p>
-                          </div>
-                          <time dateTime={event.createdAt}>
-                            {formatDate(event.createdAt)}
-                          </time>
-                        </li>
-                      ))}
-                    </ol>
-                  ) : (
-                    <EmptyState
-                      icon="activity"
-                      title="No activity recorded yet"
-                    >
-                      Security and access changes will appear here.
-                    </EmptyState>
-                  )}
-                </section>
-              )}
-            </>
-          )}
+            </PageActionsContext>
+          </UnsavedChangesContext>
           <footer className="workspace-footer">
             <span>GST Billing</span>
             <span>Business workspace</span>
@@ -1179,8 +1017,28 @@ export function Workspace({
       </div>
       {mobileNav && (
         <Dialog title="Navigation" onClose={() => setMobileNav(false)}>
-          <aside className="sidebar sidebar-mobile">{navigation}</aside>
+          <aside className="sidebar sidebar-mobile">{navigation(true)}</aside>
         </Dialog>
+      )}
+      {settingsTab && (
+        <AccountSettings
+          initialTab={settingsTab}
+          info={info}
+          connection={connection}
+          onCheck={onCheck}
+          busy={busy}
+          run={accountRun}
+          mutate={mutate}
+          leaveGuard={settingsLeaveGuard}
+          onSession={applySession}
+          onRefresh={refresh}
+          onLogout={logout}
+          onClose={() => setSettingsTab(null)}
+          error={error}
+          recovery={recovery}
+          recoveryPending={recoveryCodes.length > 0}
+          onClearError={() => setError('')}
+        />
       )}
       {connectionDialog}
     </div>

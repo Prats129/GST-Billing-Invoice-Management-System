@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { SessionInfo } from '@gst/contracts';
 import { securityRequest } from './security-api.js';
 import {
@@ -17,6 +17,8 @@ interface Props {
   onSession: (data: unknown) => void;
   onRefresh: () => Promise<void>;
   onLogout: () => void;
+  beforeLeave: () => boolean;
+  onPendingSetup: (pending: boolean) => void;
 }
 export function SecurityPanel({
   info,
@@ -26,7 +28,25 @@ export function SecurityPanel({
   onSession,
   onRefresh,
   onLogout,
+  beforeLeave,
+  onPendingSetup,
 }: Props) {
+  const [section, setSection] = useState<
+    'password' | 'mfa' | 'sessions' | null
+  >(null);
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (section)
+      panel.current
+        ?.querySelector<HTMLInputElement>('input:not([type=hidden])')
+        ?.focus();
+  }, [section]);
+  const choose = (next: typeof section) => {
+    if (!busy && beforeLeave()) {
+      setSection(next);
+      setError('');
+    }
+  };
   const [devices, setDevices] = useState<
     { id: string; createdAt: string; lastSeenAt: string }[]
   >([]);
@@ -50,140 +70,202 @@ export function SecurityPanel({
     onSession(data);
   };
   return (
-    <div className="security-layout">
+    <div className="security-layout" ref={panel}>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      <section className="surface security-card">
-        <span className="feature-icon">
-          <Icon name="key" />
-        </span>
-        <p>Use a strong, unique password for your workspace.</p>
-        <PasswordChange
-          busy={busy}
-          run={run}
-          mutate={mutate}
-          onComplete={complete}
-        />
-      </section>
-      <section className="surface security-card">
-        <span className="feature-icon blue">
-          <Icon name="shield" />
-        </span>
-        {info.mfaEnabled ? (
-          <form
-            onSubmit={(event) => {
-              const data = formValues(event);
-              const action = (
-                event.nativeEvent as SubmitEvent
-              ).submitter?.getAttribute('value');
-              event.currentTarget.reset();
-              void run(async () => {
-                complete(
-                  await mutate(
-                    action === 'disable'
-                      ? '/auth/mfa/disable'
-                      : '/auth/mfa/recovery-codes',
-                    {
-                      password: formText(data, 'password'),
-                      code: formText(data, 'code'),
-                    },
-                  ),
-                );
-              });
-            }}
+      {!section ? (
+        <div className="security-overview">
+          <p className="settings-intro">
+            Manage how you sign in and which devices can access your account.
+          </p>
+          <button
+            className="security-option"
+            aria-label="Change password"
+            onClick={() => choose('password')}
           >
-            <h3>Two-step verification is enabled</h3>
-            <label>
-              Password
-              <input
-                name="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                maxLength={128}
-              />
-            </label>
-            <label>
-              Fresh authenticator or recovery code
-              <input
-                name="code"
-                required
-                maxLength={64}
-                autoComplete="one-time-code"
-              />
-            </label>
-            <button disabled={busy} value="regenerate">
-              Replace recovery codes
-            </button>
-            {!info.mfaMandatory && (
-              <button className="secondary" disabled={busy} value="disable">
-                Disable two-step verification
-              </button>
-            )}
-          </form>
-        ) : (
-          <MfaSetup
+            <Icon name="key" />
+            <span>
+              <strong>Password</strong>
+              <small>Update your account password.</small>
+            </span>
+            <Icon name="chevron" size={17} />
+          </button>
+          <button
+            className="security-option"
+            aria-label="Manage two-step verification"
+            onClick={() => choose('mfa')}
+          >
+            <Icon name="shield" />
+            <span>
+              <strong>Two-step verification</strong>
+              <small>
+                {info.mfaEnabled
+                  ? 'Enabled. Manage your authenticator and recovery codes.'
+                  : 'Add an authenticator to protect your sign-in.'}
+              </small>
+            </span>
+            <Icon name="chevron" size={17} />
+          </button>
+          <button
+            className="security-option"
+            aria-label="Review active sessions"
+            onClick={() => choose('sessions')}
+          >
+            <Icon name="monitor" />
+            <span>
+              <strong>Active sessions</strong>
+              <small>Review signed-in devices and revoke access.</small>
+            </span>
+            <Icon name="chevron" size={17} />
+          </button>
+        </div>
+      ) : (
+        <button
+          className="button button-quiet settings-back"
+          onClick={() => choose(null)}
+        >
+          <Icon name="arrow" size={16} />
+          Account security
+        </button>
+      )}
+      {section === 'password' && (
+        <section className="surface security-card">
+          <span className="feature-icon">
+            <Icon name="key" />
+          </span>
+          <p>Use a strong, unique password for your workspace.</p>
+          <PasswordChange
             busy={busy}
             run={run}
             mutate={mutate}
             onComplete={complete}
           />
-        )}
-      </section>
-      <section className="surface sessions-card">
-        <div className="section-heading">
-          <div>
-            <h2>Active sessions</h2>
-            <p>Review access and sign out devices you no longer use.</p>
-          </div>
-          <span className="feature-icon">
-            <Icon name="monitor" />
+        </section>
+      )}
+      {section === 'mfa' && (
+        <section className="surface security-card">
+          <span className="feature-icon blue">
+            <Icon name="shield" />
           </span>
-        </div>
-        {devices.map((device) => (
-          <div className="row" key={device.id}>
-            <span>
-              Started {formatDate(device.createdAt)}
-              <br />
-              Last active {formatDate(device.lastSeenAt)}
-            </span>
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() =>
+          {info.mfaEnabled ? (
+            <form
+              onSubmit={(event) => {
+                const data = formValues(event);
+                const action = (
+                  event.nativeEvent as SubmitEvent
+                ).submitter?.getAttribute('value');
+                event.currentTarget.reset();
                 void run(async () => {
-                  await mutate(
-                    `/auth/sessions/${device.id}`,
-                    undefined,
-                    'DELETE',
+                  complete(
+                    await mutate(
+                      action === 'disable'
+                        ? '/auth/mfa/disable'
+                        : '/auth/mfa/recovery-codes',
+                      {
+                        password: formText(data, 'password'),
+                        code: formText(data, 'code'),
+                      },
+                    ),
                   );
-                  await onRefresh();
-                  setDevices((previous) =>
-                    previous.filter((item) => item.id !== device.id),
-                  );
-                })
-              }
+                });
+              }}
             >
-              Revoke session
-            </button>
+              <h3>Two-step verification is enabled</h3>
+              <label>
+                Password
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  maxLength={128}
+                />
+              </label>
+              <label>
+                Fresh authenticator or recovery code
+                <input
+                  name="code"
+                  required
+                  maxLength={64}
+                  autoComplete="one-time-code"
+                />
+              </label>
+              <button disabled={busy} value="regenerate">
+                Replace recovery codes
+              </button>
+              {!info.mfaMandatory && (
+                <button className="secondary" disabled={busy} value="disable">
+                  Disable two-step verification
+                </button>
+              )}
+            </form>
+          ) : (
+            <MfaSetup
+              onPendingChange={onPendingSetup}
+              busy={busy}
+              run={run}
+              mutate={mutate}
+              onComplete={complete}
+            />
+          )}
+        </section>
+      )}
+      {section === 'sessions' && (
+        <section className="surface sessions-card">
+          <div className="section-heading">
+            <div>
+              <h2>Active sessions</h2>
+              <p>Review access and sign out devices you no longer use.</p>
+            </div>
+            <span className="feature-icon">
+              <Icon name="monitor" />
+            </span>
           </div>
-        ))}
-        <button
-          className="secondary"
-          disabled={busy}
-          onClick={() =>
-            void run(async () => {
-              await mutate('/auth/logout-all');
-              onLogout();
-            })
-          }
-        >
-          Sign out all sessions
-        </button>
-      </section>
+          {devices.map((device) => (
+            <div className="row" key={device.id}>
+              <span>
+                Started {formatDate(device.createdAt)}
+                <br />
+                Last active {formatDate(device.lastSeenAt)}
+              </span>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    await mutate(
+                      `/auth/sessions/${device.id}`,
+                      undefined,
+                      'DELETE',
+                    );
+                    await onRefresh();
+                    setDevices((previous) =>
+                      previous.filter((item) => item.id !== device.id),
+                    );
+                  })
+                }
+              >
+                Revoke session
+              </button>
+            </div>
+          ))}
+          <button
+            className="secondary"
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                await mutate('/auth/logout-all');
+                onLogout();
+              })
+            }
+          >
+            Sign out all sessions
+          </button>
+        </section>
+      )}
     </div>
   );
 }

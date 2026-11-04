@@ -1,3 +1,4 @@
+import { PageActions } from '../PageActions.js';
 import { useState } from 'react';
 import {
   catalogInputSchema,
@@ -57,11 +58,7 @@ export function CatalogScreen({
   return (
     <>
       <section className="surface directory business-directory">
-        <div className="section-heading">
-          <div>
-            <h2>Products & services</h2>
-            <p>Your prices, units and tax classifications.</p>
-          </div>
+        <PageActions>
           {canManage && (
             <button
               className="button button-primary"
@@ -71,7 +68,7 @@ export function CatalogScreen({
               Add item
             </button>
           )}
-        </div>
+        </PageActions>
         {canRead ? (
           <>
             <DirectoryTools

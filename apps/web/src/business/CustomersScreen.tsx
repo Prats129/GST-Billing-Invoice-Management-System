@@ -1,3 +1,4 @@
+import { PageActions } from '../PageActions.js';
 import { useState } from 'react';
 import { customerInputSchema, customerPageSchema } from '@gst/contracts';
 import type { CustomerView } from '@gst/contracts';
@@ -44,11 +45,7 @@ export function CustomersScreen({
   return (
     <>
       <section className="surface directory business-directory">
-        <div className="section-heading">
-          <div>
-            <h2>Customer directory</h2>
-            <p>Contact and billing details, ready when you need them.</p>
-          </div>
+        <PageActions>
           {canManage && (
             <button
               className="button button-primary"
@@ -58,7 +55,7 @@ export function CustomersScreen({
               Add customer
             </button>
           )}
-        </div>
+        </PageActions>
         {canRead ? (
           <>
             <DirectoryTools

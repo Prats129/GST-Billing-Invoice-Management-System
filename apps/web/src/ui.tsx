@@ -3,6 +3,10 @@ import type { ReactNode } from 'react';
 import type { Permission } from '@gst/contracts';
 
 const paths = {
+  invoice: 'M6 3h9l4 4v14H5V3Zm8 0v5h5M8 12h8M8 16h5',
+  catalog: 'm12 3 9 5v10l-9 4-9-4V8Zm0 9 9-4M3 8l9 4v10M7.5 5.5l9 4',
+  settings:
+    'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8M9 3h6l1 3 3 1 2 5-2 5-3 1-1 3H9l-1-3-3-1-2-5 2-5 3-1Z',
   home: 'M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z',
   users:
     'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M17 3a4 4 0 0 1 0 8m5 10v-2a4 4 0 0 0-3-3.87M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
@@ -14,6 +18,7 @@ const paths = {
   plus: 'M12 5v14M5 12h14',
   arrow: 'M5 12h14m-5-5 5 5-5 5',
   chevron: 'm9 5 7 7-7 7',
+  more: 'M6 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0m7 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m7 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0',
   search: 'M21 21l-4.5-4.5M19 10.5a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0',
   close: 'm6 6 12 12M6 18 18 6',
   menu: 'M4 6h16M4 12h16M4 18h16',
@@ -242,6 +247,8 @@ export function PermissionList({ permissions }: { permissions: Permission[] }) {
     <p className="muted">No active permissions.</p>
   );
 }
+let openDialogCount = 0;
+let previousDocumentOverflow = '';
 export function Dialog({
   title,
   description,
@@ -249,6 +256,7 @@ export function Dialog({
   onClose,
   busy = false,
   wide = false,
+  className = '',
 }: {
   title: string;
   description?: string;
@@ -256,6 +264,7 @@ export function Dialog({
   onClose: () => void;
   busy?: boolean;
   wide?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -264,6 +273,10 @@ export function Dialog({
     const previous = document.activeElement;
     if (!node) return;
     node.showModal();
+    if (openDialogCount++ === 0) {
+      previousDocumentOverflow = document.documentElement.style.overflow;
+      document.documentElement.style.overflow = 'hidden';
+    }
     node
       .querySelector<HTMLElement>(
         'input:not([type="checkbox"]):not([type="hidden"])',
@@ -271,6 +284,8 @@ export function Dialog({
       ?.focus();
     return () => {
       node.close();
+      if (--openDialogCount === 0)
+        document.documentElement.style.overflow = previousDocumentOverflow;
       if (previous instanceof HTMLElement && previous.isConnected)
         previous.focus();
     };
@@ -278,7 +293,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className={`dialog${wide ? ' dialog-wide' : ''}`}
+      className={`dialog${wide ? ' dialog-wide' : ''} ${className}`}
       aria-labelledby={id}
       aria-describedby={description ? `${id}-description` : undefined}
       onCancel={(event) => {

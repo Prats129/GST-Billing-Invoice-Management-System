@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { RoleView } from '@gst/contracts';
 export type RunAction = (action: () => Promise<void>) => Promise<void>;
@@ -108,8 +108,18 @@ export function PasswordChange({
     </form>
   );
 }
-export function MfaSetup({ run, mutate, busy, onComplete }: SecurityFormProps) {
+export function MfaSetup({
+  run,
+  mutate,
+  busy,
+  onComplete,
+  onPendingChange,
+}: SecurityFormProps & { onPendingChange?: (pending: boolean) => void }) {
   const [secret, setSecret] = useState('');
+  useEffect(() => {
+    onPendingChange?.(Boolean(secret));
+    return () => onPendingChange?.(false);
+  }, [secret, onPendingChange]);
   return (
     <div>
       <h3>Set up two-step verification</h3>

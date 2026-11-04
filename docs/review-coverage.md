@@ -1,5 +1,193 @@
 # Review coverage
 
+## UI follow-up: consistent spacing and sidebar details
+
+Added a subtle inset divider below the sidebar brand, matching the existing
+account-area separator. Tightened the bottom account row while retaining its
+44px minimum height, and replaced the rotated navigation chevron with a
+three-dot account-menu indicator. Reduced shared card, table, form, dialog,
+invoice, overview and sign-in spacing, with smaller mobile gutters. Input sizes
+and typography are preserved; printed invoice documents use their separate
+renderer and are not restyled. Added breathing room above customer/catalog
+search tools so controls no longer touch the card edge. Existing keyboard,
+focus, modal and permission behavior is retained. Build, static checks, browser
+regressions and desktop/mobile screenshot inspection are pending.
+
+First complete browser pass succeeded (12 tests). Screenshot review exposed
+stacked mobile spacing: desktop cell padding was overriding the mobile card's
+zero-padding cells. Corrected that cascade so mobile rows have one 16px gutter
+and the existing grid gap, rather than padding each child again. Removed the
+large-screen generic surface-padding override so directory cards retain their
+flush table edges. Final build/UI rerun includes a wide-screen customer capture.
+
+Final production build and all 12 browser regressions passed, including real
+login/RBAC, customer/catalog workflows, invoice calculations, marked print/PDF
+previews, correction dialogs, entitlement read-only behavior and MFA. Web/test
+TypeScript, repository lint, formatting of changed files and whitespace checks
+passed. Inspected expanded/collapsed navigation, account menu/settings, mobile
+catalog/settings, invoice and 1680px customer screenshots. Desktop cards generally
+use 20px gutters and mobile cards 16px; tables use compact 12px vertical padding
+on desktop and a single padded card row on mobile. Mobile verification is Chrome
+viewport emulation. Existing staged changes are preserved; no changes were staged
+or committed during this follow-up.
+
+## UI follow-up: compact top spacing
+
+Reduced the space above and below the sidebar brand in both expanded and
+icons-only modes, including the gap around the collapse control. Reduced the
+main content's top padding to 20px. Menu item sizes, horizontal gutters and
+account settings remain unchanged. The production build and all six existing UI
+browser regressions passed, including mobile overflow and settings behavior.
+Inspected expanded and collapsed desktop screenshots to confirm the tighter
+spacing. Formatting and whitespace checks passed. Only the focused workspace
+stylesheet and this review checkpoint changed; existing staged work is preserved.
+
+## UI redesign: focused workspace and account settings
+
+Started the approved coherent redesign. Reusing existing business/security APIs
+and native dialog focus handling. Main navigation is being reduced to daily
+work plus a permission-aware Business settings entry; personal security/status
+move to an account menu and modal. Desktop collapse is a persistent, non-secret
+device preference; mobile retains labelled drawer navigation. Account settings
+have separate password/MFA/session actions and unsaved-input/recovery safeguards.
+Existing hash routes remain supported, including legacy account links.
+
+Removed duplicate daily-page headings/action bars via a shared page-action slot.
+The overview now reads up to five real invoice summaries with loading/retry/empty
+states, rather than displaying a matrix of navigation cards or invented metrics.
+Implementation and responsive styling are in progress; no backend/schema, tax,
+entitlement or authorization changes are introduced.
+
+First UI pass verified collapse persistence, keyboard tooltips, one page-action
+area, complete business saves, unsaved-change cancellation, account menu/tab/Escape
+focus behavior and the full-screen mobile settings handoff. One legacy-route
+test expected the overview after closing a modal opened from Customers; corrected
+that expectation because preserving the current page is the intended behavior.
+The other five new browser tests passed. The full real API/database suite and
+the corrected UI suite are now running against disposable test databases.
+
+Added explicit guards for unsaved invoice/business changes on navigation,
+organization changes and access refresh. Opening/closing settings preserves the
+mounted editor; account mutations warn before session refresh can discard that
+work. Account forms protect unsaved credentials and incomplete authenticator
+setup, and recovery codes must be acknowledged before leaving settings. No
+credentials, draft contents or permissions are stored in the collapse preference.
+
+Resumed after the unexpected PC shutdown. The saved implementation and original
+staged changes are present; the final verification process did not survive.
+Repeating the production build, static checks and browser regressions against the
+saved files. Docker was stopped after reboot, so database-backed verification
+requires restoring the existing local container. No installer or release changes
+are part of this UI batch.
+
+Completed verification after resuming: the web production build, web/test
+TypeScript checks, repository lint and formatting passed. Both frontend API unit
+tests passed. All 12 browser regressions passed in installed Chrome: six real
+API/database tests covering identity/RBAC, business/catalog/customers, invoice
+drafts and marked print previews, correction notes, expired entitlement reads and
+MFA; six synthetic-API tests covering the redesigned navigation, collapse
+persistence, keyboard focus, permission filtering, account modal/mobile handoff,
+unsaved-input safeguards, retry and unavailable browser storage. Database tests
+used randomly named disposable databases and completed their cleanup.
+
+Inspected final desktop, collapsed-sidebar and mobile-size settings screenshots.
+The icon-rail focus outline is visible, labels are readable, and opening settings
+locks background scrolling while preserving unsaved invoice content. Desktop
+collapse uses a 72px rail; business administration is grouped under Business
+settings, and security/status are accessible from the bottom account menu.
+Existing staged work was preserved; no files were staged or committed during
+this continuation. Mobile verification uses Chrome viewport emulation, not a
+physical phone. Windows installer/service behavior is outside this UI change.
+Vite/Vitest child-process checks required execution outside the sandbox after
+the sandbox reported spawn EPERM; the approved reruns passed.
+
+## UI follow-up: right-side content spacing
+
+Reduced the desktop right gutter from 36px to 24px, and from 24px to 20px at
+the narrower desktop breakpoint. Removed the workspace's centered maximum-width
+cap so wide windows do not add another empty gutter. Existing readable text/form
+limits and the mobile 16px gutter remain. The production build, all four UI
+browser tests, formatting and whitespace checks passed.
+
+## UI follow-up: wider sidebar and hover scrollbar
+
+Increased desktop navigation width to 280px (260px at the narrower desktop
+breakpoint). On mouse devices the scrollbar thumb is transparent until the
+sidebar is hovered or a navigation link receives keyboard focus. The gutter
+stays reserved to avoid label movement. Touch devices retain visible scrolling;
+forced-colors mode retains system styling. Existing mobile drawer sizing and
+scroll functionality are preserved. The production build and all four existing
+UI browser tests passed, including shorter-window sidebar scrolling and mobile
+overflow checks. Formatting and whitespace checks passed; the last build refresh
+includes the explicit forced-colors hover/focus override.
+
+## UI follow-up: sidebar scrollbar
+
+Replaced the screenshot's bright native navigation scrollbar with a thin muted
+thumb on a transparent dark track, including hover/focus contrast and a WebKit
+fallback. Native scrolling stays enabled; forced-colors mode keeps system colors.
+The existing desktop navigation browser check now runs at 720px viewport height
+and verifies wheel scrolling reaches the last menu item. Browser verification
+and screenshot inspection passed. The web production build and all four UI
+browser tests passed, including actual wheel scrolling to the last navigation
+link in a 720px-tall desktop viewport. Previous staged UI changes are preserved.
+
+## UI/UX: organize everyday work and administration
+
+Started the requested workspace redesign after reviewing navigation, overview,
+business setup, invoice editor and existing browser coverage. The old sidebar
+mixed billing, master data and administration in one flat list; the overview
+prioritized permission matrices over daily tasks. Centralized permission-aware
+navigation now groups Sales & billing, Business & team and Your account. A new
+task-focused overview, related-page links, distinct document/catalog icons and
+scoped responsive styles replace the access-heavy landing page. Permissions
+remain available in a collapsed disclosure. Existing route names are retained.
+
+Business setup now has distinct identity/address/GST/bank fieldsets in the same
+save form. Invoice editing has focusable section jumps and a desktop sticky
+summary; required fields stay visible and existing compliance gates remain.
+The web production build passed. Browser interaction, responsive screenshots,
+form-payload preservation, restricted navigation and final checks are in progress.
+Browser layout tests use synthetic API responses and never modify real data.
+
+First browser pass succeeded for all four tests: grouped desktop navigation,
+invoice section focus, complete business save payload, browser Back, mobile menu
+and dialog dismissal, viewport overflow and permission-filtered links/direct
+routes. Inspected actual desktop/mobile screenshots. Visual inspection caught
+legacy CSS hiding the newly grouped business fieldset legends; the scoped styles
+now restore visible section titles. Full-page captures now reset scroll before
+capture so sticky sidebar/summary placement is represented correctly. Final
+browser rerun and compiler/lint/format checks follow. Existing issuance, printing,
+read-only entitlement and API/security logic have not been changed.
+
+The existing development PostgreSQL container is available. Expanded verification
+to the real authentication/business/invoice browser suite using only randomly
+named disposable databases and fixture users. The first run reached employee
+login and exposed another obsolete organization-heading selector after the home
+redesign; the selectors now target the organization context and the named main
+navigation to avoid ambiguity with new task links. This is a test adaptation,
+not an authorization change. The full rerun is in progress. Frontend API unit
+tests passed (2), as did web/test TypeScript and lint before the latest small
+keyboard-accessibility adjustment. The skip link now focuses main content
+without changing the hash route, and access disclosure has a visible affordance.
+
+Final browser regression passed all 10 tests in installed Chrome: six existing
+real API/database tests (identity/RBAC, business/catalog/customers, invoices and
+print previews, correction documents, entitlement read-only behavior and MFA),
+plus four new synthetic-API UI/navigation/accessibility tests. Real database work
+used randomly named disposable databases, which the suite cleaned up; development
+and customer records were not modified. Desktop/mobile viewport screenshots were
+inspected after the final layout change, including visible fieldset headings.
+Mobile checks are browser viewport emulation, not physical-device acceptance.
+
+Web/API production builds, web/test TypeScript, frontend API unit tests (2) and
+lint passed. Final repository formatting and whitespace checks also passed.
+No dependencies, schema, tax rules, licensing gates or server authorization were
+changed. The scope is workspace navigation, home, shared visual hierarchy and
+business/invoice form organization. Existing hash routes and business actions
+remain available. Previous release/signing work is untouched; no staging/commit
+was performed during this UI task.
+
 ## Phase 6: vendor review and production signing
 
 Started the requested actual vendor approval/signing work. Existing publisher

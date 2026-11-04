@@ -144,13 +144,32 @@ async function signIn(page: Page, email: string, password: string) {
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   expect((await response).status()).toBe(201);
 }
+async function openBusiness(page: Page, name: string) {
+  await page
+    .getByRole('navigation', { name: 'Workspace navigation', exact: true })
+    .getByRole('link', { name: 'Business settings', exact: true })
+    .click();
+  await page
+    .getByRole('navigation', { name: 'Business settings sections' })
+    .getByRole('link', { name, exact: true })
+    .click();
+}
+async function openAccount(page: Page) {
+  await page.getByRole('button', { name: /^Account menu for/ }).click();
+  await page
+    .getByRole('menuitem', { name: 'Account settings', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Manage two-step verification', exact: true })
+    .click();
+}
 test('owner manages roles and employees; employee changes password; suspension revokes access', async ({
   page,
   browser,
 }) => {
   await signIn(page, ownerEmail, ownerPassword);
   await expect(
-    page.getByRole('link', { name: 'Account security', exact: true }),
+    page.getByRole('button', { name: /^Account menu for/ }),
   ).toBeVisible();
   await page
     .getByLabel('Organization', { exact: true })
@@ -158,19 +177,15 @@ test('owner manages roles and employees; employee changes password; suspension r
   await page
     .getByRole('heading', { name: 'Workspace overview', exact: true })
     .waitFor();
-  await page
-    .getByRole('heading', {
-      name: 'Browser security organization',
-      exact: true,
-    })
-    .waitFor();
+  await expect(page.getByLabel('Organization', { exact: true })).toHaveValue(
+    organizationId,
+  );
+  await expect(page.locator('.overview-intro')).toBeVisible();
   await page.screenshot({
     path: 'test-results/ui-overview-desktop.png',
     fullPage: true,
   });
-  await page
-    .getByRole('link', { name: 'Roles & permissions', exact: true })
-    .click();
+  await openBusiness(page, 'Roles & permissions');
   await expect(
     page.getByRole('heading', { name: 'Team directory' }),
   ).toHaveCount(0);
@@ -188,7 +203,7 @@ test('owner manages roles and employees; employee changes password; suspension r
     path: 'test-results/ui-roles-desktop.png',
     fullPage: true,
   });
-  await page.getByRole('link', { name: 'Members', exact: true }).click();
+  await openBusiness(page, 'Members');
   await page.getByRole('button', { name: 'Add member', exact: true }).click();
   const memberForm = page.getByRole('dialog');
   await expect(memberForm.getByLabel('Name', { exact: true })).toBeFocused();
@@ -246,6 +261,7 @@ test('owner manages roles and employees; employee changes password; suspension r
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await page
     .getByRole('dialog')
+    .getByRole('navigation', { name: 'Workspace navigation', exact: true })
     .getByRole('link', { name: 'Overview', exact: true })
     .click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -262,10 +278,7 @@ test('owner manages roles and employees; employee changes password; suspension r
     ),
   ).toBe(true);
   await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByRole('dialog')
-    .getByRole('link', { name: 'Members', exact: true })
-    .click();
+  await openBusiness(page, 'Members');
   await page.setViewportSize({ width: 1440, height: 1000 });
   const context = await browser.newContext();
   const employee = await context.newPage();
@@ -287,11 +300,8 @@ test('owner manages roles and employees; employee changes password; suspension r
       .getByLabel('Organization', { exact: true })
       .selectOption(organizationId);
     await expect(
-      employee.getByRole('heading', {
-        name: 'Browser security organization',
-        exact: true,
-      }),
-    ).toBeVisible();
+      employee.getByLabel('Organization', { exact: true }),
+    ).toHaveValue(organizationId);
     await expect(
       employee.getByRole('heading', { name: 'Members', exact: true }),
     ).toHaveCount(0);
@@ -348,7 +358,7 @@ test('business setup, customer archive/restore and catalog classification review
   page,
 }) => {
   await signIn(page, ownerEmail, ownerPassword);
-  await page.getByRole('link', { name: 'Business setup', exact: true }).click();
+  await openBusiness(page, 'Business setup');
   await page
     .getByLabel('Legal business name', { exact: true })
     .fill('Browser trading business');
@@ -395,7 +405,10 @@ test('business setup, customer archive/restore and catalog classification review
     path: 'test-results/ui-phase3-business-desktop.png',
     fullPage: true,
   });
-  await page.getByRole('link', { name: 'Customers', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Workspace navigation', exact: true })
+    .getByRole('link', { name: 'Customers', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Add customer', exact: true }).click();
   const editor = page.getByRole('dialog');
   await editor
@@ -438,7 +451,10 @@ test('business setup, customer archive/restore and catalog classification review
   await expect(
     page.getByText('Browser customer', { exact: true }),
   ).toBeVisible();
-  await page.getByRole('link', { name: 'Catalog', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Workspace navigation', exact: true })
+    .getByRole('link', { name: 'Catalog', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Add item', exact: true }).click();
   await editor.getByLabel('Item name', { exact: true }).fill('Browser product');
   await editor.getByLabel('Item code', { exact: true }).fill('PROD-001');
@@ -528,10 +544,7 @@ test('business setup, customer archive/restore and catalog classification review
   ).toBe(true);
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: 'Open navigation' }).click();
-  await page
-    .getByRole('dialog')
-    .getByRole('link', { name: 'Business setup', exact: true })
-    .click();
+  await openBusiness(page, 'Business setup');
   await expect(
     page.getByLabel('Legal business name', { exact: true }),
   ).toHaveValue('Browser trading business');
@@ -602,7 +615,10 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
       })
     ).status(),
   ).toBe(201);
-  await page.getByRole('link', { name: 'Invoices', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Workspace navigation', exact: true })
+    .getByRole('link', { name: 'Invoices', exact: true })
+    .click();
   await page.getByRole('button', { name: 'New invoice', exact: true }).click();
   await page
     .getByRole('button', { name: 'Choose customer', exact: true })
@@ -852,7 +868,10 @@ test('correction dialogs submit and edit versioned original-line value adjustmen
     };
     await route.fulfill({ json: correction });
   });
-  await page.getByRole('link', { name: 'Invoices', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Workspace navigation', exact: true })
+    .getByRole('link', { name: 'Invoices', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Open document', exact: true })
     .click();
@@ -924,7 +943,7 @@ test('expired entitlement notice preserves the workspace and authorized reads af
   await expect(
     page.getByText('This organization is read-only.', { exact: true }),
   ).toBeVisible();
-  await page.getByRole('link', { name: 'Business setup', exact: true }).click();
+  await openBusiness(page, 'Business setup');
   await expect(
     page.getByLabel('Legal business name', { exact: true }),
   ).toHaveValue('Browser trading business');
@@ -956,7 +975,10 @@ test('expired entitlement notice preserves the workspace and authorized reads af
   await expect(page.getByLabel('Organization', { exact: true })).toHaveValue(
     organizationId,
   );
-  await page.getByRole('link', { name: 'Invoices', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Workspace navigation', exact: true })
+    .getByRole('link', { name: 'Invoices', exact: true })
+    .click();
   await expect(
     page.getByRole('heading', { name: 'Invoices', exact: true, level: 1 }),
   ).toBeVisible();
@@ -972,9 +994,7 @@ test('authenticator enrollment, recovery-code display and MFA challenge work in 
   page,
 }) => {
   await signIn(page, ownerEmail, ownerPassword);
-  await page
-    .getByRole('link', { name: 'Account security', exact: true })
-    .click();
+  await openAccount(page);
   const form = page.locator('form').filter({
     has: page.getByRole('button', { name: 'Start setup', exact: true }),
   });
@@ -1000,7 +1020,12 @@ test('authenticator enrollment, recovery-code display and MFA challenge work in 
   await page
     .getByRole('button', { name: 'I have saved these codes', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: 'Settings', exact: true })
+    .getByRole('button', { name: 'Close dialog', exact: true })
+    .click();
+  await page.getByRole('button', { name: /^Account menu for/ }).click();
+  await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
   await signIn(page, ownerEmail, ownerPassword);
   await expect(
     page.getByRole('heading', { name: 'Two-step verification', exact: true }),
