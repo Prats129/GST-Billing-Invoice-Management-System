@@ -1,5 +1,77 @@
 # Signed release preflight
 
+Current publisher custody decision (2026-11-04): the project owner/developer will
+own the release key and keep it in dedicated encrypted offline storage. The
+owner confirmed the encrypted storage is not prepared yet. Its mounted location,
+encryption/recovery arrangements and production key are not yet provisioned.
+This does not authorize writing a private key into the checkout.
+The current user certificate store contains no code-signing private certificate,
+and SignTool was not found on PATH during the local check. No production signature
+has been made. The existing signing commands are ready to consume real credentials.
+
+## Production signing handoff
+
+First resolve the concrete [vendor approval findings](windows-artifact-review.md).
+Do not mark licensesReviewed true merely to unblock the command. Review the
+supplemented WinSW notices and retained PostgreSQL dependencies, then prepare a
+new candidate using the approved receipt. Preserve earlier unsigned outputs.
+
+For the Ed25519 release key, prepare and unlock the owner's encrypted offline
+storage, choose a new private directory, and arrange an independently recoverable
+encrypted backup. Keep the storage outside the checkout, candidate and cloud sync.
+Before creation, verify the mounted path and directory ACLs; stop if existing key
+files are present. Use a trusted OpenSSL supporting Ed25519. The following are
+operator templates, not commands executed in this session:
+
+```powershell
+# Replace the path only after validating the actual encrypted storage.
+# OpenSSL prompts locally for a strong passphrase; do not put it in arguments.
+openssl genpkey -algorithm ED25519 -aes-256-cbc -out X:\GST-signing-new\release-private.pem
+openssl pkey -in X:\GST-signing-new\release-private.pem -pubout -out X:\GST-signing-new\release-public.pem
+```
+
+OpenSSL can overwrite output files: the operator must first create a new private
+directory and verify both targets are absent. Never paste the private PEM or its
+passphrase into chat. Map the exported public PEM to the chosen release key ID in
+a separate public trust JSON. Independently verify its fingerprint and distribute
+that trust through the controlled installer/operator channel; a bundle cannot
+approve its own replacement trust. Keep release and license-issuance keys separate.
+Test decryption/public-key matching and a disposable signed fixture before using
+the key on an approved candidate. Back up and test recovery before relying on it.
+
+Windows publisher identity requires a real CA-issued code-signing certificate or
+approved signing service. Select that provider using the owner's verified identity;
+we have not purchased, enrolled, imported a certificate or installed root trust.
+Use the provider's non-exportable/token/service key handling where required.
+An arbitrary self-signed certificate is not a customer-trusted substitute.
+
+Use a separate private publisher checkout to Authenticode-sign the allowlisted
+first-party scripts in apps/windows-installer/scripts **before bundle:prepare**.
+The helper allowlists are in scripts/issuer/windows-bundle.ts. Assembly copies
+those signed bytes into bundle/installer and app/apps/windows-installer/scripts,
+then records their inventory for smoke testing. Each distributed copy must verify.
+Do not sign the development checkout or re-sign a prepared candidate in place.
+Do not re-sign or change vendor binaries/archives. With an
+explicitly selected current-user certificate and the CA's timestamp endpoint,
+the documented SDK command shape is:
+
+```powershell
+signtool sign /s My /sha1 <approved-certificate-thumbprint> /fd SHA256 /tr <CA-RFC3161-timestamp-URL> /td SHA256 <explicit-first-party-script-path>
+signtool verify /pa /all /v <explicit-first-party-script-path>
+```
+
+The /sha1 option selects a certificate; the content and timestamp digests use
+SHA-256. Follow the selected provider for hardware/service-backed signing.
+Verify the expected publisher, chain, timestamp and signature success; a warning
+or missing timestamp is not successful release acceptance. See Microsoft's
+[SignTool reference](https://learn.microsoft.com/en-us/windows/win32/seccrypto/signtool).
+Then seal and verify the inner/outer Ed25519 inventories with the existing bundle
+commands. Any content change after sealing requires a new candidate and signature.
+Run bundle:smoke on that newly prepared candidate before bundle:seal. The earlier
+unsigned candidate's inventory correctly rejects files changed in place.
+Never edit a build report to make changed code executable. The approved signed
+bundle still needs the postponed native Windows acceptance tests.
+
 Phase 6 provides an operator-only verifier, not a production Windows installer.
 It authenticates a release manifest and every staged file without executing any
 package contents or modifying an installation, database, service or trust store.

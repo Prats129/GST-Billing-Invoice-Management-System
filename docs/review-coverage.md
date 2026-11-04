@@ -1,5 +1,67 @@
 # Review coverage
 
+## Phase 6: vendor review and production signing
+
+Started the requested actual vendor approval/signing work. Existing publisher
+commands and encrypted-key import already exist; this is not a new product phase.
+Read the exact downloaded PostgreSQL notices and archive entries, plus current
+official upstream licenses and Windows SignTool documentation. The candidate
+contains libiconv/libintl/libwinpthread and an LGPL notice but has no verified
+matching source/build-material delivery record. Its bin directory also retains
+wxWidgets libraries whose notice coverage needs explicit review. Node/WinSW MIT
+license texts alone do not approve those PostgreSQL dependencies.
+
+Found and fixed a concrete packaging gap: compiled frontend dependencies such as
+React are not part of the API's production dependency graph, so their complete
+license texts were missing. Assembly now adds a separate frontend license
+inventory and full notice files without shipping frontend node_modules. Missing
+license text fails closed. Regression verification is in progress. The previous
+unsigned candidate remains preserved and unapproved; no production key or
+approval receipt has been fabricated.
+
+Review checkpoint: EDB issue 733 supplies a vendor-published SHA-256 matching the
+18.6-5 source ZIP. Issue 743 identifies gettext 0.19.8/libiconv 1.19 and clarifies
+that winpthreads is permissive; its exact revision/original notices and dependency
+build records remain unresolved in the reviewed evidence. The source catalog's
+libiconv 1.15 entry cannot substitute for the shipped 1.19 library. These findings
+are recorded in windows-artifact-review.md with direct upstream sources.
+
+The WinSW NET461 release-tag build merges log4net 2.0.12 and YamlDotNet 8.1.2.
+Downloaded their version-matched LICENSE files and log4net NOTICE to new local
+filenames and saved artifact-review-supplemented.json as a draft, not approval.
+Original review/observations/candidate remain untouched. Local WinSW Authenticode
+inspection reports NotSigned. No current-user code-signing private certificate
+was found; SignTool is not on PATH. No vendor issue/comment/email was sent.
+
+User selected the project owner/developer as release-key owner and dedicated
+encrypted offline storage as custody. The mounted storage path is awaiting user
+input; no passphrase, private key or production certificate was requested in chat.
+signed-releases.md now records the concrete encrypted-key handoff and correct
+signing order: sign first-party helpers in a private publisher checkout, prepare
+and smoke a new candidate, then seal both inventories. No existing candidate's
+report is rewritten to allow modified code to execute.
+
+All 15 targeted bundle/release-publisher regressions passed, including the new
+missing-frontend-notice case; test TypeScript and lint passed. Actual assembly
+completed in a new private directory:
+`C:\Users\Lenovo\AppData\Local\GST-windows-candidate-vendor-review-20261104`.
+Its unsigned bundle contains 5,930 files, 132,532,936 bytes and 144 runtime
+dependency packages. The frontend inventory preserves React, ReactDOM, scheduler
+and Zod full license texts without shipping frontend node_modules. Supplemental
+WinSW notices remain in the separate review draft; this candidate still uses
+the original unapproved vendor review. Its real isolated API/frontend/assets,
+native-addon and Origin smoke passed; dummy-database readiness returned 503 as
+expected. Final formatting and whitespace checks passed. No real database,
+service installation, Authenticode signing or production Ed25519 signing ran.
+
+The user confirmed the dedicated encrypted offline storage is not prepared yet;
+no production key is generated until that actual custody location exists.
+Actual approval/signing remains blocked by the unresolved dependency distribution
+materials/notice coverage, the unprepared encrypted offline storage and a
+publisher-owned Windows code-signing certificate. This is a concrete external
+handoff, not another implementation phase. Do not create a licensesReviewed:true
+receipt, silently weaken signing gates or use test credentials to declare release.
+
 ## Phase 6 continuation: actual Windows bundle assembly
 
 Started publisher-side assembly of a self-contained Windows application and the

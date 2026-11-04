@@ -100,6 +100,25 @@ async function fixture() {
   await put(repo, 'packages/database/migrations/0000_fixture.sql', 'select 1;');
   await put(repo, 'packages/database/migrations/meta/_journal.json', '{}');
   await put(repo, 'apps/web/dist/index.html', '<div id="root"></div>');
+  await put(
+    repo,
+    'apps/web/package.json',
+    JSON.stringify({
+      name: '@gst/web',
+      version: '0.0.0',
+      dependencies: { 'browser-only': '1' },
+    }),
+  );
+  await put(
+    repo,
+    'node_modules/browser-only/package.json',
+    JSON.stringify({ name: 'browser-only', version: '1.0.0', license: 'MIT' }),
+  );
+  await put(
+    repo,
+    'node_modules/browser-only/LICENSE',
+    'Complete frontend license fixture.',
+  );
   for (const [name, version, dependencies] of [
     ['alpha', '1.0.0', { shared: '1' }],
     ['beta', '1.0.0', { shared: '2' }],
@@ -178,6 +197,19 @@ test('ordinary runtime preserves conflicting dependency resolution and excludes 
   expect(alpha('shared')).toBe('1.0.0');
   expect(beta('shared')).toBe('2.0.0');
   expect(report.packages.filter((p) => p.name === 'shared')).toHaveLength(2);
+  const notices = JSON.parse(
+    await readFile(join(output, 'frontend-notices.json'), 'utf8'),
+  );
+  expect(notices.packages[0]).toMatchObject({
+    name: 'browser-only',
+    version: '1.0.0',
+  });
+  expect(
+    await readFile(join(output, notices.packages[0].files[0].path), 'utf8'),
+  ).toBe('Complete frontend license fixture.');
+  await expect(
+    readFile(join(output, 'node_modules/browser-only/package.json')),
+  ).rejects.toThrow();
   for (const path of [
     'node_modules/forbidden/package.json',
     'node_modules/alpha/tests/private.env',
@@ -190,6 +222,14 @@ test('ordinary runtime preserves conflicting dependency resolution and excludes 
   expect(await readFile(join(f.repo, 'pnpm-lock.yaml'), 'utf8')).toBe(
     'fixture-lock',
   );
+});
+
+test('frontend license text is required even when package metadata declares MIT', async () => {
+  const f = await fixture();
+  await rm(join(f.repo, 'node_modules/browser-only/LICENSE'));
+  await expect(
+    assembleWindowsRuntime(f.repo, join(f.root, 'missing-notice'), '0.1.0'),
+  ).rejects.toThrow('Frontend dependency license text missing');
 });
 
 test('missing required dependencies and private-looking package files fail closed', async () => {

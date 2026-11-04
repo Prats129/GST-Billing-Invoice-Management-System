@@ -283,6 +283,67 @@ export async function assembleWindowsRuntime(
     join(output, 'apps', 'web', 'dist'),
     () => true,
   );
+  // The browser bundle embeds packages which are absent from the API runtime.
+  // Preserve their full license/NOTICE texts rather than relying on minified
+  // banners or a package.json license identifier.
+  const web = await read(join(repository, 'apps', 'web'));
+  const visited = new Set<Package>();
+  const visit = (node: Package) => {
+    if (visited.has(node)) return;
+    visited.add(node);
+    for (const child of node.edges.values()) visit(child);
+  };
+  visit(web);
+  const frontendNotices = [];
+  for (const node of [...visited]
+    .filter((n) => n !== web && !n.workspace)
+    .sort(
+      (a, b) =>
+        a.manifest.name.localeCompare(b.manifest.name, 'en') ||
+        a.manifest.version.localeCompare(b.manifest.version, 'en'),
+    )) {
+    const names = (await readdir(node.source)).filter((name) =>
+      /^(?:licen[cs]e|copying|notice|copyright)(?:[.-].*)?$/i.test(name),
+    );
+    if (!names.length)
+      throw new Error(
+        'Frontend dependency license text missing: ' + node.manifest.name,
+      );
+    const directory = join(
+      output,
+      'notices',
+      'frontend',
+      'package-' + String(frontendNotices.length + 1).padStart(4, '0'),
+    );
+    await copyTree(node.source, directory, (path) => names.includes(path));
+    const files = [];
+    for (const name of names.sort()) {
+      const target = join(directory, name);
+      if (!(await lstat(target)).isFile())
+        throw new Error('Frontend license must be an ordinary text file.');
+      files.push({
+        path: relative(output, target).split(sep).join('/'),
+        sha256: await fileHash(target),
+      });
+    }
+    frontendNotices.push({
+      name: node.manifest.name,
+      version: node.manifest.version,
+      license: node.manifest.license ?? null,
+      files,
+    });
+  }
+  for (const node of visited)
+    if (
+      (await fileHash(join(node.source, 'package.json'))) !==
+      node.manifestSha256
+    )
+      throw new Error('Frontend dependency metadata changed during assembly.');
+  await writeFile(
+    join(output, 'frontend-notices.json'),
+    JSON.stringify({ format: 1, packages: frontendNotices }, null, 2) + '\n',
+    { flag: 'wx' },
+  );
   await writeFile(
     join(output, 'package.json'),
     JSON.stringify({
