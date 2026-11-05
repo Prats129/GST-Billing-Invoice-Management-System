@@ -7,6 +7,8 @@ import { formText } from '../security-forms.js';
 import { securityRequest } from '../security-api.js';
 import { Icon } from '../ui.js';
 export interface BusinessScreenProps {
+  recordId?: string | undefined;
+  onRecordNavigate?: (id?: string, replace?: boolean) => void;
   readOnly?: boolean;
   basePath: string;
   permissions: Permission[];
@@ -304,4 +306,118 @@ export function FormError({ message }: { message: string }) {
       {message}
     </p>
   ) : null;
+}
+
+// Resolve detail URLs independently of directory pagination or filters.
+export function useRecordPage<T>(
+  endpoint: string,
+  id: string | undefined,
+  schema: { parse: (value: unknown) => T },
+  onLoaded: (value: T | null | undefined) => void,
+) {
+  const [loading, setLoading] = useState(Boolean(id && id !== 'new'));
+  const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setError('');
+    onLoaded(undefined);
+    if (!id || id === 'new') {
+      onLoaded(id === 'new' ? null : undefined);
+      setLoading(false);
+      return;
+    }
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      )
+    ) {
+      setLoading(false);
+      setError(
+        'This record link is invalid. Return to the list and select a record.',
+      );
+      return;
+    }
+    setLoading(true);
+    void securityRequest(`${endpoint}/${id}`, undefined)
+      .then((data) => {
+        if (active) onLoaded(schema.parse(data));
+      })
+      .catch(() => {
+        if (active)
+          setError(
+            'This record could not be loaded. It may be unavailable or you may not have access.',
+          );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+    // Loading depends on the route, not the current editor callback identity.
+  }, [endpoint, id, attempt]);
+  return { loading, error, retry: () => setAttempt((value) => value + 1) };
+}
+export function RecordPage({
+  title,
+  description,
+  onClose,
+  busy,
+  children,
+}: {
+  title: string;
+  busy: boolean;
+  description: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="surface record-page">
+      <header className="section-heading">
+        <div>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+        <button
+          type="button"
+          className="button button-secondary"
+          onClick={onClose}
+          disabled={busy}
+        >
+          Back to list
+        </button>
+      </header>
+      {children}
+    </section>
+  );
+}
+export function RecordLoading({
+  loading,
+  error,
+  onBack,
+  onRetry,
+}: {
+  loading: boolean;
+  error: string;
+  onBack: () => void;
+  onRetry: () => void;
+}) {
+  return (
+    <section className="surface record-page">
+      <button className="button button-secondary" onClick={onBack}>
+        Back to list
+      </button>
+      {loading ? (
+        <p role="status">Loading record...</p>
+      ) : (
+        <>
+          <p role="alert">{error}</p>
+          <button className="button button-secondary" onClick={onRetry}>
+            Try again
+          </button>
+        </>
+      )}
+    </section>
+  );
 }

@@ -30,6 +30,8 @@ import {
   DirectoryPagination,
   formatPrice,
   FormError,
+  RecordLoading,
+  useRecordPage,
   readAddress,
   useDirectory,
 } from '../business/shared.js';
@@ -209,6 +211,8 @@ function PrintPreview({ data }: { data: InvoicePrintData }) {
 }
 export function InvoicesScreen(props: BusinessScreenProps) {
   const {
+    recordId,
+    onRecordNavigate,
     basePath,
     permissions,
     run,
@@ -257,6 +261,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
   const reload = () => setAttempt((v) => v + 1);
   useEffect(() => {
     let active = true;
+    if (recordId) return;
     setLoading(true);
     setLoadError('');
     void securityRequest<DirectoryPage<InvoiceSummary>>(
@@ -278,13 +283,13 @@ export function InvoicesScreen(props: BusinessScreenProps) {
     return () => {
       active = false;
     };
-  }, [basePath, offset, attempt]);
+  }, [basePath, offset, attempt, recordId]);
   const changed = () => {
     setDirty(true);
     setPreview(null);
     setRecordPrint(null);
   };
-  function open(record: InvoiceRecord | null) {
+  function open(record: InvoiceRecord | null | undefined) {
     if (record) record = invoiceRecordSchema.parse(record);
     onClearError();
     setEditor(record);
@@ -298,6 +303,12 @@ export function InvoicesScreen(props: BusinessScreenProps) {
     setFinalizeKey(crypto.randomUUID());
     setItemNames(record?.lineDescriptions ?? {});
   }
+  const detail = useRecordPage(
+    `${basePath}/invoices`,
+    recordId,
+    invoiceRecordSchema,
+    open,
+  );
   function read(): InvoiceDraft {
     if (customerRegistrationError)
       throw new ApiError(
@@ -353,6 +364,14 @@ export function InvoicesScreen(props: BusinessScreenProps) {
     Boolean(editor && editor.status !== 'draft') ||
     Boolean(editor?.originalId) ||
     !canManage;
+  if (recordId && (detail.loading || detail.error))
+    return (
+      <RecordLoading
+        {...detail}
+        onBack={() => onRecordNavigate?.()}
+        onRetry={detail.retry}
+      />
+    );
   if (editor === undefined)
     return (
       <section className="surface directory business-directory">
@@ -360,7 +379,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
           {canManage && (
             <button
               className="button button-primary"
-              onClick={() => open(null)}
+              onClick={() => onRecordNavigate?.('new')}
             >
               <Icon name="plus" size={16} />
               New invoice
@@ -421,16 +440,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                     <td>
                       <button
                         className="button button-quiet"
-                        onClick={() =>
-                          void run(async () =>
-                            open(
-                              await securityRequest<InvoiceRecord>(
-                                `${basePath}/invoices/${row.id}`,
-                                undefined,
-                              ),
-                            ),
-                          )
-                        }
+                        onClick={() => onRecordNavigate?.(row.id)}
                       >
                         Open document
                       </button>
@@ -455,16 +465,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
       <PageActions>
         <button
           className="button button-quiet"
-          onClick={() => {
-            if (
-              !dirty ||
-              window.confirm('Leave this invoice and discard unsaved changes?')
-            ) {
-              setEditor(undefined);
-              onClearError();
-              reload();
-            }
-          }}
+          onClick={() => onRecordNavigate?.()}
         >
           ← All invoices
         </button>
@@ -496,6 +497,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
                 editor ? 'PUT' : 'POST',
               );
               setEditor(invoiceRecordSchema.parse(record));
+              if (recordId !== record.id) onRecordNavigate?.(record.id, true);
               setCustomer(null);
               setDirty(false);
               setPreview(null);
@@ -1088,6 +1090,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
           onClose={() => setDocumentAction(null)}
           onSaved={(record) => {
             open(record);
+            if (recordId !== record.id) onRecordNavigate?.(record.id, true);
             setDocumentAction(null);
             reload();
           }}
@@ -1104,6 +1107,7 @@ export function InvoicesScreen(props: BusinessScreenProps) {
           onClose={() => setDocumentAction(null)}
           onSaved={(record) => {
             open(record);
+            if (recordId !== record.id) onRecordNavigate?.(record.id, true);
             setDocumentAction(null);
             reload();
           }}

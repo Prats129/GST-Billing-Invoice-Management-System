@@ -1,12 +1,19 @@
-import { PageActions } from '../PageActions.js';
+import { PageActions, useUnsavedChanges } from '../PageActions.js';
 import { useState } from 'react';
-import { customerInputSchema, customerPageSchema } from '@gst/contracts';
+import {
+  customerInputSchema,
+  customerPageSchema,
+  customerViewSchema,
+} from '@gst/contracts';
 import type { CustomerView } from '@gst/contracts';
 import { formText, formValues } from '../security-forms.js';
-import { Avatar, Badge, Dialog, EmptyState, Icon } from '../ui.js';
+import { Avatar, Badge, EmptyState, Icon } from '../ui.js';
 import {
   AddressFields,
   DirectoryPagination,
+  RecordPage,
+  RecordLoading,
+  useRecordPage,
   DirectoryTools,
   FormError,
   readAddress,
@@ -14,6 +21,8 @@ import {
 } from './shared.js';
 import type { BusinessScreenProps } from './shared.js';
 export function CustomersScreen({
+  recordId,
+  onRecordNavigate,
   readOnly = false,
   basePath,
   permissions,
@@ -28,140 +37,151 @@ export function CustomersScreen({
   const list = useDirectory<CustomerView>(
     `${basePath}/customers`,
     customerPageSchema,
-    canRead,
+    canRead && !recordId,
   );
   const [editing, setEditing] = useState<CustomerView | null | undefined>();
   const [formError, setFormError] = useState('');
+  const [dirty, setDirty] = useState(false);
+  useUnsavedChanges(dirty);
   const open = (customer: CustomerView | null) => {
-    onClearError();
-    setFormError('');
-    setEditing(customer);
+    onRecordNavigate?.(customer?.id ?? 'new');
   };
-  const close = () => {
-    setEditing(undefined);
-    setFormError('');
-    onClearError();
-  };
+  const close = () => onRecordNavigate?.();
+  const detail = useRecordPage(
+    `${basePath}/customers`,
+    recordId,
+    customerViewSchema,
+    (record) => {
+      setEditing(record);
+      setDirty(false);
+      setFormError('');
+      onClearError();
+    },
+  );
+  if (recordId && (detail.loading || detail.error))
+    return <RecordLoading {...detail} onBack={close} onRetry={detail.retry} />;
   return (
     <>
-      <section className="surface directory business-directory">
-        <PageActions>
-          {canManage && (
-            <button
-              className="button button-primary"
-              onClick={() => open(null)}
-            >
-              <Icon name="plus" size={17} />
-              Add customer
-            </button>
-          )}
-        </PageActions>
-        {canRead ? (
-          <>
-            <DirectoryTools
-              noun="customers"
-              query={list.query}
-              status={list.status}
-              onSearch={list.search}
-              onStatus={list.filter}
-              onRefresh={list.reload}
-              loading={list.loading}
-            />
-            <FormError message={list.loadError} />
-            {list.loading ? (
-              <p className="directory-loading" role="status">
-                Loading customers…
-              </p>
-            ) : list.loadError ? null : list.items.length ? (
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Customer</th>
-                      <th>GSTIN / location</th>
-                      <th>Status</th>
-                      <th>
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.items.map((customer) => (
-                      <tr key={customer.id}>
-                        <td>
-                          <div className="person">
-                            <Avatar name={customer.name} />
-                            <div>
-                              <strong>{customer.name}</strong>
-                              <small>
-                                {customer.code} ·{' '}
-                                {customer.email ||
-                                  customer.phone ||
-                                  'No contact added'}
-                              </small>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <strong className="table-detail">
-                            {customer.gstin || 'GSTIN not provided'}
-                          </strong>
-                          <small className="table-subdetail">
-                            {customer.address.city} ·{' '}
-                            {customer.address.postalCode}
-                          </small>
-                        </td>
-                        <td>
-                          <Badge
-                            tone={customer.archivedAt ? 'neutral' : 'green'}
-                          >
-                            {customer.archivedAt ? 'Archived' : 'Active'}
-                          </Badge>
-                        </td>
-                        <td>
-                          <button
-                            className="button button-secondary button-small"
-                            onClick={() => open(customer)}
-                          >
-                            {canManage && !customer.archivedAt
-                              ? 'Edit customer'
-                              : 'View customer'}
-                            <Icon name="chevron" size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <EmptyState
-                icon="users"
-                title={
-                  list.query || list.status !== 'active'
-                    ? 'No matching customers'
-                    : 'Meet your first customer'
-                }
+      {!recordId && (
+        <section className="surface directory business-directory">
+          <PageActions>
+            {canManage && (
+              <button
+                className="button button-primary"
+                onClick={() => open(null)}
               >
-                Add a customer to keep their details in one place.
-              </EmptyState>
+                <Icon name="plus" size={17} />
+                Add customer
+              </button>
             )}
-            <DirectoryPagination
-              offset={list.offset}
-              count={list.items.length}
-              hasMore={list.hasMore}
-              loading={list.loading}
-              onChange={list.setOffset}
-            />
-          </>
-        ) : (
-          <EmptyState icon="lock" title="Customer directory is restricted">
-            You can create customers with your current access.
-          </EmptyState>
-        )}
-      </section>
+          </PageActions>
+          {canRead ? (
+            <>
+              <DirectoryTools
+                noun="customers"
+                query={list.query}
+                status={list.status}
+                onSearch={list.search}
+                onStatus={list.filter}
+                onRefresh={list.reload}
+                loading={list.loading}
+              />
+              <FormError message={list.loadError} />
+              {list.loading ? (
+                <p className="directory-loading" role="status">
+                  Loading customers…
+                </p>
+              ) : list.loadError ? null : list.items.length ? (
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Customer</th>
+                        <th>GSTIN / location</th>
+                        <th>Status</th>
+                        <th>
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.items.map((customer) => (
+                        <tr key={customer.id}>
+                          <td>
+                            <div className="person">
+                              <Avatar name={customer.name} />
+                              <div>
+                                <strong>{customer.name}</strong>
+                                <small>
+                                  {customer.code} ·{' '}
+                                  {customer.email ||
+                                    customer.phone ||
+                                    'No contact added'}
+                                </small>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <strong className="table-detail">
+                              {customer.gstin || 'GSTIN not provided'}
+                            </strong>
+                            <small className="table-subdetail">
+                              {customer.address.city} ·{' '}
+                              {customer.address.postalCode}
+                            </small>
+                          </td>
+                          <td>
+                            <Badge
+                              tone={customer.archivedAt ? 'neutral' : 'green'}
+                            >
+                              {customer.archivedAt ? 'Archived' : 'Active'}
+                            </Badge>
+                          </td>
+                          <td>
+                            <button
+                              className="button button-secondary button-small"
+                              onClick={() => open(customer)}
+                            >
+                              {canManage && !customer.archivedAt
+                                ? 'Edit customer'
+                                : 'View customer'}
+                              <Icon name="chevron" size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState
+                  icon="users"
+                  title={
+                    list.query || list.status !== 'active'
+                      ? 'No matching customers'
+                      : 'Meet your first customer'
+                  }
+                >
+                  Add a customer to keep their details in one place.
+                </EmptyState>
+              )}
+              <DirectoryPagination
+                offset={list.offset}
+                count={list.items.length}
+                hasMore={list.hasMore}
+                loading={list.loading}
+                onChange={list.setOffset}
+              />
+            </>
+          ) : (
+            <EmptyState icon="lock" title="Customer directory is restricted">
+              You can create customers with your current access.
+            </EmptyState>
+          )}
+        </section>
+      )}
       {editing !== undefined && (
-        <Dialog
+        <RecordPage
           title={
             editing
               ? `${canManage && !editing.archivedAt ? 'Edit' : 'View'} customer`
@@ -174,10 +194,10 @@ export function CustomersScreen({
           }
           onClose={close}
           busy={busy}
-          wide
         >
           <FormError message={formError || error} />
           <form
+            onChange={() => setDirty(true)}
             onSubmit={(event) => {
               const data = formValues(event);
               const fields = Object.fromEntries(
@@ -205,7 +225,8 @@ export function CustomersScreen({
                   editing ? 'PUT' : 'POST',
                 );
                 list.reload();
-                close();
+                setDirty(false);
+                onRecordNavigate?.(undefined, true);
               });
             }}
           >
@@ -322,7 +343,8 @@ export function CustomersScreen({
                         'PUT',
                       );
                       list.reload();
-                      close();
+                      setDirty(false);
+                      onRecordNavigate?.(undefined, true);
                     });
                 }}
               >
@@ -330,7 +352,7 @@ export function CustomersScreen({
               </button>
             </div>
           )}
-        </Dialog>
+        </RecordPage>
       )}
     </>
   );

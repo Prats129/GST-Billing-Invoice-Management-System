@@ -225,6 +225,12 @@ separate from vendor approval, production signing and native Windows acceptance.
 
 ## Invoice workspace (Phase 5)
 
+Saved records have their own URLs: `#/invoices/:id`, `#/customers/:id` and
+`#/catalog/:id`. Refreshing a detail page reopens that record; use **All invoices**
+or **Back to list** to return. New records use `/new` within each section.
+Customer and catalog forms are pages; invoice customer/item selectors remain dialogs.
+Unsaved edits prompt before leaving and are not saved by refreshing.
+
 After updating dependencies, run `pnpm db:migrate` and restart `pnpm dev`. Sign in
 as the owner and open **Invoices → New invoice**. Choose a customer, add catalog
 items, enter quantities/discounts, confirm the supported supply facts and choose

@@ -60,8 +60,15 @@ export const viewInfo = {
 >;
 export type View = keyof typeof viewInfo;
 export function currentView(): View {
-  const value = window.location.hash.replace(/^#\/?/, '');
+  const value = window.location.hash.replace(/^#\/?/, '').split('/')[0] ?? '';
   return Object.hasOwn(viewInfo, value) ? (value as View) : 'overview';
+}
+export function currentRoute(): string {
+  const view = currentView();
+  const parts = window.location.hash.replace(/^#\/?/, '').split('/');
+  return ['invoices', 'customers', 'catalog'].includes(view) && parts.length > 1
+    ? `${view}/${parts.slice(1).join('/')}`
+    : view;
 }
 export const businessViews: View[] = [
   'business',

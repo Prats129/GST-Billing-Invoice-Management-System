@@ -1,5 +1,14 @@
 # Review coverage
 
+## Record detail routes (2026-11-05)
+
+- Batch 1: Preserve existing hash navigation and add invoice, customer and catalog detail URLs. Direct record loading uses organization-scoped endpoints, independent of directory pagination. Customer/catalog editors become pages; invoice pickers remain dialogs.
+- Retain workspace unsaved-change confirmation for route changes and add a reload/close warning for dirty editors. Loading failures remain on the requested record URL with back/retry controls.
+- Batch 2: Web build, TypeScript and lint passed. Initial browser run passed customer/catalog refresh and unsaved history checks; it exposed a stale invoice list on return from a detail page. Fixed list loading to refresh when returning to list routes and avoid background directory requests on detail pages. Updated old modal/reload test expectations.
+
+- Batch 3: Updated the synthetic correction fixture to support GET by its new detail URL. Removed obsolete view-only navigation bookkeeping and retained page-title focus on detail-route changes.
+- Final verification: all 15 browser tests passed in Chrome on Windows, including real disposable-database customer/catalog refresh, customer Back/Forward and unsaved cancellation, invoice draft and finalized-record refresh, issuance and printing, correction controls, MFA/entitlements, mobile layouts, invalid IDs and unavailable-record retry. Production web build, web/test TypeScript, repository lint, repository formatting and whitespace checks passed. Browser tests used isolated test databases; no real workspace records were changed. No schema, backend authorization or dependency changes were needed.
+
 ## Ordinary invoice release after owner-confirmed CA review
 
 The project owner confirmed on 2026-11-05 that their CA reviewed and approved the

@@ -36,6 +36,7 @@ import {
   businessViews,
   canOpenView,
   currentView,
+  currentRoute,
   viewInfo,
 } from './workspace-navigation.js';
 import type { View } from './workspace-navigation.js';
@@ -102,7 +103,8 @@ export function Workspace({
   const [view, setView] = useState<View>(() =>
     ['security', 'system'].includes(currentView()) ? 'overview' : currentView(),
   );
-  const lastView = useRef<View>(view);
+  const [route, setRoute] = useState(currentRoute);
+  const lastRoute = useRef(route);
   const [settingsTab, setSettingsTab] = useState<'security' | 'system' | null>(
     () => {
       const route = currentView();
@@ -142,27 +144,32 @@ export function Workspace({
     setRoles([]);
     setAudit([]);
   }, []);
-  const navigate = useCallback((next: View) => {
+  const navigate = useCallback((next: View, id?: string, replace = false) => {
+    const nextRoute = id === undefined ? next : `${next}/${id}`;
     if (next === 'security' || next === 'system') {
       setSettingsTab(next);
       setMobileNav(false);
       return;
     }
-    if (next === lastView.current && currentView() === next) {
+    if (nextRoute === lastRoute.current && currentRoute() === nextRoute) {
       setMobileNav(false);
       return;
     }
     if (
-      next !== lastView.current &&
+      !replace &&
+      nextRoute !== lastRoute.current &&
       unsaved.current &&
       !window.confirm('Discard the unsaved changes in this workspace?')
     )
       return;
     unsaved.current = false;
-    lastView.current = next;
     setSettingsTab(null);
     setView(next);
-    window.location.hash = `/${next}`;
+    lastRoute.current = nextRoute;
+    setRoute(nextRoute);
+    if (replace)
+      window.history.replaceState(window.history.state, '', `#/${nextRoute}`);
+    else window.location.hash = `/${nextRoute}`;
     setMobileNav(false);
     setError('');
     setRoleOffset(0);
@@ -171,12 +178,13 @@ export function Workspace({
   useEffect(() => {
     const changed = () => {
       const next = currentView();
+      const nextRoute = currentRoute();
       if (next === 'security' || next === 'system') {
         setSettingsTab(next);
         window.history.replaceState(
           window.history.state,
           '',
-          '#/' + lastView.current,
+          '#/' + lastRoute.current,
         );
         return;
       }
@@ -184,25 +192,26 @@ export function Workspace({
         window.history.replaceState(
           window.history.state,
           '',
-          '#/' + lastView.current,
+          '#/' + lastRoute.current,
         );
         return;
       }
       if (
-        next !== lastView.current &&
+        nextRoute !== lastRoute.current &&
         unsaved.current &&
         !window.confirm('Discard the unsaved changes in this workspace?')
       ) {
         window.history.replaceState(
           window.history.state,
           '',
-          '#/' + lastView.current,
+          '#/' + lastRoute.current,
         );
         return;
       }
-      if (next !== lastView.current) unsaved.current = false;
+      if (nextRoute !== lastRoute.current) unsaved.current = false;
+      lastRoute.current = nextRoute;
+      setRoute(nextRoute);
       setSettingsTab(null);
-      lastView.current = next;
       setView(next);
       setRoleOffset(0);
       setMemberOffset(0);
@@ -365,10 +374,9 @@ export function Workspace({
   const activeView = !tenantLoading && context && !allowed ? 'overview' : view;
   useEffect(() => {
     if (!ready) return;
-    lastView.current = activeView;
     document.title = `${viewInfo[activeView].title} · GST Billing`;
     document.getElementById('page-title')?.focus({ preventScroll: true });
-  }, [activeView, ready]);
+  }, [activeView, ready, route]);
   useEffect(() => {
     let active = true;
     if (activeView !== 'activity' || !canAudit || !selected) return;
@@ -936,13 +944,40 @@ export function Workspace({
                     <BusinessProfileScreen key={selected} {...businessProps} />
                   )}
                   {activeView === 'customers' && canCustomers && (
-                    <CustomersScreen key={selected} {...businessProps} />
+                    <CustomersScreen
+                      key={selected}
+                      {...businessProps}
+                      recordId={
+                        route.split('/').slice(1).join('/') || undefined
+                      }
+                      onRecordNavigate={(id, replace) =>
+                        navigate('customers', id, replace)
+                      }
+                    />
                   )}
                   {activeView === 'catalog' && canCatalog && (
-                    <CatalogScreen key={selected} {...businessProps} />
+                    <CatalogScreen
+                      key={selected}
+                      {...businessProps}
+                      recordId={
+                        route.split('/').slice(1).join('/') || undefined
+                      }
+                      onRecordNavigate={(id, replace) =>
+                        navigate('catalog', id, replace)
+                      }
+                    />
                   )}
                   {activeView === 'invoices' && (
-                    <InvoicesScreen key={selected} {...businessProps} />
+                    <InvoicesScreen
+                      key={selected}
+                      {...businessProps}
+                      recordId={
+                        route.split('/').slice(1).join('/') || undefined
+                      }
+                      onRecordNavigate={(id, replace) =>
+                        navigate('invoices', id, replace)
+                      }
+                    />
                   )}
                   {activeView === 'roles' && canRoles && (
                     <RolesPanel

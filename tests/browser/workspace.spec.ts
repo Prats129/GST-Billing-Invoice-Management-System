@@ -528,9 +528,11 @@ test('mobile drawer retains labels and opens full-screen settings without nested
     ),
   ).toBe(true);
   await page.getByRole('button', { name: 'Add item', exact: true }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/#\/catalog\/new$/);
+  await expect(page.locator('.record-page')).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Back to list', exact: true }).click();
+  await expect(page).toHaveURL(/#\/catalog$/);
 });
 
 test('restricted permissions filter settings tabs and legacy account hashes open the modal', async ({
@@ -618,4 +620,32 @@ test('recent-document errors can be retried and unavailable preference storage d
   await expect(
     page.getByRole('button', { name: 'Expand sidebar', exact: true }),
   ).toBeVisible();
+});
+
+test('invalid and unavailable record links preserve their URL and offer recovery', async ({
+  page,
+}) => {
+  const { unexpected } = await workspace(page);
+  await page.goto(origin + '/#/customers/not-an-id');
+  await expect(page.getByRole('alert')).toContainText('record link is invalid');
+  await expect(page).toHaveURL(/#\/customers\/not-an-id$/);
+  await page.getByRole('button', { name: 'Back to list', exact: true }).click();
+  await expect(page).toHaveURL(/#\/customers$/);
+  const id = '33333333-3333-4333-8333-333333333333';
+  await page.route('**/api/v1/organizations/*/catalog/' + id, (route) =>
+    route.fulfill({
+      status: 404,
+      json: { error: { code: 'NOT_FOUND', message: 'Not found' } },
+    }),
+  );
+  await page.goto(origin + '/#/catalog/' + id);
+  await expect(page.getByRole('alert')).toContainText(
+    'record could not be loaded',
+  );
+  await expect(page).toHaveURL(new RegExp('#/catalog/' + id + '$'));
+  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText(
+    'record could not be loaded',
+  );
+  expect(unexpected).toEqual([]);
 });

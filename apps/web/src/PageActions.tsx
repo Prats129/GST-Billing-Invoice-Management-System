@@ -10,7 +10,16 @@ export function useUnsavedChanges(dirty: boolean) {
   const notify = useContext(UnsavedChangesContext);
   useEffect(() => {
     notify(dirty);
-    return () => notify(false);
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => {
+      notify(false);
+      window.removeEventListener('beforeunload', beforeUnload);
+    };
   }, [dirty, notify]);
 }
 export function PageActions({ children }: { children: ReactNode }) {

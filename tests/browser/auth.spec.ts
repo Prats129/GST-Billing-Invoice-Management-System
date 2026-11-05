@@ -252,6 +252,7 @@ test('account appearance persists across logins, follows system mode and preserv
   await expect(page.getByLabel('Notes', { exact: true })).toHaveValue(
     'Preserve my draft when changing colors',
   );
+  page.once('dialog', (dialog) => void dialog.accept());
   await page.reload();
   await expect(
     page.getByRole('button', { name: /^Account menu for/ }),
@@ -560,7 +561,7 @@ test('business setup, customer archive/restore and catalog classification review
     .getByRole('link', { name: 'Customers', exact: true })
     .click();
   await page.getByRole('button', { name: 'Add customer', exact: true }).click();
-  const editor = page.getByRole('dialog');
+  const editor = page.locator('.record-page');
   await editor
     .getByLabel('Customer name', { exact: true })
     .fill('Browser customer');
@@ -576,7 +577,37 @@ test('business setup, customer archive/restore and catalog classification review
   await editor
     .getByRole('button', { name: 'Create customer', exact: true })
     .click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(editor).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Edit customer', exact: true })
+    .click();
+  await expect(page).toHaveURL(/#\/customers\/[0-9a-f-]{36}$/);
+  const customerUrl = page.url();
+  await page.reload();
+  await expect(editor.getByLabel('Customer name', { exact: true })).toHaveValue(
+    'Browser customer',
+  );
+  await editor
+    .getByLabel('Customer name', { exact: true })
+    .fill('Unsaved change');
+  page.once('dialog', (dialog) => void dialog.dismiss());
+  await editor
+    .getByRole('button', { name: 'Back to list', exact: true })
+    .click();
+  await expect(page).toHaveURL(customerUrl);
+  await expect(editor.getByLabel('Customer name', { exact: true })).toHaveValue(
+    'Unsaved change',
+  );
+  page.once('dialog', (dialog) => void dialog.accept());
+  await editor
+    .getByRole('button', { name: 'Back to list', exact: true })
+    .click();
+  await page.goBack();
+  await expect(editor.getByLabel('Customer name', { exact: true })).toHaveValue(
+    'Browser customer',
+  );
+  await page.goForward();
+  await expect(editor).toHaveCount(0);
   await page
     .getByRole('button', { name: 'Edit customer', exact: true })
     .click();
@@ -584,7 +615,7 @@ test('business setup, customer archive/restore and catalog classification review
   await editor
     .getByRole('button', { name: 'Archive customer', exact: true })
     .click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(editor).toHaveCount(0);
   await page
     .getByLabel('Record status', { exact: true })
     .selectOption('archived');
@@ -594,7 +625,7 @@ test('business setup, customer archive/restore and catalog classification review
   await editor
     .getByRole('button', { name: 'Restore customer', exact: true })
     .click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(editor).toHaveCount(0);
   await page
     .getByLabel('Record status', { exact: true })
     .selectOption('active');
@@ -618,9 +649,15 @@ test('business setup, customer archive/restore and catalog classification review
   await editor
     .getByRole('button', { name: 'Create item', exact: true })
     .click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(editor).toHaveCount(0);
   await expect(page.getByText('₹1,234.5678', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Edit item', exact: true }).click();
+  await expect(page).toHaveURL(/#\/catalog\/[0-9a-f-]{36}$/);
+  await page.reload();
+  await expect(editor.getByLabel('Item name', { exact: true })).toHaveValue(
+    'Browser product',
+  );
+
   await editor
     .getByLabel('Review reference', { exact: true })
     .fill('Browser-only classification test source');
@@ -633,7 +670,7 @@ test('business setup, customer archive/restore and catalog classification review
     .click();
   await expect(editor.getByText(/Revision 1 · 100630/)).toBeVisible();
   await editor
-    .getByRole('button', { name: 'Close dialog', exact: true })
+    .getByRole('button', { name: 'Back to list', exact: true })
     .click();
   await page.getByRole('button', { name: 'Edit item', exact: true }).click();
   await editor.getByLabel('GST rate (%)', { exact: true }).fill('12');
@@ -644,7 +681,7 @@ test('business setup, customer archive/restore and catalog classification review
     }),
   ).toHaveCount(0);
   await editor.getByRole('button', { name: 'Save item', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(editor).toHaveCount(0);
   await expect(page.getByText('Needs review', { exact: true })).toBeVisible();
   await page.screenshot({
     path: 'test-results/ui-phase3-catalog-desktop.png',
@@ -692,7 +729,9 @@ test('business setup, customer archive/restore and catalog classification review
   expect(
     await editor.evaluate((node) => node.scrollWidth <= node.clientWidth),
   ).toBe(true);
-  await page.keyboard.press('Escape');
+  await editor
+    .getByRole('button', { name: 'Back to list', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await openBusiness(page, 'Business setup');
   await expect(
@@ -886,10 +925,9 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
   } finally {
     await printTab.close();
   }
+  const documentUrl = page.url();
   await page.reload();
-  await page
-    .getByRole('button', { name: 'Open document', exact: true })
-    .click();
+  await expect(page).toHaveURL(documentUrl);
   await expect(page.getByLabel('Quantity 1', { exact: true })).toHaveValue(
     '2.500000',
   );
@@ -934,9 +972,6 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByText('Cancelled', { exact: true })).toBeVisible();
   await page.reload();
-  await page
-    .getByRole('button', { name: 'Open document', exact: true })
-    .click();
   await expect(
     page.getByText(/Cancelled: Duplicate draft created by mistake/),
   ).toBeVisible();
@@ -957,9 +992,7 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
   });
   expect(fresh.status()).toBe(201);
   await page.setViewportSize({ width: 1280, height: 900 });
-  // The invoice editor uses the same hash as the list. Reload explicitly so an
-  // API-created fixture is shown in the list rather than retaining that editor.
-  await page.reload();
+  await page.getByRole('button', { name: 'All invoices' }).click();
   await expect(
     page.getByRole('heading', { name: 'Invoices', exact: true }),
   ).toBeVisible();
@@ -1009,12 +1042,10 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
       exact: true,
     }),
   ).toHaveCount(0);
+  await expect(page).toHaveURL(
+    new RegExp('#/invoices/' + issuedRecord.id + '$'),
+  );
   await page.reload();
-  await page
-    .getByRole('row')
-    .filter({ hasText: issuedRecord.number })
-    .getByRole('button', { name: 'Open document', exact: true })
-    .click();
   await expect(
     page
       .frameLocator('iframe[title="Invoice A4 preview"]')
@@ -1082,6 +1113,9 @@ test('correction dialogs submit and edit versioned original-line value adjustmen
       correction: body,
     };
     await route.fulfill({ status: 201, json: correction });
+  });
+  await page.route(`${base}/${correctionId}`, async (route) => {
+    await route.fulfill({ json: correction });
   });
   await page.route(`${base}/${correctionId}/correction`, async (route) => {
     const body = route.request().postDataJSON();

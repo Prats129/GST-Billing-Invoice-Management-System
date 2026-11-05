@@ -1,4 +1,4 @@
-import { PageActions } from '../PageActions.js';
+import { PageActions, useUnsavedChanges } from '../PageActions.js';
 import { useState } from 'react';
 import {
   catalogInputSchema,
@@ -11,9 +11,12 @@ import {
 import type { CatalogView, TaxRevisionView } from '@gst/contracts';
 import { securityRequest } from '../security-api.js';
 import { formText, formValues } from '../security-forms.js';
-import { Badge, Dialog, EmptyState, Icon, formatDate } from '../ui.js';
+import { Badge, EmptyState, Icon, formatDate } from '../ui.js';
 import {
   DirectoryPagination,
+  RecordPage,
+  RecordLoading,
+  useRecordPage,
   DirectoryTools,
   FormError,
   SelectField,
@@ -22,6 +25,8 @@ import {
 } from './shared.js';
 import type { BusinessScreenProps } from './shared.js';
 export function CatalogScreen({
+  recordId,
+  onRecordNavigate,
   readOnly = false,
   basePath,
   permissions,
@@ -37,167 +42,180 @@ export function CatalogScreen({
   const list = useDirectory<CatalogView>(
     `${basePath}/catalog`,
     catalogPageSchema,
-    canRead,
+    canRead && !recordId,
   );
   const [editing, setEditing] = useState<CatalogView | null | undefined>();
   const [formError, setFormError] = useState('');
   const [dirty, setDirty] = useState(false);
   const [history, setHistory] = useState<TaxRevisionView[] | null>(null);
+  useUnsavedChanges(dirty);
   const open = (item: CatalogView | null) => {
-    onClearError();
-    setFormError('');
-    setEditing(item);
-    setDirty(false);
-    setHistory(null);
+    onRecordNavigate?.(item?.id ?? 'new');
   };
-  const close = () => {
-    setEditing(undefined);
-    setFormError('');
-    onClearError();
-  };
+  const close = () => onRecordNavigate?.();
+  const detail = useRecordPage(
+    `${basePath}/catalog`,
+    recordId,
+    catalogViewSchema,
+    (record) => {
+      setEditing(record);
+      setDirty(false);
+      setFormError('');
+      onClearError();
+      setHistory(null);
+    },
+  );
+  if (recordId && (detail.loading || detail.error))
+    return <RecordLoading {...detail} onBack={close} onRetry={detail.retry} />;
   return (
     <>
-      <section className="surface directory business-directory">
-        <PageActions>
-          {canManage && (
-            <button
-              className="button button-primary"
-              onClick={() => open(null)}
-            >
-              <Icon name="plus" size={17} />
-              Add item
-            </button>
-          )}
-        </PageActions>
-        {canRead ? (
-          <>
-            <DirectoryTools
-              noun="catalog"
-              query={list.query}
-              status={list.status}
-              onSearch={list.search}
-              onStatus={list.filter}
-              onRefresh={list.reload}
-              loading={list.loading}
-            />
-            <FormError message={list.loadError} />
-            {list.loading ? (
-              <p className="directory-loading" role="status">
-                Loading catalog…
-              </p>
-            ) : list.loadError ? null : list.items.length ? (
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th>Price / GST</th>
-                      <th>Classification</th>
-                      <th>
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {list.items.map((item) => (
-                      <tr key={item.id}>
-                        <td>
-                          <div className="person">
-                            <span className="feature-icon">
-                              <Icon
-                                name={item.kind === 'service' ? 'key' : 'roles'}
-                                size={19}
-                              />
-                            </span>
-                            <div>
-                              <strong>{item.name}</strong>
-                              <small>
-                                {item.code} ·{' '}
-                                {item.kind === 'service'
-                                  ? 'Service'
-                                  : 'Product'}{' '}
-                                · {item.unitCode}
-                              </small>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <strong className="table-detail">
-                            {formatPrice(item.price)}
-                          </strong>
-                          <small className="table-subdetail">
-                            {item.priceIncludesGst
-                              ? 'GST included'
-                              : 'GST excluded'}{' '}
-                            · {item.tax.gstPercent}%
-                          </small>
-                        </td>
-                        <td>
-                          <div className="badge-wrap">
-                            <Badge
-                              tone={item.tax.verifiedAt ? 'green' : 'amber'}
-                            >
-                              {item.tax.verifiedAt
-                                ? 'Reviewed'
-                                : 'Needs review'}
-                            </Badge>
-                            {item.archivedAt && <Badge>Archived</Badge>}
-                          </div>
-                          <small className="table-subdetail">
-                            {item.tax.hsnSac} · from {item.tax.effectiveFrom}
-                          </small>
-                        </td>
-                        <td>
-                          <button
-                            className="button button-secondary button-small"
-                            onClick={() => open(item)}
-                          >
-                            {canManage && !item.archivedAt
-                              ? 'Edit item'
-                              : 'View item'}
-                            <Icon name="chevron" size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <EmptyState
-                icon="roles"
-                title={
-                  list.query || list.status !== 'active'
-                    ? 'No matching items'
-                    : 'Build your catalog'
-                }
+      {!recordId && (
+        <section className="surface directory business-directory">
+          <PageActions>
+            {canManage && (
+              <button
+                className="button button-primary"
+                onClick={() => open(null)}
               >
-                Add your products and services with prices and units.
-              </EmptyState>
+                <Icon name="plus" size={17} />
+                Add item
+              </button>
             )}
-            <DirectoryPagination
-              offset={list.offset}
-              count={list.items.length}
-              hasMore={list.hasMore}
-              loading={list.loading}
-              onChange={list.setOffset}
-            />
-          </>
-        ) : (
-          <EmptyState icon="lock" title="Catalog access is restricted">
-            You can create items with your current access.
-          </EmptyState>
-        )}
-      </section>
-      <div className="info-note">
-        <Icon name="info" size={18} />
-        <p>
-          Review HSN/SAC classifications and GST rates against the current
-          notification before using them for billing.
-        </p>
-      </div>
+          </PageActions>
+          {canRead ? (
+            <>
+              <DirectoryTools
+                noun="catalog"
+                query={list.query}
+                status={list.status}
+                onSearch={list.search}
+                onStatus={list.filter}
+                onRefresh={list.reload}
+                loading={list.loading}
+              />
+              <FormError message={list.loadError} />
+              {list.loading ? (
+                <p className="directory-loading" role="status">
+                  Loading catalog…
+                </p>
+              ) : list.loadError ? null : list.items.length ? (
+                <div className="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Price / GST</th>
+                        <th>Classification</th>
+                        <th>
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {list.items.map((item) => (
+                        <tr key={item.id}>
+                          <td>
+                            <div className="person">
+                              <span className="feature-icon">
+                                <Icon
+                                  name={
+                                    item.kind === 'service' ? 'key' : 'roles'
+                                  }
+                                  size={19}
+                                />
+                              </span>
+                              <div>
+                                <strong>{item.name}</strong>
+                                <small>
+                                  {item.code} ·{' '}
+                                  {item.kind === 'service'
+                                    ? 'Service'
+                                    : 'Product'}{' '}
+                                  · {item.unitCode}
+                                </small>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <strong className="table-detail">
+                              {formatPrice(item.price)}
+                            </strong>
+                            <small className="table-subdetail">
+                              {item.priceIncludesGst
+                                ? 'GST included'
+                                : 'GST excluded'}{' '}
+                              · {item.tax.gstPercent}%
+                            </small>
+                          </td>
+                          <td>
+                            <div className="badge-wrap">
+                              <Badge
+                                tone={item.tax.verifiedAt ? 'green' : 'amber'}
+                              >
+                                {item.tax.verifiedAt
+                                  ? 'Reviewed'
+                                  : 'Needs review'}
+                              </Badge>
+                              {item.archivedAt && <Badge>Archived</Badge>}
+                            </div>
+                            <small className="table-subdetail">
+                              {item.tax.hsnSac} · from {item.tax.effectiveFrom}
+                            </small>
+                          </td>
+                          <td>
+                            <button
+                              className="button button-secondary button-small"
+                              onClick={() => open(item)}
+                            >
+                              {canManage && !item.archivedAt
+                                ? 'Edit item'
+                                : 'View item'}
+                              <Icon name="chevron" size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState
+                  icon="roles"
+                  title={
+                    list.query || list.status !== 'active'
+                      ? 'No matching items'
+                      : 'Build your catalog'
+                  }
+                >
+                  Add your products and services with prices and units.
+                </EmptyState>
+              )}
+              <DirectoryPagination
+                offset={list.offset}
+                count={list.items.length}
+                hasMore={list.hasMore}
+                loading={list.loading}
+                onChange={list.setOffset}
+              />
+            </>
+          ) : (
+            <EmptyState icon="lock" title="Catalog access is restricted">
+              You can create items with your current access.
+            </EmptyState>
+          )}
+        </section>
+      )}
+      {!recordId && (
+        <div className="info-note">
+          <Icon name="info" size={18} />
+          <p>
+            Review HSN/SAC classifications and GST rates against the current
+            notification before using them for billing.
+          </p>
+        </div>
+      )}
       {editing !== undefined && (
-        <Dialog
+        <RecordPage
           title={
             editing
               ? `${canManage && !editing.archivedAt ? 'Edit' : 'View'} item`
@@ -210,7 +228,6 @@ export function CatalogScreen({
           }
           onClose={close}
           busy={busy}
-          wide
         >
           <FormError message={formError || error} />
           <form
@@ -253,7 +270,8 @@ export function CatalogScreen({
                   editing ? 'PUT' : 'POST',
                 );
                 list.reload();
-                close();
+                setDirty(false);
+                onRecordNavigate?.(undefined, true);
               });
             }}
           >
@@ -546,7 +564,8 @@ export function CatalogScreen({
                         'PUT',
                       );
                       list.reload();
-                      close();
+                      setDirty(false);
+                      onRecordNavigate?.(undefined, true);
                     });
                 }}
               >
@@ -554,7 +573,7 @@ export function CatalogScreen({
               </button>
             </div>
           )}
-        </Dialog>
+        </RecordPage>
       )}
     </>
   );

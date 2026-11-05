@@ -547,3 +547,11 @@
     font-size: 12px;
   }
 }
+
+.record-page {
+  padding: 1rem;
+  max-width: 72rem;
+}
+.record-page > .section-heading {
+  margin-bottom: 1rem;
+}
