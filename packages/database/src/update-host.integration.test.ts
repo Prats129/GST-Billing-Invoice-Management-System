@@ -305,6 +305,7 @@ test('guided recovery restores the original database/release state after an admi
   );
   await expect(runAssistedUpdate(f.options)).rejects.toMatchObject({
     recoveryRequired: true,
+    phase: 'validating',
   });
   expect(await readInstallationState(f.recovery.journalParent)).toMatchObject({
     version: '1.2.0',

@@ -31,6 +31,8 @@ const privileges: Privilege[] = [
 // automatic grants. Host recovery and schema migration stay operator-only.
 const policy: Record<string, readonly Privilege[]> = {
   organizations: ['SELECT', 'UPDATE'],
+  organization_write_controls: ['SELECT'],
+  owner_setup_tokens: ['SELECT', 'UPDATE'],
   organization_entitlements: ['SELECT'],
   business_profiles: ['SELECT', 'INSERT', 'UPDATE'],
   gst_registrations: ['SELECT', 'INSERT', 'UPDATE'],

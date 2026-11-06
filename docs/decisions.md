@@ -92,3 +92,15 @@ CI action major versions follow the current official
 [checkout](https://github.com/actions/checkout),
 [setup-node](https://github.com/actions/setup-node), and
 [pnpm setup](https://github.com/pnpm/action-setup) usage.
+
+## Platform Admin scope (2026-11-05)
+
+User-approved: one private platform owner with mandatory MFA; separate admin UI/API
+and database in this monorepo; online and offline directory; online onboarding and
+verified SaaS grant application; manual agreements, partial receipts, adjustments
+and balances; exact negotiated prices/dates; externally signed grants; reasoned
+SaaS write pause preserving reads/printing. Organization ownership is never
+platform authority. Publisher keys stay in encrypted offline custody, which is
+not yet prepared. No gateway, invoice-payment tracking, staff access, impersonation,
+feature-flag system, offline remote management or synchronization is introduced.
+Production hosting/signing and postponed native Windows acceptance remain separate.

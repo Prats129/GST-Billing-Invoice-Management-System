@@ -1,0 +1,21 @@
+{
+  "name": "@gst/security",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@gst/contracts": "workspace:*",
+    "argon2": "0.45.1",
+    "otpauth": "9.5.2"
+  }
+}

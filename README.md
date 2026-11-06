@@ -11,6 +11,17 @@ confirmation of CA approval. E-invoicing, correction-note issuance and issued
 cancellation remain gated; no blanket legal-compliance or production-readiness
 claim is made.
 
+## Publisher administration
+
+A separate owner-only Platform Admin app manages online/offline organizations,
+software agreements/receipts, external signing handoffs and approved SaaS operations.
+It has its own database, credentials and MFA; customer ownership grants no platform
+access. See [Platform Admin setup and operations](docs/platform-admin.md).
+Use `pnpm dev:admin` after the separate database/owner setup. The existing `pnpm dev`
+continues to run only the customer application.
+Apply the reviewed customer migration with `pnpm db:migrate` before starting the
+updated customer API; its readiness checks require the new control/setup tables.
+
 ## Prerequisites
 
 - A currently patched Node 24 LTS (`.nvmrc`: 24.22.1) and pnpm 10.34.9.

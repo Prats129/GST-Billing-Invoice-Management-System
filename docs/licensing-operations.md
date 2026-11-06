@@ -5,6 +5,15 @@ and entitlement signing are separate: commercial license grants use an external
 Ed25519 issuer, not a Windows code-signing certificate. No issuer private key is
 embedded, generated in a customer API, or committed to this repository.
 
+## Platform administration update (2026-11-05)
+
+The separate [Platform Admin](platform-admin.md) now provides publisher organization,
+agreement/payment, external signing-request/import and operator-only SaaS onboarding
+and grant-application workflows. Its restricted operator connection is independent
+of tenant RBAC and the customer runtime. It does not mint signatures, replace the
+publisher register, provide a payment gateway or remotely control disconnected hosts.
+Production deployment and signing custody remain external requirements.
+
 ## Confirmed behavior
 
 - A trial lasts exactly 14 days. At the expiry instant, trials and time-limited

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchHealth, fetchReadiness } from './api.js';
+import { OwnerSetup } from './OwnerSetup.js';
 import { Workspace } from './Workspace.js';
 
 export function App() {
@@ -41,6 +42,10 @@ export function App() {
       controller.abort();
     };
   }, [attempt]);
+  if (window.location.hash.startsWith('#/owner-setup/'))
+    return (
+      <OwnerSetup token={window.location.hash.slice('#/owner-setup/'.length)} />
+    );
   return (
     <Workspace
       connection={{ api, database }}

@@ -50,6 +50,13 @@
       "when": 1793812513280,
       "tag": "0006_user_appearance",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793873758261,
+      "tag": "0007_platform_operator",
+      "breakpoints": true
     }
   ]
 }

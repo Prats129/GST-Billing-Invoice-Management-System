@@ -8,6 +8,10 @@ const errors = {
   MFA_REQUIRED: [403, 'Complete two-step verification'],
   PASSWORD_CHANGE_REQUIRED: [403, 'Change your temporary password'],
   INVALID_INPUT: [400, 'Invalid input'],
+  ORGANIZATION_WRITE_PAUSED: [
+    403,
+    'Your provider has paused business changes. Authorized historical viewing and printing remain available.',
+  ],
   ENTITLEMENT_READ_ONLY: [
     403,
     'This organization is read-only because its license or subscription is missing, expired or cannot be verified. Existing authorized records and printing remain available. Contact the host/platform operator.',

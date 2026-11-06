@@ -7,7 +7,10 @@ import { join, resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createDatabase } from '@gst/database';
-import { createIsolatedTestDatabase } from '@gst/database/testing';
+import {
+  createIsolatedTestDatabase,
+  setTestDatabaseToPhase5,
+} from '@gst/database/testing';
 import {
   createEncryptedBackup,
   prepareRecovery,
@@ -510,12 +513,12 @@ test.skipIf(!tools)(
     // manufacture current-release compatibility for another test.
     const oldDigest = await migrationDigest(5);
     const targetDigest = await migrationDigest();
-    await at(sourceName, async (db) => {
-      await db.query('DROP TABLE public.organization_entitlements');
-      await db.query(
-        'DELETE FROM drizzle.__drizzle_migrations WHERE id=(SELECT max(id) FROM drizzle.__drizzle_migrations)',
-      );
-    });
+    const historicalFixture = createDatabase(source!.connectionString);
+    try {
+      await setTestDatabaseToPhase5(historicalFixture);
+    } finally {
+      await historicalFixture.close();
+    }
     const backup = {
       connectionString: source!.connectionString,
       installationId,

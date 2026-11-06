@@ -717,3 +717,30 @@ export const invoiceCancellations = pgTable(
     ),
   ],
 );
+
+// SaaS operator-managed; runtime can only observe the pause and consume setup tokens.
+export const organizationWriteControls = pgTable(
+  'organization_write_controls',
+  {
+    organizationId: uuid('organization_id')
+      .primaryKey()
+      .references(() => organizations.id),
+    paused: boolean('paused').notNull().default(false),
+    reason: text('reason').notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+export const ownerSetupTokens = pgTable('owner_setup_tokens', {
+  organizationId: uuid('organization_id')
+    .primaryKey()
+    .references(() => organizations.id),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
+  tokenHash: text('token_hash').notNull().unique(),
+  initialPasswordHash: text('initial_password_hash'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+});

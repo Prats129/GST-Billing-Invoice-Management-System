@@ -18,3 +18,5 @@ coverage/
 *.dump
 test-results/
 playwright-report/
+
+!.env.admin.example

@@ -6,8 +6,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { createIsolatedTestDatabase } from './testing.js';
-import { auditEvents, organizations, sessions, sql, users } from './index.js';
+import {
+  createIsolatedTestDatabase,
+  setTestDatabaseToPhase5,
+} from './testing.js';
+import { auditEvents, organizations, sessions, sql } from './index.js';
 import {
   createEncryptedBackup,
   migrationDigest,
@@ -43,22 +46,14 @@ beforeAll(async () => {
   await admin.connect();
   directory = await mkdtemp(join(tmpdir(), 'gst-upgrade-test-'));
   // Simulate the old release only in this randomly created test database.
-  await source.database.db.execute(sql`DROP TABLE organization_entitlements`);
-  await source.database.db.execute(
-    sql`DELETE FROM drizzle.__drizzle_migrations WHERE id = (SELECT max(id) FROM drizzle.__drizzle_migrations)`,
-  );
+  await setTestDatabaseToPhase5(source.database);
   await source.database.db
     .insert(organizations)
     .values({ name: 'Older release business', status: 'suspended' });
-  const [user] = await source.database.db
-    .insert(users)
-    .values({
-      edition: 'offline',
-      email: 'upgrade@example.test',
-      name: 'Upgrade fixture',
-      passwordHash: 'fixture-only-not-a-login',
-    })
-    .returning();
+  const inserted = await source.database.db.execute(
+    sql`INSERT INTO users(id,edition,email,name,password_hash) VALUES(gen_random_uuid(),'offline','upgrade@example.test','Upgrade fixture','fixture-only-not-a-login') RETURNING id`,
+  );
+  const user = { id: String(inserted.rows[0]!.id) };
   await source.database.db.insert(sessions).values({
     userId: user!.id,
     edition: 'offline',
@@ -99,7 +94,7 @@ afterAll(async () => {
 async function sourceState() {
   return {
     organizations: await source!.database.db.select().from(organizations),
-    users: await source!.database.db.select().from(users),
+    users: (await source!.database.db.execute(sql`SELECT * FROM users`)).rows,
     sessions: await source!.database.db.select().from(sessions),
     audit: await source!.database.db.select().from(auditEvents),
     history: (

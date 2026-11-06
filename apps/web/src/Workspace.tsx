@@ -417,7 +417,7 @@ export function Workspace({
       if (
         e instanceof ApiError &&
         [401, 403].includes(e.status) &&
-        e.code !== 'ENTITLEMENT_READ_ONLY'
+        !['ENTITLEMENT_READ_ONLY', 'ORGANIZATION_WRITE_PAUSED'].includes(e.code)
       ) {
         clearTenant();
         await refresh();
@@ -431,7 +431,8 @@ export function Workspace({
   const businessProps = {
     readOnly: Boolean(
       context?.entitlement &&
-      !['active', 'development'].includes(context.entitlement.status),
+      (context.entitlement.businessWritesPaused ||
+        !['active', 'development'].includes(context.entitlement.status)),
     ),
     basePath: `/organizations/${selected}`,
     permissions: context?.access.permissions ?? [],
@@ -849,12 +850,17 @@ export function Workspace({
           {!settingsTab && errorBanner}
           {!settingsTab && recovery}
           {context?.entitlement &&
-            !['active', 'development'].includes(context.entitlement.status) && (
+            (context.entitlement.businessWritesPaused ||
+              !['active', 'development'].includes(
+                context.entitlement.status,
+              )) && (
               <div className="warning-note" role="status">
                 <strong>This organization is read-only.</strong>{' '}
-                {context.entitlement.status === 'expired'
-                  ? 'Your trial or subscription has expired. Contact your provider to renew.'
-                  : 'Your license or subscription needs attention. Contact the host or platform operator.'}{' '}
+                {context.entitlement.businessWritesPaused
+                  ? 'Your provider has paused business changes. Contact them for help.'
+                  : context.entitlement.status === 'expired'
+                    ? 'Your trial or subscription has expired. Contact your provider to renew.'
+                    : 'Your license or subscription needs attention. Contact the host or platform operator.'}{' '}
                 You can still view and print records you have permission to
                 access.
               </div>

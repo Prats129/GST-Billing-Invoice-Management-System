@@ -20,6 +20,7 @@ import {
   OrganizationsController,
   SECURITY,
 } from './security/controllers.js';
+import { OwnerSetupController } from './security/owner-setup.controller.js';
 import { IdentityService } from './security/identity.service.js';
 import { OrganizationsService } from './security/organizations.service.js';
 import {
@@ -52,6 +53,7 @@ export async function createApp(
     controllers: [
       HealthController,
       IdentityController,
+      OwnerSetupController,
       OrganizationsController,
       BusinessController,
       InvoicingController,

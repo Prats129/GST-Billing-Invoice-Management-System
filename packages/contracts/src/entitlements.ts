@@ -83,6 +83,7 @@ export const signedEntitlementSchema = z
   .strict();
 export type SignedEntitlement = z.infer<typeof signedEntitlementSchema>;
 export interface EntitlementInfo {
+  businessWritesPaused?: boolean;
   status:
     | 'development'
     | 'missing'

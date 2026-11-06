@@ -1,6 +1,10 @@
 import { readFileSync, statSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
-import { eq, organizationEntitlements } from '@gst/database';
+import {
+  eq,
+  organizationEntitlements,
+  organizationWriteControls,
+} from '@gst/database';
 import type { Permission, EntitlementInfo } from '@gst/contracts';
 import type { Config } from '../config.js';
 import type { Store } from '../security/types.js';
@@ -28,6 +32,20 @@ export class EntitlementsService {
     }
   }
   async describe(tx: Store, orgId: string): Promise<EntitlementInfo> {
+    const value = await this.describeGrant(tx, orgId);
+    if (this.config.DEPLOYMENT_EDITION === 'saas') {
+      const [control] = await tx
+        .select()
+        .from(organizationWriteControls)
+        .where(eq(organizationWriteControls.organizationId, orgId));
+      return { ...value, businessWritesPaused: Boolean(control?.paused) };
+    }
+    return value;
+  }
+  private async describeGrant(
+    tx: Store,
+    orgId: string,
+  ): Promise<EntitlementInfo> {
     if (!this.trust)
       return {
         status:
@@ -69,6 +87,13 @@ export class EntitlementsService {
       (/^(customers|catalog|invoices)\./.test(permission) &&
         !permission.endsWith('.read'));
     if (!businessWrite) return;
+    if (this.config.DEPLOYMENT_EDITION === 'saas') {
+      const [control] = await tx
+        .select()
+        .from(organizationWriteControls)
+        .where(eq(organizationWriteControls.organizationId, orgId));
+      if (control?.paused) deny('ORGANIZATION_WRITE_PAUSED');
+    }
     if (!this.trust) {
       if (this.config.NODE_ENV === 'production') deny('ENTITLEMENT_READ_ONLY');
       return; // Explicitly unlicensed local development; never a production bypass.

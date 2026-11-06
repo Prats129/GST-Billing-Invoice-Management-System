@@ -3,6 +3,7 @@
 export async function assertDatabaseReadiness(
   query: (sql: string) => Promise<{ rows: { owner_guard?: unknown }[] }>,
   entitlements = true,
+  platformControls = true,
 ): Promise<void> {
   await query(
     'SELECT id, name, status, created_at FROM public.organizations LIMIT 0',
@@ -25,8 +26,17 @@ export async function assertDatabaseReadiness(
   await query(
     'SELECT i.id, i.correction, s.digest, c.reason FROM public.invoices i LEFT JOIN public.invoice_snapshots s ON s.organization_id=i.organization_id AND s.invoice_id=i.id LEFT JOIN public.invoice_cancellations c ON c.organization_id=i.organization_id AND c.invoice_id=i.id LIMIT 0',
   );
-  if (entitlements)
+  if (entitlements) {
     await query(
       'SELECT organization_id, highest_sequence, last_observed_at FROM public.organization_entitlements LIMIT 0',
     );
+    if (platformControls) {
+      await query(
+        'SELECT organization_id,paused FROM public.organization_write_controls LIMIT 0',
+      );
+      await query(
+        'SELECT organization_id,token_hash,expires_at FROM public.owner_setup_tokens LIMIT 0',
+      );
+    }
+  }
 }
