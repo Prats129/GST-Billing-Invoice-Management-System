@@ -1294,6 +1294,46 @@ test('authenticator enrollment, recovery-code display and MFA challenge work in 
   await page
     .getByLabel('Authenticator or recovery code', { exact: true })
     .fill(recoveryCode);
+  await page
+    .getByLabel('Remember this device for 30 days', { exact: true })
+    .check();
   await page.getByRole('button', { name: 'Verify', exact: true }).click();
   await expect(page.getByLabel('Organization', { exact: true })).toBeVisible();
+  const remembered = (await page.context().cookies()).find(
+    (cookie) => cookie.name === 'gst_dev_trusted_device',
+  );
+  expect(remembered?.httpOnly).toBe(true);
+  expect(remembered?.sameSite).toBe('Strict');
+  await page.getByRole('button', { name: /^Account menu for/ }).click();
+  await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
+  await signIn(page, ownerEmail, ownerPassword);
+  await expect(page.getByLabel('Organization', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel('Organization', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /^Account menu for/ }).click();
+  await page
+    .getByRole('menuitem', { name: 'Account settings', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Review active sessions', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Remembered devices', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Forget device', exact: true })
+    .click();
+  await expect(
+    page.getByText('No remembered devices.', { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('dialog', { name: 'Settings', exact: true })
+    .getByRole('button', { name: 'Close dialog', exact: true })
+    .click();
+  await page.getByRole('button', { name: /^Account menu for/ }).click();
+  await page.getByRole('menuitem', { name: 'Sign out', exact: true }).click();
+  await signIn(page, ownerEmail, ownerPassword);
+  await expect(
+    page.getByRole('heading', { name: 'Two-step verification', exact: true }),
+  ).toBeVisible();
 });

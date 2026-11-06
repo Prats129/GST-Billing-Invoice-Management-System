@@ -76,7 +76,8 @@ export function PasswordChange({
   busy,
   onComplete,
   forced = false,
-}: SecurityFormProps & { forced?: boolean }) {
+  mfaEnabled = false,
+}: SecurityFormProps & { forced?: boolean; mfaEnabled?: boolean }) {
   return (
     <form
       onSubmit={(event) => {
@@ -87,6 +88,7 @@ export function PasswordChange({
             await mutate('/auth/password', {
               currentPassword: formText(data, 'currentPassword'),
               newPassword: formText(data, 'newPassword'),
+              ...(mfaEnabled ? { code: formText(data, 'code') } : {}),
             }),
           );
         });
@@ -104,6 +106,17 @@ export function PasswordChange({
         />
       </label>
       <PasswordFields />
+      {mfaEnabled && (
+        <label>
+          Fresh authenticator or recovery code
+          <input
+            name="code"
+            required
+            maxLength={64}
+            autoComplete="one-time-code"
+          />
+        </label>
+      )}
       <button disabled={busy}>Change password</button>
     </form>
   );
@@ -160,6 +173,7 @@ export function MfaSetup({
               onComplete(
                 await mutate('/auth/mfa/confirm', {
                   code: formText(data, 'code'),
+                  rememberDevice: data.get('rememberDevice') === 'on',
                 }),
               );
               setSecret('');
@@ -182,6 +196,7 @@ export function MfaSetup({
               autoComplete="one-time-code"
             />
           </label>
+          <RememberDevice />
           <button disabled={busy}>Verify and enable</button>
         </form>
       )}
@@ -201,7 +216,10 @@ export function MfaChallenge({
         event.currentTarget.reset();
         void run(async () => {
           onComplete(
-            await mutate('/auth/mfa/verify', { code: formText(data, 'code') }),
+            await mutate('/auth/mfa/verify', {
+              code: formText(data, 'code'),
+              rememberDevice: data.get('rememberDevice') === 'on',
+            }),
           );
         });
       }}
@@ -216,7 +234,22 @@ export function MfaChallenge({
           autoComplete="one-time-code"
         />
       </label>
+      <RememberDevice />
       <button disabled={busy}>Verify</button>
     </form>
+  );
+}
+function RememberDevice() {
+  return (
+    <div>
+      <label className="check">
+        <input type="checkbox" name="rememberDevice" />
+        Remember this device for 30 days
+      </label>
+      <small>
+        Use only on your own device. Your password is still required at each
+        sign-in.
+      </small>
+    </div>
   );
 }

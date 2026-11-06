@@ -4,6 +4,7 @@ export async function assertDatabaseReadiness(
   query: (sql: string) => Promise<{ rows: { owner_guard?: unknown }[] }>,
   entitlements = true,
   platformControls = true,
+  rememberedDevices = true,
 ): Promise<void> {
   await query(
     'SELECT id, name, status, created_at FROM public.organizations LIMIT 0',
@@ -11,6 +12,10 @@ export async function assertDatabaseReadiness(
   await query(
     'SELECT u.id, m.organization_id, s.token_hash FROM public.users u LEFT JOIN public.organization_memberships m ON m.user_id=u.id LEFT JOIN public.sessions s ON s.user_id=u.id LIMIT 0',
   );
+  if (rememberedDevices)
+    await query(
+      'SELECT token_hash,user_id,edition,credential_hash,expires_at FROM public.trusted_devices LIMIT 0',
+    );
   const guard = await query(
     "SELECT to_regprocedure('public.require_active_owner(uuid)') AS owner_guard",
   );

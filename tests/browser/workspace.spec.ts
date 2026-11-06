@@ -173,7 +173,11 @@ async function workspace(
       result = [
         { id: organizationId, name: 'Aster Trading Co.', isOwner: true },
       ];
-    else if (path === '/organizations/invitations' || path === '/auth/sessions')
+    else if (
+      path === '/organizations/invitations' ||
+      path === '/auth/sessions' ||
+      path === '/auth/trusted-devices'
+    )
       result = [];
     else if (path === '/organizations/' + organizationId)
       result = {

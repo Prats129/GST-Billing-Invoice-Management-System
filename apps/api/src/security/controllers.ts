@@ -77,6 +77,11 @@ export function cookieName(identity: IdentityService) {
     ? '__Host-gst_session'
     : 'gst_dev_session';
 }
+export function trustedCookieName(identity: IdentityService) {
+  return identity.config.TLS_KEY_PATH
+    ? '__Host-gst_trusted_device'
+    : 'gst_dev_trusted_device';
+}
 export function readCookie(request: Request, name: string): string | undefined {
   const values = (request.headers.cookie ?? '')
     .split(';')
@@ -122,6 +127,26 @@ export class SecurityController {
       path: '/',
     });
   }
+  setTrustedCookie(
+    res: Response,
+    remembered: { token: string; expiresAt: Date },
+  ) {
+    res.cookie(trustedCookieName(this.identity), remembered.token, {
+      httpOnly: true,
+      secure: Boolean(this.identity.config.TLS_KEY_PATH),
+      sameSite: 'strict',
+      path: '/',
+      expires: remembered.expiresAt,
+    });
+  }
+  clearTrustedCookie(res: Response) {
+    res.clearCookie(trustedCookieName(this.identity), {
+      httpOnly: true,
+      secure: Boolean(this.identity.config.TLS_KEY_PATH),
+      sameSite: 'strict',
+      path: '/',
+    });
+  }
 }
 
 @ApiTags('identity')
@@ -157,8 +182,11 @@ export class IdentityController extends SecurityController {
       data.password,
       req.socket.remoteAddress ?? 'unknown',
       readCookie(req, cookieName(this.identity)),
+      readCookie(req, trustedCookieName(this.identity)),
     );
     this.setCookie(res, session.token);
+    if (session.remembered) this.setTrustedCookie(res, session.remembered);
+    else this.clearTrustedCookie(res);
     return this.identity.sessionInfo(session);
   }
   @Get('session')
@@ -196,11 +224,24 @@ export class IdentityController extends SecurityController {
   ) {
     await this.identity.revoke(await this.authenticated(req, true), true);
     this.clearCookie(res);
+    this.clearTrustedCookie(res);
     return { ok: true };
   }
   @Get('sessions')
   async sessions(@Req() req: Request) {
     return this.identity.listSessions(await this.authenticated(req));
+  }
+  @Get('trusted-devices')
+  async trustedDevices(@Req() req: Request) {
+    return this.identity.listTrustedDevices(await this.authenticated(req));
+  }
+  @Delete('trusted-devices/:id')
+  async forgetDevice(@Param('id') id: string, @Req() req: Request) {
+    await this.identity.forgetDevice(
+      await this.authenticated(req, true),
+      uuid(id),
+    );
+    return { ok: true };
   }
   @Delete('sessions/:id')
   async revokeSession(@Param('id') id: string, @Req() req: Request) {
@@ -224,8 +265,10 @@ export class IdentityController extends SecurityController {
       session,
       data.currentPassword,
       data.newPassword,
+      data.code,
     );
     this.setCookie(res, fresh.token);
+    this.clearTrustedCookie(res);
     return this.identity.sessionInfo(fresh);
   }
   @Post('mfa/enroll')
@@ -298,6 +341,7 @@ export class IdentityController extends SecurityController {
       disable,
     );
     this.setCookie(res, result.session.token);
+    this.clearTrustedCookie(res);
     return {
       ...(await this.identity.sessionInfo(result.session)),
       recoveryCodes: result.recoveryCodes,
@@ -314,8 +358,11 @@ export class IdentityController extends SecurityController {
       await this.authenticated(req, true),
       data.code,
       confirm,
+      data.rememberDevice,
+      readCookie(req, trustedCookieName(this.identity)),
     );
     this.setCookie(res, result.session.token);
+    if (result.remembered) this.setTrustedCookie(res, result.remembered);
     return {
       ...(await this.identity.sessionInfo(result.session)),
       recoveryCodes: result.recoveryCodes,

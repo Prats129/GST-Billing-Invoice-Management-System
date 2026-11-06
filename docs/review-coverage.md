@@ -2354,3 +2354,53 @@ covered by the full suite. No browser UI changed, so browser workflows were not
 repeated. Native Windows PostgreSQL/service/installer/reboot/LAN and remote CI
 remain unverified. Existing development data/configuration and Git staging were
 preserved; no live recovery candidate was retained outside test fixtures.
+
+# MFA convenience update — 2026-11-06 (completed)
+
+Resumed the interrupted change without altering the staged Platform Admin work.
+Added the billing trusted-device schema/runtime access policy, opaque hashed
+device credentials bound to password/MFA state, 30-day fixed expiry and token
+rotation. Login still requires a password; enrollment is never bypassed.
+SaaS mandatory MFA is now based on ownership or organization/member/role
+administration, rather than everyday billing permissions. Offline MFA remains
+optional and Platform Admin still requires MFA at each new sign-in.
+
+Wired the explicit remember checkbox and Account security device list/revocation.
+Password changes require a fresh MFA/recovery code when MFA is enabled. Password
+changes, MFA changes and sign-out-all invalidate remembered devices. Database
+migration generation and verification are underway; this checkpoint is not a
+claim that the unfinished change has passed tests or been deployed locally.
+
+Verification checkpoint: generated additive migration 0008_trusted_devices and
+snapshot/journal, and added current readiness/runtime-role probes plus reviewed
+prior-release recovery compatibility. Prepared recovery clears device trust so
+old backups cannot resurrect remembered access. The five new MFA integration
+cases passed. Seven real Chrome billing browser tests passed, including the
+remember/login/reload/forget flow and existing desktop/mobile billing workflows.
+API/web production builds and test TypeScript passed. The full unit run passed
+282/283; its certificate recovery failure passed on an isolated six-test rerun.
+The initial full integration run exposed one obsolete mandatory-MFA assertion
+and a new recovery test assertion placed before quarantine was lifted; both test
+issues are corrected and final reruns are pending. Docker was started without
+resetting volumes. All database tests use disposable databases; no live migration
+has been applied at this checkpoint.
+
+Final verification: all 84 enabled integration tests passed (one existing opt-in
+installer test skipped), including the five new security cases, the platform
+auth/operations suite, and real backup/restore, recovery, upgrade and restricted
+runtime grants. All 17 Chrome browser tests passed, covering both applications,
+remembered-device use/revocation, refresh, existing billing and responsive UI.
+The synthetic workspace fixture now mocks the new device-list endpoint; its
+initial unmocked-read failure was fixed without weakening product behavior.
+Workspace/test TypeScript, API/web production builds, repository lint/format and
+whitespace checks passed. The earlier unit certificate failure passed all six
+tests on its focused rerun; no certificate product code was changed.
+
+Applied the additive migration to the confirmed loopback gst_dev database.
+Runtime readiness passes; existing counts remain one organization, one user and
+zero invoices. No existing billing/account data, environment secrets or staged
+changes were replaced. Restart pnpm dev to use the feature; select the explicit
+checkbox during the next billing MFA verification. Platform Admin still requires
+MFA at each new login and fresh proof for sensitive commands. Native Windows
+installer/service/reboot/LAN acceptance and production hosting remain outside
+this change and are not newly verified.

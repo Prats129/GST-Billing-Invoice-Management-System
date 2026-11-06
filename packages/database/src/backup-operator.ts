@@ -433,6 +433,15 @@ async function restoreArchive(
         await restored.query('BEGIN');
         try {
           const cleared = await restored.query('DELETE FROM public.sessions');
+          if (
+            (
+              await restored.query(
+                "SELECT to_regclass('public.trusted_devices') AS name",
+              )
+            ).rows[0]?.name
+          ) {
+            await restored.query('DELETE FROM public.trusted_devices');
+          }
           sessionsInvalidated = cleared.rowCount ?? 0;
           await restored.query(
             'INSERT INTO public.audit_events (action, metadata) VALUES ($1, $2::jsonb)',

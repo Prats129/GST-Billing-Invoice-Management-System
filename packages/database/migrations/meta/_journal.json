@@ -57,6 +57,13 @@
       "when": 1793873758261,
       "tag": "0007_platform_operator",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793938154125,
+      "tag": "0008_trusted_devices",
+      "breakpoints": true
     }
   ]
 }

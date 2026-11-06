@@ -456,6 +456,34 @@ export const sessions = pgTable(
     }),
   ],
 );
+export const trustedDevices = pgTable(
+  'trusted_devices',
+  {
+    id: uuid('id').defaultRandom().notNull().unique(),
+    tokenHash: varchar('token_hash', { length: 64 }).primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    edition: varchar('edition', { length: 8 }).notNull(),
+    credentialHash: varchar('credential_hash', { length: 64 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index('trusted_devices_user_idx').on(t.userId),
+    index('trusted_devices_expiry_idx').on(t.expiresAt),
+    foreignKey({
+      name: 'trusted_devices_user_edition_fk',
+      columns: [t.userId, t.edition],
+      foreignColumns: [users.id, users.edition],
+    }),
+  ],
+);
 export const mfaCredentials = pgTable('mfa_credentials', {
   userId: uuid('user_id')
     .primaryKey()

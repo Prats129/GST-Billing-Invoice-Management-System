@@ -639,16 +639,18 @@ export function Workspace({
                 <div className="auth-heading">
                   <p className="eyebrow">PROTECT YOUR WORKSPACE</p>
                   <h1>
-                    {info.mustChangePassword &&
-                    (!info.mfaEnabled || !info.mfaRequired)
+                    {info.mustChangePassword
                       ? 'Choose your own password'
                       : 'One more step to sign in'}
                   </h1>
                   <p>Signed in as {info.user.email}</p>
                 </div>
-                {info.mustChangePassword &&
-                (!info.mfaEnabled || !info.mfaRequired) ? (
-                  <PasswordChange {...formProps} forced />
+                {info.mustChangePassword ? (
+                  <PasswordChange
+                    {...formProps}
+                    forced
+                    mfaEnabled={info.mfaEnabled}
+                  />
                 ) : info.mfaEnabled ? (
                   <MfaChallenge {...formProps} />
                 ) : (

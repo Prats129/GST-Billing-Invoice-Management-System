@@ -56,8 +56,12 @@ reversible foundation details without changing those decisions.
   Cancellation is an append-only record under a separate `invoices.cancel` grant;
   reported/IRP cancellation and tax-only/rate-changing notes remain unsupported.
   Bounded PNG logos are normalized by the browser and frozen into print snapshots.
-  Billing read/write/override permissions require privileged SaaS MFA; upgrades
-  insert permission definitions without silently expanding non-owner grants.
+  The 2026-11-06 MFA update makes ordinary billing permissions optional-MFA;
+  SaaS ownership and organization/member/role administration still require MFA.
+  Billing users can explicitly remember a personal browser for 30 days after MFA;
+  passwords remain required, and sensitive account changes require fresh proof.
+  Platform Admin continues requiring MFA at each new sign-in. Upgrades insert
+  permission definitions without silently expanding non-owner grants.
 
 Unresolved: e-invoice integration and correction/cancellation release scope, exact session/MFA
 policies, Windows compatibility matrix, installer redistribution and signing,

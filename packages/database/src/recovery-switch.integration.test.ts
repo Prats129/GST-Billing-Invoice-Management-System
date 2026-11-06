@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { createDatabase } from '@gst/database';
+import { createDatabase, trustedDevices } from '@gst/database';
 import {
   createIsolatedTestDatabase,
   setTestDatabaseToPhase5,
@@ -121,11 +121,18 @@ beforeAll(async () => {
       fixture,
       parseConfig({ NODE_ENV: 'test', DATABASE_URL: source.connectionString }),
     );
-    await new OrganizationsService(identity).provisionOwner({
+    const owner = await new OrganizationsService(identity).provisionOwner({
       organizationName: 'Backup snapshot',
       email: 'switch-owner@example.test',
       name: 'Owner',
       password: 'Recovery switch fixture password 2026!',
+    });
+    await fixture.db.insert(trustedDevices).values({
+      userId: owner.userId,
+      edition: 'offline',
+      tokenHash: 'ef'.repeat(32),
+      credentialHash: 'ab'.repeat(32),
+      expiresAt: new Date(Date.now() + 86400000),
     });
   } finally {
     await fixture.close();
@@ -243,6 +250,7 @@ test.skipIf(!tools)(
     const runtime = createDatabase(runtimeUrl());
     try {
       await runtime.ready();
+      expect(await runtime.db.select().from(trustedDevices)).toHaveLength(0);
       const identity = new IdentityService(
         runtime,
         parseConfig({ NODE_ENV: 'test', DATABASE_URL: runtimeUrl() }),

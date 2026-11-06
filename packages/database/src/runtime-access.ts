@@ -47,6 +47,7 @@ const policy: Record<string, readonly Privilege[]> = {
   role_permissions: ['SELECT', 'INSERT', 'DELETE'],
   membership_roles: ['SELECT', 'INSERT', 'DELETE'],
   sessions: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  trusted_devices: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   mfa_credentials: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   mfa_recovery_codes: ['SELECT', 'INSERT', 'DELETE'],
   owner_recovery: [],

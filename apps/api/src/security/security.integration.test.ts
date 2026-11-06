@@ -24,7 +24,9 @@ import {
   mfaCredentials,
   organizations,
   roles,
+  rolePermissions,
   sessions,
+  trustedDevices,
   sql,
   users,
 } from '@gst/database';
@@ -33,7 +35,7 @@ import { createApp } from '../app.js';
 import { parseConfig } from '../config.js';
 import { IdentityService } from './identity.service.js';
 import { OrganizationsService } from './organizations.service.js';
-import { createTotp, digest } from './crypto.js';
+import { createTotp, digest, hashPassword } from './crypto.js';
 
 const adminUrl = process.env.TEST_DATABASE_ADMIN_URL;
 if (!adminUrl)
@@ -107,6 +109,341 @@ beforeAll(async () => {
 beforeEach(async () => {
   await isolated.database.db.delete(authThrottle);
 });
+function responseCookie(response: request.Response, name: string) {
+  return (response.headers['set-cookie'] as unknown as string[])
+    .find((value) => value.startsWith(name + '='))!
+    .split(';')[0]!;
+}
+function responseAuth(response: request.Response) {
+  return {
+    cookie: responseCookie(response, 'gst_dev_session'),
+    csrf: response.body.csrfToken as string,
+  };
+}
+async function rememberedOwner(rememberDevice = true) {
+  const label = randomUUID();
+  const org = await owner(label, saasOrganizations);
+  const email = `${label}@example.test`;
+  const auth = await login(email, saasApp);
+  const enrollment = await http(saasApp)
+    .post('/api/v1/auth/mfa/enroll')
+    .set(authHeaders(auth))
+    .send({ password })
+    .expect(201);
+  const confirmed = await http(saasApp)
+    .post('/api/v1/auth/mfa/confirm')
+    .set(authHeaders(auth))
+    .send({
+      code: createTotp(enrollment.body.secret).generate(),
+      rememberDevice,
+    })
+    .expect(201);
+  return {
+    org,
+    email,
+    confirmed,
+    auth: responseAuth(confirmed),
+    cookie: rememberDevice
+      ? responseCookie(confirmed, 'gst_dev_trusted_device')
+      : '',
+  };
+}
+test('remembered browsers require password, isolate users, rotate tokens and keep a fixed expiry', async () => {
+  const fixture = await rememberedOwner();
+  const cookieHeader = (
+    fixture.confirmed.headers['set-cookie'] as unknown as string[]
+  ).find((value) => value.startsWith('gst_dev_trusted_device='))!;
+  expect(cookieHeader).toContain('HttpOnly');
+  expect(cookieHeader).toContain('SameSite=Strict');
+  expect(cookieHeader).not.toContain('Domain=');
+  const [stored] = await isolated.database.db
+    .select()
+    .from(trustedDevices)
+    .where(eq(trustedDevices.userId, fixture.org.userId));
+  expect(stored!.tokenHash).toBe(digest(fixture.cookie.split('=')[1]!));
+  expect(stored!.expiresAt.getTime() - stored!.createdAt.getTime()).toBeCloseTo(
+    30 * 86400000,
+    -3,
+  );
+  await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: fixture.cookie })
+    .send({ email: fixture.email, password: 'wrong' })
+    .expect(401);
+  await http(saasApp)
+    .get('/api/v1/auth/session')
+    .set({ ...requestHeaders, Cookie: fixture.cookie })
+    .expect(401);
+  const otherLabel = randomUUID();
+  await owner(otherLabel, saasOrganizations);
+  const other = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: fixture.cookie })
+    .send({ email: `${otherLabel}@example.test`, password })
+    .expect(201);
+  expect(other.body.mfaRequired).toBe(true);
+  const concurrent = await Promise.all(
+    [0, 1].map(() =>
+      http(saasApp)
+        .post('/api/v1/auth/login')
+        .set({ ...requestHeaders, Cookie: fixture.cookie })
+        .send({ email: fixture.email, password })
+        .expect(201),
+    ),
+  );
+  expect(concurrent.filter((result) => !result.body.mfaRequired)).toHaveLength(
+    1,
+  );
+  const recalled = concurrent.find((result) => !result.body.mfaRequired)!;
+  const rotated = responseCookie(recalled, 'gst_dev_trusted_device');
+  expect(rotated).not.toBe(fixture.cookie);
+  const [after] = await isolated.database.db
+    .select()
+    .from(trustedDevices)
+    .where(eq(trustedDevices.userId, fixture.org.userId));
+  expect(after!.expiresAt).toEqual(stored!.expiresAt);
+  expect(recalled.text).not.toContain(after!.tokenHash);
+  const list = await http(saasApp)
+    .get('/api/v1/auth/trusted-devices')
+    .set(authHeaders(responseAuth(recalled)))
+    .expect(200);
+  expect(list.body).toHaveLength(1);
+  expect(list.text).not.toContain('credentialHash');
+  expect(list.text).not.toContain(rotated.split('=')[1]!);
+});
+test('remembering is opt-in; expiry, tampering and per-device revocation require MFA again', async () => {
+  const optOut = await rememberedOwner(false);
+  expect((await login(optOut.email, saasApp)).body.mfaRequired).toBe(true);
+  expect(
+    await isolated.database.db
+      .select()
+      .from(trustedDevices)
+      .where(eq(trustedDevices.userId, optOut.org.userId)),
+  ).toHaveLength(0);
+  const fixture = await rememberedOwner();
+  const [device] = await isolated.database.db
+    .select()
+    .from(trustedDevices)
+    .where(eq(trustedDevices.userId, fixture.org.userId));
+  await http(saasApp)
+    .delete(`/api/v1/auth/trusted-devices/${device!.id}`)
+    .set({ ...authHeaders(fixture.auth), 'x-csrf-token': 'invalid' })
+    .expect(403);
+  await isolated.database.db
+    .update(trustedDevices)
+    .set({ expiresAt: new Date(Date.now() - 1000) })
+    .where(eq(trustedDevices.id, device!.id));
+  const expired = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: fixture.cookie })
+    .send({ email: fixture.email, password })
+    .expect(201);
+  expect(expired.body.mfaRequired).toBe(true);
+  await isolated.database.db
+    .update(trustedDevices)
+    .set({ expiresAt: new Date(Date.now() + 100000) })
+    .where(eq(trustedDevices.id, device!.id));
+  await http(saasApp)
+    .delete(`/api/v1/auth/trusted-devices/${device!.id}`)
+    .set(authHeaders(fixture.auth))
+    .expect(200);
+  const revoked = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: fixture.cookie })
+    .send({ email: fixture.email, password })
+    .expect(201);
+  expect(revoked.body.mfaRequired).toBe(true);
+  const tampered = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({
+      ...requestHeaders,
+      Cookie: 'gst_dev_trusted_device=' + 'x'.repeat(43),
+    })
+    .send({ email: fixture.email, password })
+    .expect(201);
+  expect(tampered.body.mfaRequired).toBe(true);
+});
+test('fresh MFA protects password changes and all-device signout revokes remembered access', async () => {
+  const fixture = await rememberedOwner();
+  const recalled = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: fixture.cookie })
+    .send({ email: fixture.email, password })
+    .expect(201);
+  const auth = responseAuth(recalled),
+    cookie = responseCookie(recalled, 'gst_dev_trusted_device');
+  const newPassword = password + ' replaced';
+  await http(saasApp)
+    .post('/api/v1/auth/password')
+    .set(authHeaders(auth))
+    .send({ currentPassword: password, newPassword })
+    .expect(403);
+  await http(saasApp)
+    .post('/api/v1/auth/password')
+    .set(authHeaders(auth))
+    .send({ currentPassword: password, newPassword, code: 'invalid-code' })
+    .expect(401);
+  await http(saasApp)
+    .post('/api/v1/auth/password')
+    .set(authHeaders(auth))
+    .send({
+      currentPassword: password,
+      newPassword,
+      code: fixture.confirmed.body.recoveryCodes[0],
+    })
+    .expect(201);
+  const later = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: cookie })
+    .send({ email: fixture.email, password: newPassword })
+    .expect(201);
+  expect(later.body.mfaRequired).toBe(true);
+  const second = await rememberedOwner();
+  await http(saasApp)
+    .post('/api/v1/auth/logout-all')
+    .set(authHeaders(second.auth))
+    .expect(201);
+  const afterSignout = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: second.cookie })
+    .send({ email: second.email, password })
+    .expect(201);
+  expect(afterSignout.body.mfaRequired).toBe(true);
+});
+test('MFA recovery rotation invalidates trust, and the browser limit is enforced', async () => {
+  const fixture = await rememberedOwner();
+  for (let i = 0; i < 10; i++) {
+    await isolated.database.db.delete(authThrottle);
+    const auth = await login(fixture.email, saasApp);
+    await http(saasApp)
+      .post('/api/v1/auth/mfa/verify')
+      .set(authHeaders(auth))
+      .send({
+        code: fixture.confirmed.body.recoveryCodes[i],
+        rememberDevice: true,
+      })
+      .expect(201);
+  }
+  expect(
+    await isolated.database.db
+      .select()
+      .from(trustedDevices)
+      .where(eq(trustedDevices.userId, fixture.org.userId)),
+  ).toHaveLength(10);
+  const earlier = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: fixture.cookie })
+    .send({ email: fixture.email, password })
+    .expect(201);
+  expect(earlier.body.mfaRequired).toBe(true);
+  const rotated = await rememberedOwner();
+  await http(saasApp)
+    .post('/api/v1/auth/mfa/recovery-codes')
+    .set(authHeaders(rotated.auth))
+    .send({ password, code: rotated.confirmed.body.recoveryCodes[0] })
+    .expect(201);
+  const afterRotation = await http(saasApp)
+    .post('/api/v1/auth/login')
+    .set({ ...requestHeaders, Cookie: rotated.cookie })
+    .send({ email: rotated.email, password })
+    .expect(201);
+  expect(afterRotation.body.mfaRequired).toBe(true);
+  // Re-enrollment/recovery changes the bound secret; stale records cannot bypass MFA.
+  await isolated.database.db
+    .update(mfaCredentials)
+    .set({ secret: null })
+    .where(eq(mfaCredentials.userId, fixture.org.userId));
+  const unenrolled = await login(fixture.email, saasApp);
+  expect(unenrolled.body.mfaRequired).toBe(true);
+  expect(unenrolled.body.mfaEnabled).toBe(false);
+}, 60000);
+test('SaaS staff can choose MFA; access administrators and owners cannot disable it', async () => {
+  const label = randomUUID(),
+    org = await owner(label, saasOrganizations);
+  const [staff] = await isolated.database.db
+    .insert(users)
+    .values({
+      edition: 'saas',
+      email: `${randomUUID()}@example.test`,
+      name: 'Staff',
+      passwordHash: await hashPassword(password),
+    })
+    .returning();
+  const [member] = await isolated.database.db
+    .insert(memberships)
+    .values({
+      edition: 'saas',
+      organizationId: org.organizationId,
+      userId: staff!.id,
+    })
+    .returning();
+  const [role] = await isolated.database.db
+    .insert(roles)
+    .values({ organizationId: org.organizationId, name: 'Billing staff' })
+    .returning();
+  await isolated.database.db.insert(membershipRoles).values({
+    organizationId: org.organizationId,
+    membershipId: member!.id,
+    roleId: role!.id,
+  });
+  await isolated.database.db.insert(rolePermissions).values(
+    ['invoices.read', 'invoices.manage', 'customers.manage'].map(
+      (permissionKey) => ({
+        organizationId: org.organizationId,
+        roleId: role!.id,
+        permissionKey,
+      }),
+    ),
+  );
+  const staffAuth = await login(staff!.email, saasApp);
+  expect(staffAuth.body.mfaMandatory).toBe(false);
+  expect(staffAuth.body.mfaRequired).toBe(false);
+  const enrollment = await http(saasApp)
+    .post('/api/v1/auth/mfa/enroll')
+    .set(authHeaders(staffAuth))
+    .send({ password })
+    .expect(201);
+  const confirmed = await http(saasApp)
+    .post('/api/v1/auth/mfa/confirm')
+    .set(authHeaders(staffAuth))
+    .send({
+      code: createTotp(enrollment.body.secret).generate(),
+      rememberDevice: true,
+    })
+    .expect(201);
+  expect((await login(staff!.email, saasApp)).body.mfaRequired).toBe(true);
+  const disabled = await http(saasApp)
+    .post('/api/v1/auth/mfa/disable')
+    .set(authHeaders(responseAuth(confirmed)))
+    .send({ password, code: confirmed.body.recoveryCodes[0] })
+    .expect(201);
+  expect(disabled.body.mfaEnabled).toBe(false);
+  expect(
+    await isolated.database.db
+      .select()
+      .from(trustedDevices)
+      .where(eq(trustedDevices.userId, staff!.id)),
+  ).toHaveLength(0);
+  await isolated.database.db.insert(rolePermissions).values({
+    organizationId: org.organizationId,
+    roleId: role!.id,
+    permissionKey: 'members.manage',
+  });
+  const promoted = await http(saasApp)
+    .get('/api/v1/auth/session')
+    .set(authHeaders(responseAuth(disabled)))
+    .expect(200);
+  expect(promoted.body.mfaMandatory).toBe(true);
+  expect(promoted.body.mfaRequired).toBe(true);
+  await http(saasApp)
+    .get('/api/v1/organizations')
+    .set(authHeaders(responseAuth(disabled)))
+    .expect(403);
+  expect(
+    (await login(`${label}@example.test`, saasApp)).body.mfaMandatory,
+  ).toBe(true);
+});
+
 test('appearance is persistent, strictly validated and scoped to the fully authenticated user', async () => {
   const first = `${randomUUID()}@example.test`,
     second = `${randomUUID()}@example.test`;

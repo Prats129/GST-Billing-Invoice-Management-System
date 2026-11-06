@@ -120,6 +120,7 @@ export async function assertRecoveryRuntimeReady(
     !phase5 &&
     schemaDigest !== (await migrationDigest(6)) &&
     schemaDigest !== (await migrationDigest(7)) &&
+    schemaDigest !== (await migrationDigest(8)) &&
     schemaDigest !== digest
   )
     throw new RecoverySwitchError();
@@ -129,6 +130,7 @@ export async function assertRecoveryRuntimeReady(
     await assertDatabaseReadiness(
       (sql) => runtime.query(sql),
       !phase5,
+      schemaDigest === digest,
       schemaDigest === digest,
     );
   } finally {

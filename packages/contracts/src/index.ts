@@ -53,6 +53,7 @@ export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1).max(128),
     newPassword: passwordSchema,
+    code: z.string().trim().min(6).max(64).optional(),
   })
   .strict();
 export const roleInputSchema = z
@@ -88,7 +89,10 @@ export const resetPasswordSchema = z
   .object({ temporaryPassword: passwordSchema })
   .strict();
 export const mfaCodeSchema = z
-  .object({ code: z.string().trim().min(6).max(64) })
+  .object({
+    code: z.string().trim().min(6).max(64),
+    rememberDevice: z.boolean().default(false),
+  })
   .strict();
 export type RoleInput = z.infer<typeof roleInputSchema>;
 export type MemberInput = z.infer<typeof memberInputSchema>;

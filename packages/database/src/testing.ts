@@ -13,6 +13,7 @@ export async function setTestDatabaseToPhase5(
     if (!/^gst_test_[a-f0-9]{32}$/.test(String(result.rows[0]?.name)))
       throw new Error('Disposable fixture required');
     await tx.execute(sql`DROP SCHEMA IF EXISTS platform_operator CASCADE`);
+    await tx.execute(sql`DROP TABLE IF EXISTS public.trusted_devices`);
     await tx.execute(
       sql`DROP TABLE IF EXISTS public.owner_setup_tokens,public.organization_write_controls`,
     );

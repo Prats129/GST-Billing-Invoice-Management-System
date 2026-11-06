@@ -51,6 +51,9 @@ export function SecurityPanel({
     { id: string; createdAt: string; lastSeenAt: string }[]
   >([]);
   const [error, setError] = useState('');
+  const [remembered, setRemembered] = useState<
+    { id: string; createdAt: string; lastSeenAt: string; expiresAt: string }[]
+  >([]);
   useEffect(() => {
     let active = true;
     void securityRequest<typeof devices>('/auth/sessions', undefined).then(
@@ -60,6 +63,18 @@ export function SecurityPanel({
       () => {
         if (active)
           setError('Cannot load sessions. Refresh access and try again.');
+      },
+    );
+    void securityRequest<typeof remembered>(
+      '/auth/trusted-devices',
+      undefined,
+    ).then(
+      (list) => {
+        if (active) setRemembered(list);
+      },
+      () => {
+        if (active)
+          setError('Cannot load remembered devices. Refresh and try again.');
       },
     );
     return () => {
@@ -138,6 +153,7 @@ export function SecurityPanel({
           </span>
           <p>Use a strong, unique password for your workspace.</p>
           <PasswordChange
+            mfaEnabled={info.mfaEnabled}
             busy={busy}
             run={run}
             mutate={mutate}
@@ -147,6 +163,11 @@ export function SecurityPanel({
       )}
       {section === 'mfa' && (
         <section className="surface security-card">
+          <p>
+            {info.mfaMandatory
+              ? 'Two-step verification is required for organization owners and access administrators.'
+              : 'Two-step verification is optional for your account. Enable it for extra protection.'}
+          </p>
           <span className="feature-icon blue">
             <Icon name="shield" />
           </span>
@@ -262,8 +283,43 @@ export function SecurityPanel({
               })
             }
           >
-            Sign out all sessions
+            Sign out all sessions and forget all devices
           </button>
+          <h3>Remembered devices</h3>
+          <p>
+            These browsers can skip the login code until expiry. Forgetting one
+            requires a code at its next login; use sign out all above to end
+            existing sessions too.
+          </p>
+          {remembered.length === 0 && <p>No remembered devices.</p>}
+          {remembered.map((device) => (
+            <div className="row" key={device.id}>
+              <span>
+                Remembered {formatDate(device.createdAt)}
+                <br />
+                Last used {formatDate(device.lastSeenAt)} · Expires{' '}
+                {formatDate(device.expiresAt)}
+              </span>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    await mutate(
+                      `/auth/trusted-devices/${device.id}`,
+                      undefined,
+                      'DELETE',
+                    );
+                    setRemembered((previous) =>
+                      previous.filter((item) => item.id !== device.id),
+                    );
+                  })
+                }
+              >
+                Forget device
+              </button>
+            </div>
+          ))}
         </section>
       )}
     </div>

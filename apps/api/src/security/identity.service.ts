@@ -12,6 +12,7 @@ import {
   ownerRecovery,
   recoveryCodes,
   sessions,
+  trustedDevices,
   sql,
   users,
 } from '@gst/database';
@@ -65,6 +66,9 @@ export class IdentityService {
       await this.db.execute(
         sql`delete from sessions where token_hash in (select token_hash from sessions where expires_at < now() - interval '30 days' order by expires_at limit 1000)`,
       );
+      await this.db.execute(
+        sql`delete from trusted_devices where token_hash in (select token_hash from trusted_devices where expires_at < now() order by expires_at limit 1000)`,
+      );
     }
     const now = new Date();
     const cutoff = new Date(now.getTime() - windowMinutes * 60000);
@@ -112,7 +116,143 @@ export class IdentityService {
       mfaVerified,
     };
   }
-  async login(email: string, password: string, ip: string, oldToken?: string) {
+  // A remembered browser is a second-factor credential, never a login session.
+  // Password and MFA-secret changes invalidate it even across operator resets.
+  private deviceCredential(user: typeof users.$inferSelect, secret: string) {
+    return digest(`${user.passwordHash}:${secret}`);
+  }
+  private async recallDevice(
+    tx: DatabaseTransaction,
+    user: typeof users.$inferSelect,
+    raw?: string,
+  ) {
+    if (!raw || !/^[A-Za-z0-9_-]{43}$/.test(raw) || user.mustChangePassword)
+      return;
+    const [credential] = await tx
+      .select()
+      .from(mfaCredentials)
+      .where(eq(mfaCredentials.userId, user.id));
+    if (!credential?.secret) return;
+    const [device] = await tx
+      .select()
+      .from(trustedDevices)
+      .where(
+        and(
+          eq(trustedDevices.tokenHash, digest(raw)),
+          eq(trustedDevices.userId, user.id),
+          eq(trustedDevices.edition, this.config.DEPLOYMENT_EDITION),
+          eq(
+            trustedDevices.credentialHash,
+            this.deviceCredential(user, credential.secret),
+          ),
+          gt(trustedDevices.expiresAt, new Date()),
+        ),
+      )
+      .for('update');
+    if (!device) return;
+    const replacement = token();
+    await tx
+      .update(trustedDevices)
+      .set({ tokenHash: digest(replacement), lastSeenAt: new Date() })
+      .where(eq(trustedDevices.id, device.id));
+    await this.audit(tx, user.id, 'identity.remembered_device_used', device.id);
+    return { token: replacement, expiresAt: device.expiresAt };
+  }
+  private async rememberDevice(
+    tx: DatabaseTransaction,
+    user: typeof users.$inferSelect,
+    secret: string,
+    previous?: string,
+  ) {
+    if (previous)
+      await tx
+        .delete(trustedDevices)
+        .where(
+          and(
+            eq(trustedDevices.userId, user.id),
+            eq(trustedDevices.tokenHash, digest(previous)),
+          ),
+        );
+    // User-row serialization keeps the per-account limit correct under concurrency.
+    const devices = await tx
+      .select()
+      .from(trustedDevices)
+      .where(eq(trustedDevices.userId, user.id))
+      .orderBy(desc(trustedDevices.createdAt));
+    for (const device of devices.slice(9))
+      await tx.delete(trustedDevices).where(eq(trustedDevices.id, device.id));
+    const raw = token();
+    const expiresAt = new Date(Date.now() + 30 * 86400000);
+    const [device] = await tx
+      .insert(trustedDevices)
+      .values({
+        tokenHash: digest(raw),
+        userId: user.id,
+        edition: this.config.DEPLOYMENT_EDITION,
+        credentialHash: this.deviceCredential(user, secret),
+        expiresAt,
+      })
+      .returning({ id: trustedDevices.id });
+    await this.audit(tx, user.id, 'identity.device_remembered', device!.id);
+    return { token: raw, expiresAt };
+  }
+  async listTrustedDevices(session: IdentitySession) {
+    const { user } = await this.full(session, this.db);
+    const [credential] = await this.db
+      .select()
+      .from(mfaCredentials)
+      .where(eq(mfaCredentials.userId, user.id));
+    if (!credential?.secret) return [];
+    return this.db
+      .select({
+        id: trustedDevices.id,
+        createdAt: trustedDevices.createdAt,
+        lastSeenAt: trustedDevices.lastSeenAt,
+        expiresAt: trustedDevices.expiresAt,
+      })
+      .from(trustedDevices)
+      .where(
+        and(
+          eq(trustedDevices.userId, user.id),
+          eq(trustedDevices.edition, this.config.DEPLOYMENT_EDITION),
+          eq(
+            trustedDevices.credentialHash,
+            this.deviceCredential(user, credential.secret),
+          ),
+          gt(trustedDevices.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(trustedDevices.createdAt))
+      .limit(10);
+  }
+  async forgetDevice(session: IdentitySession, id: string) {
+    await this.db.transaction(async (tx) => {
+      await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, session.userId))
+        .for('update');
+      await this.full(session, tx, true);
+      const removed = await tx
+        .delete(trustedDevices)
+        .where(
+          and(
+            eq(trustedDevices.userId, session.userId),
+            eq(trustedDevices.id, id),
+          ),
+        )
+        .returning();
+      if (removed.length)
+        await this.audit(tx, session.userId, 'identity.device_forgotten', id);
+    });
+  }
+  async login(
+    email: string,
+    password: string,
+    ip: string,
+    oldToken?: string,
+    rememberedToken?: string,
+  ) {
     await this.throttle(`login-ip:${ip}`, 30);
     await this.throttle(`login-account:${email}`, 10);
     const [user] = await this.db
@@ -149,9 +289,10 @@ export class IdentityService {
           .update(sessions)
           .set({ revokedAt: new Date() })
           .where(eq(sessions.tokenHash, digest(oldToken)));
-      const session = await this.issue(tx, user.id);
+      const remembered = await this.recallDevice(tx, locked, rememberedToken);
+      const session = await this.issue(tx, user.id, Boolean(remembered));
       await this.audit(tx, user.id, 'identity.login');
-      return session;
+      return { ...session, remembered };
     });
   }
   async authenticate(raw: string | undefined): Promise<IdentitySession> {
@@ -226,7 +367,7 @@ export class IdentityService {
           eq(memberships.status, 'active'),
           eq(organizations.status, 'active'),
           eq(organizations.edition, this.config.DEPLOYMENT_EDITION),
-          sql`(${memberships.isOwner} or exists (select 1 from membership_roles mr join role_permissions rp on rp.organization_id=mr.organization_id and rp.role_id=mr.role_id where mr.organization_id=${memberships.organizationId} and mr.membership_id=${memberships.id} and rp.permission_key in ('members.manage','roles.manage','audit.read','organization.manage','customers.manage','catalog.manage','catalog.tax.verify','invoices.read','invoices.manage','invoices.finalize','invoices.correct','invoices.cancel','price.override','tax.override','place_of_supply.override')))`,
+          sql`(${memberships.isOwner} or exists (select 1 from membership_roles mr join role_permissions rp on rp.organization_id=mr.organization_id and rp.role_id=mr.role_id where mr.organization_id=${memberships.organizationId} and mr.membership_id=${memberships.id} and rp.permission_key in ('members.manage','roles.manage','organization.manage')))`,
         ),
       )
       .limit(1);
@@ -274,6 +415,12 @@ export class IdentityService {
   }
   async revoke(session: IdentitySession, all = false, sessionId?: string) {
     return this.db.transaction(async (tx) => {
+      if (all)
+        await tx
+          .select()
+          .from(users)
+          .where(eq(users.id, session.userId))
+          .for('update');
       await this.current(session, tx, true);
       if (sessionId) await this.full(session, tx);
       await tx
@@ -291,6 +438,10 @@ export class IdentityService {
                 ]),
           ),
         );
+      if (all)
+        await tx
+          .delete(trustedDevices)
+          .where(eq(trustedDevices.userId, session.userId));
       await this.audit(tx, session.userId, 'identity.sessions_revoked');
     });
   }
@@ -322,11 +473,10 @@ export class IdentityService {
     session: IdentitySession,
     currentPassword: string,
     newPassword: string,
+    code?: string,
   ) {
     await this.throttle(`password:${session.userId}`, 10);
     const { user } = await this.current(session, this.db);
-    if ((await this.mfaState(user.id, this.db)).enabled && !session.mfaVerified)
-      deny('MFA_REQUIRED');
     if (!(await verifyPassword(user.passwordHash, currentPassword)))
       deny('INVALID_CREDENTIALS');
     const passwordHash = await hashPassword(newPassword);
@@ -339,6 +489,11 @@ export class IdentityService {
       if (!locked || locked.passwordHash !== user.passwordHash)
         deny('CONFLICT');
       const current = await this.current(session, tx, true);
+      const mfa = await this.mfaState(user.id, tx);
+      if (mfa.enabled) {
+        if (!code) deny('MFA_REQUIRED');
+        await this.checkMfa(tx, user.id, code);
+      }
       await tx
         .update(users)
         .set({ passwordHash, mustChangePassword: false })
@@ -347,7 +502,12 @@ export class IdentityService {
         .update(sessions)
         .set({ revokedAt: new Date() })
         .where(eq(sessions.userId, user.id));
-      const fresh = await this.issue(tx, user.id, current.session.mfaVerified);
+      await tx.delete(trustedDevices).where(eq(trustedDevices.userId, user.id));
+      const fresh = await this.issue(
+        tx,
+        user.id,
+        mfa.enabled || current.session.mfaVerified,
+      );
       await this.audit(tx, user.id, 'identity.password_changed');
       return fresh;
     });
@@ -445,7 +605,13 @@ export class IdentityService {
       .values(codes.map((code) => ({ userId, codeHash: digest(code) })));
     return codes;
   }
-  async verifyMfa(session: IdentitySession, code: string, confirm = false) {
+  async verifyMfa(
+    session: IdentitySession,
+    code: string,
+    confirm = false,
+    rememberDevice = false,
+    previousDevice?: string,
+  ) {
     await this.throttle(`mfa:${session.userId}`, 10, 5);
     return this.db.transaction(async (tx) => {
       await tx
@@ -453,7 +619,9 @@ export class IdentityService {
         .from(users)
         .where(eq(users.id, session.userId))
         .for('update');
-      await this.current(session, tx, true);
+      const { user } = await this.current(session, tx, true);
+      if (rememberDevice && user.mustChangePassword)
+        deny('PASSWORD_CHANGE_REQUIRED');
       const { encrypted } = await this.checkMfa(
         tx,
         session.userId,
@@ -462,6 +630,9 @@ export class IdentityService {
       );
       let codes: string[] | undefined;
       if (confirm) {
+        await tx
+          .delete(trustedDevices)
+          .where(eq(trustedDevices.userId, session.userId));
         await tx
           .update(mfaCredentials)
           .set({
@@ -481,12 +652,15 @@ export class IdentityService {
           .set({ revokedAt: new Date() })
           .where(eq(sessions.tokenHash, session.hash));
       const fresh = await this.issue(tx, session.userId, true);
+      const remembered = rememberDevice
+        ? await this.rememberDevice(tx, user, encrypted, previousDevice)
+        : undefined;
       await this.audit(
         tx,
         session.userId,
         confirm ? 'identity.mfa_enabled' : 'identity.mfa_verified',
       );
-      return { session: fresh, recoveryCodes: codes };
+      return { session: fresh, recoveryCodes: codes, remembered };
     });
   }
   async manageMfa(
@@ -511,6 +685,7 @@ export class IdentityService {
       if (disable && (await this.mfaState(user.id, tx)).mandatory)
         deny('FORBIDDEN');
       await this.checkMfa(tx, user.id, code);
+      await tx.delete(trustedDevices).where(eq(trustedDevices.userId, user.id));
       let codes: string[] | undefined;
       if (disable) {
         await tx.delete(recoveryCodes).where(eq(recoveryCodes.userId, user.id));

@@ -481,7 +481,7 @@ test('database rejects non-finite prices and catalog items without a classificat
       .values({ ...values, price: '1.0000' }),
   ).rejects.toThrow();
 });
-test('SaaS customer/catalog managers and tax reviewers must complete MFA', async () => {
+test('SaaS customer/catalog staff and tax reviewers may choose whether to enable MFA', async () => {
   const config = parseConfig({
     NODE_ENV: 'test',
     DEPLOYMENT_EDITION: 'saas',
@@ -543,7 +543,7 @@ test('SaaS customer/catalog managers and tax reviewers must complete MFA', async
     });
     await expect(
       identity.full(session, isolated.database.db),
-    ).rejects.toMatchObject({ code: 'MFA_REQUIRED' });
+    ).resolves.toHaveProperty('user.id', user!.id);
   }
 });
 test('new permissions require explicit grants and cannot be bypassed using organization access', async () => {

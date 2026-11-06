@@ -89,8 +89,27 @@ SameSite=Strict with __Host- prefix. Loopback HTTP development uses a separately
 named non-Secure cookie; never expose that mode to LAN. Mutations require exact
 Origin and a session-bound CSRF header. No credentials enter localStorage.
 
-SaaS owners, organization/member/role/customer/catalog managers, tax reviewers and audit readers must complete
-TOTP before tenant access. Anyone with MFA enabled completes a challenge at login.
+SaaS owners and holders of organization.manage, members.manage or roles.manage
+must enroll MFA before tenant access. Regular billing staff can enable or disable
+MFA in Account security; invoice/customer/catalog permissions alone do not make it
+mandatory. Privilege changes are checked on every authenticated access. Offline
+MFA remains optional. Platform Admin always requires MFA at each new sign-in.
+
+After successful enrollment or verification, billing users may explicitly select
+"Remember this device for 30 days" on a personal browser. Passwords are still
+required at every login. The separate host-only HttpOnly/SameSite cookie contains
+a random credential whose hash alone is stored. Credentials rotate on use with a
+fixed expiry, are edition/account bound, and are invalidated by password or MFA
+changes. A maximum of ten browsers can be remembered per user. No credentials
+enter localStorage and device trust cannot enroll MFA or replace a password.
+
+Account security > Active sessions lists remembered browsers and their expiry.
+"Forget device" requires MFA at that browser's next login; existing sessions can
+be revoked separately. "Sign out all sessions and forget all devices" revokes
+both kinds of access. Ordinary sign-out preserves explicitly remembered access.
+Use sign-out-all on a shared or lost device. Password changes with MFA enabled
+require a fresh authenticator/recovery code, even from a remembered browser.
+
 Account security provides authenticator enrollment and ten single-use recovery
 codes. Save them offline. TOTP codes cannot be replayed. Replacing recovery codes
 or disabling optional MFA requires current password plus a fresh authenticator/
