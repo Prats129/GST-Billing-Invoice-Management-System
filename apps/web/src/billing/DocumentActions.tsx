@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { validationMessage } from '../validation-message.js';
 import { cancelInvoiceSchema, correctionInputSchema } from '@gst/contracts';
 import type { InvoiceRecord } from '@gst/contracts';
 import { Dialog } from '../ui.js';
@@ -51,7 +52,10 @@ export function CorrectionDialog({
         reduce remaining value; debits increase it. Tax rates and customer
         details come from the original document.
       </p>
-      <FormError message={localError || error} />
+      <FormError
+        message={localError || error}
+        onDismiss={() => setLocalError('')}
+      />
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -70,10 +74,7 @@ export function CorrectionDialog({
               .filter((line) => line.supplyValue !== ''),
           });
           if (!parsed.success) {
-            setLocalError(
-              parsed.error.issues[0]?.message ??
-                'Check the correction details.',
-            );
+            setLocalError(validationMessage(parsed.error));
             return;
           }
           setLocalError('');

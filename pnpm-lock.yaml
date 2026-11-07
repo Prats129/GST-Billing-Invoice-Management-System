@@ -59,6 +59,9 @@ importers:
       '@gst/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@gst/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -191,6 +194,9 @@ importers:
       '@gst/invoice-renderer':
         specifier: workspace:*
         version: link:../../packages/invoice-renderer
+      '@gst/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -259,6 +265,22 @@ importers:
       otpauth:
         specifier: 9.5.2
         version: 9.5.2
+
+  packages/ui:
+    dependencies:
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.2.2
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.2.2
+        version: 19.3.0(@types/react@19.3.0)
 
 packages:
 

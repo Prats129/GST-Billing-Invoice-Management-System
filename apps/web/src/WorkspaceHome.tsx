@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Notification } from '@gst/ui/notifications';
 import { invoicePageSchema } from '@gst/contracts';
 import type {
   InvoiceSummary,
@@ -109,7 +110,7 @@ export function WorkspaceHome({
             </p>
           ) : error ? (
             <div className="recent-error">
-              <p role="alert">{error}</p>
+              <Notification message={error} />
               <button
                 className="button button-secondary"
                 onClick={() => setAttempt((value) => value + 1)}

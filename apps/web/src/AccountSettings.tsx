@@ -5,6 +5,8 @@ import type { Appearance, SessionInfo } from '@gst/contracts';
 import { AppearancePanel } from './AppearancePanel.js';
 import { Dialog, Icon } from './ui.js';
 import { SecurityPanel } from './SecurityPanel.js';
+import { ErrorRecoveryActions } from './ErrorRecovery.js';
+import { Notification } from '@gst/ui/notifications';
 import { ConnectionPanel } from './connection.js';
 import type { ConnectionState } from './connection.js';
 import type { Mutate, RunAction } from './security-forms.js';
@@ -170,9 +172,10 @@ export function AccountSettings({
         }}
       >
         {error && (
-          <p className="error" role="alert">
+          <Notification message={error} onDismiss={onClearError}>
             {error}
-          </p>
+            <ErrorRecoveryActions message={error} />
+          </Notification>
         )}
         {recovery}
         {tab === 'security' ? (

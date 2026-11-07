@@ -17,6 +17,8 @@ import {
 import type { BusinessScreenProps } from './shared.js';
 import { LogoField } from './LogoField.js';
 import { useUnsavedChanges } from '../PageActions.js';
+import { validationMessage } from '../validation-message.js';
+import { Notification } from '@gst/ui/notifications';
 export function BusinessProfileScreen({
   readOnly = false,
   basePath,
@@ -53,7 +55,7 @@ export function BusinessProfileScreen({
   if (profile === undefined)
     return (
       <section className="surface">
-        <FormError message={error} />
+        <FormError message={error} onDismiss={() => setError('')} />
         {error ? (
           <button
             className="button button-secondary"
@@ -84,12 +86,13 @@ export function BusinessProfileScreen({
           </Badge>
         </div>
         {saved && (
-          <p className="success-note" role="status">
-            <Icon name="check" size={17} />
-            Business details saved.
-          </p>
+          <Notification
+            message="Business details saved."
+            kind="success"
+            onDismiss={() => setSaved(false)}
+          />
         )}
-        <FormError message={error} />
+        <FormError message={error} onDismiss={() => setError('')} />
         <nav className="form-outline" aria-label="Business setup sections">
           {[
             ['business-identity', 'Business identity'],
@@ -138,10 +141,7 @@ export function BusinessProfileScreen({
               registrationConfirmed: data.has('registrationConfirmed'),
             });
             if (!parsed.success) {
-              setError(
-                parsed.error.issues[0]?.message ??
-                  'Check the business details.',
-              );
+              setError(validationMessage(parsed.error));
               return;
             }
             void run(async () => {
@@ -155,7 +155,7 @@ export function BusinessProfileScreen({
               setProfile(next);
               setSaved(true);
               setDirty(false);
-            });
+            }, '');
           }}
         >
           <fieldset

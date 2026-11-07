@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { securityRequest } from './security-api.js';
+import { Notification } from '@gst/ui/notifications';
 export function OwnerSetup({ token }: { token: string }) {
   const [newAccount, setNewAccount] = useState<boolean | null>(null),
     [error, setError] = useState(''),
@@ -34,9 +35,7 @@ export function OwnerSetup({ token }: { token: string }) {
       >
         <h1>Set up your business workspace</h1>
         {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
+          <Notification message={error} onDismiss={() => setError('')} />
         )}
         {complete ? (
           <>

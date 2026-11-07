@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Appearance } from '@gst/contracts';
 import { ApiError } from './security-api.js';
 import { Icon } from './ui.js';
+import { Notification } from '@gst/ui/notifications';
 
 export function AppearancePanel({
   appearance,
@@ -52,11 +53,7 @@ export function AppearancePanel({
         Choose how your workspace looks. These settings belong to your account
         and follow you when you sign in on another device.
       </p>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Notification message={error} onDismiss={() => setError('')} />}
       <fieldset disabled={saving} className="appearance-fieldset">
         <legend>Color mode</legend>
         <div className="appearance-options">
@@ -127,9 +124,11 @@ export function AppearancePanel({
           {saving ? 'Saving...' : 'Save appearance'}
         </button>
         {saved && (
-          <p role="status" className="muted">
-            Appearance saved.
-          </p>
+          <Notification
+            message="Appearance saved."
+            kind="success"
+            onDismiss={() => setSaved(false)}
+          />
         )}
       </div>
     </form>

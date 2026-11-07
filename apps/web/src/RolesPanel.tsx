@@ -22,7 +22,6 @@ interface Props {
   reload: () => Promise<void>;
   offset: number;
   setOffset: (value: number) => void;
-  error: string;
   onClearError: () => void;
 }
 export function RolesPanel({
@@ -35,7 +34,6 @@ export function RolesPanel({
   reload,
   offset,
   setOffset,
-  error,
   onClearError,
 }: Props) {
   const [editing, setEditing] = useState<RoleView | null | undefined>();
@@ -161,11 +159,6 @@ export function RolesPanel({
           busy={busy}
           wide
         >
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
           {readOnly ? (
             <PermissionList permissions={editing?.permissions ?? []} />
           ) : (

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { RoleView } from '@gst/contracts';
-export type RunAction = (action: () => Promise<void>) => Promise<void>;
+export type RunAction = (
+  action: () => Promise<void>,
+  successMessage?: string,
+) => Promise<void>;
 export type Mutate = <T = unknown>(
   path: string,
   body?: unknown,

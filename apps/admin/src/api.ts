@@ -1,4 +1,21 @@
 import { platformReadResponse } from '@gst/contracts/platform';
+import { platformProblem } from './problems.js';
+export class PlatformApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(platformProblem(code, message));
+  }
+}
+let confirmIdentity: (() => Promise<void>) | undefined;
+export function onIdentityRequired(handler: () => Promise<void>) {
+  confirmIdentity = handler;
+  return () => {
+    if (confirmIdentity === handler) confirmIdentity = undefined;
+  };
+}
 let csrf = '';
 let submissionKey: string | undefined;
 export const submission = (key?: string) => {
@@ -11,6 +28,7 @@ export async function api<T>(
   path: string,
   body?: unknown,
   method = 'POST',
+  confirmed = false,
 ): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -26,14 +44,57 @@ export async function api<T>(
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-    const data = await response.json();
+    const data = await response.json().catch((error: unknown) => {
+      if (error instanceof Error && error.name === 'AbortError') throw error;
+      throw new PlatformApiError(
+        response.status,
+        'REQUEST_FAILED',
+        'The server returned an unreadable response.',
+      );
+    });
+    if (!data || typeof data !== 'object')
+      throw new PlatformApiError(
+        response.status,
+        'REQUEST_FAILED',
+        'The server returned an invalid response.',
+      );
     if (response.ok && typeof data.csrfToken === 'string')
       csrf = data.csrfToken;
-    if (response.status === 401 && !path.startsWith('auth/login'))
+    if (response.status === 401 && data.error?.code === 'UNAUTHENTICATED')
       window.dispatchEvent(new Event('platform-session-expired'));
+    if (
+      !response.ok &&
+      data.error?.code === 'REAUTH_REQUIRED' &&
+      !confirmed &&
+      confirmIdentity &&
+      path !== 'auth/confirm'
+    ) {
+      clearTimeout(timeout);
+      await confirmIdentity();
+      // Only this explicitly rejected request is retried, with its original
+      // payload and idempotency key. Transport/commit failures are never replayed.
+      return api<T>(path, body, method, true);
+    }
     if (!response.ok)
-      throw new Error(data.error?.message ?? 'Request failed. Try again.');
+      throw new PlatformApiError(
+        response.status,
+        data.error?.code ??
+          (response.status === 403 ? 'FORBIDDEN' : 'REQUEST_FAILED'),
+        data.error?.message ?? 'Request failed.',
+      );
     return (body === undefined ? platformReadResponse(path, data) : data) as T;
+  } catch (error) {
+    if (error instanceof PlatformApiError) throw error;
+    if (
+      error instanceof TypeError ||
+      (error instanceof Error && error.name === 'AbortError')
+    )
+      throw new PlatformApiError(
+        0,
+        'NETWORK_UNAVAILABLE',
+        'Connection unavailable.',
+      );
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

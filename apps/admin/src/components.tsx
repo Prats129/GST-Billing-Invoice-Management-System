@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { submission } from './api.js';
+import { submission, PlatformApiError } from './api.js';
 import type { Operation } from './types.js';
+import { platformProblem } from './problems.js';
+import { Notification } from '@gst/ui/notifications';
 export function Field({
   label,
   name,
@@ -71,9 +73,7 @@ export function Form({
     <section className="card">
       <h2>{title}</h2>
       {formError && (
-        <p role="alert" className="error">
-          {formError}
-        </p>
+        <Notification message={formError} onDismiss={() => setFormError('')} />
       )}
       <form
         onChange={() => {
@@ -94,7 +94,11 @@ export function Form({
             })
             .catch((e) => {
               setFormError(
-                e instanceof Error ? e.message : 'Check the form fields.',
+                e instanceof PlatformApiError
+                  ? ''
+                  : e instanceof Error
+                    ? e.message
+                    : 'Check the form fields.',
               );
             })
             .finally(() => submission());
@@ -152,7 +156,15 @@ export function OperationList({
           id: o.id,
           action: o.kind,
           state: o.state,
-          detail: o.error_code ?? '',
+          detail: o.error_code
+            ? platformProblem(o.error_code, o.error_code)
+            : o.state === 'pending'
+              ? 'Waiting for the worker. Refresh status; if this remains pending, ask the host operator to check that operations are enabled and the billing connection is configured.'
+              : o.state === 'running'
+                ? 'Processing. Wait and refresh status; do not submit a duplicate request.'
+                : o.state === 'completed'
+                  ? 'The billing database confirmed this operation.'
+                  : '',
           result: o.result,
         }))}
       />

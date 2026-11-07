@@ -488,22 +488,27 @@ export function InvoicesScreen(props: BusinessScreenProps) {
           const action = (e.nativeEvent as SubmitEvent).submitter?.getAttribute(
             'value',
           );
-          void run(async () => {
-            if (action === 'save') {
-              const draft = read();
-              const record = await mutate<InvoiceRecord>(
-                `${basePath}/invoices${editor ? `/${editor.id}` : ''}`,
-                editor ? draft : { ...draft, requestKey: createKey },
-                editor ? 'PUT' : 'POST',
-              );
-              setEditor(invoiceRecordSchema.parse(record));
-              if (recordId !== record.id) onRecordNavigate?.(record.id, true);
-              setCustomer(null);
-              setDirty(false);
-              setPreview(null);
-              reload();
-            } else await calculate();
-          });
+          void run(
+            async () => {
+              if (action === 'save') {
+                const draft = read();
+                const record = await mutate<InvoiceRecord>(
+                  `${basePath}/invoices${editor ? `/${editor.id}` : ''}`,
+                  editor ? draft : { ...draft, requestKey: createKey },
+                  editor ? 'PUT' : 'POST',
+                );
+                setEditor(invoiceRecordSchema.parse(record));
+                if (recordId !== record.id) onRecordNavigate?.(record.id, true);
+                setCustomer(null);
+                setDirty(false);
+                setPreview(null);
+                reload();
+              } else await calculate();
+            },
+            action === 'save'
+              ? 'Invoice draft saved.'
+              : 'Invoice preview updated.',
+          );
         }}
       >
         <nav className="form-outline" aria-label="Invoice sections">

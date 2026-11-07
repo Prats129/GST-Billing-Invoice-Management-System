@@ -2,6 +2,18 @@ import { Catch, HttpException } from '@nestjs/common';
 import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { ZodError } from 'zod';
 import { EntitlementError, CryptoRateLimitError } from '@gst/security';
+function validationHint(error: ZodError) {
+  const fields = [
+    ...new Set(
+      error.issues
+        .map((issue) => issue.path.map(String).join('.'))
+        .filter(Boolean),
+    ),
+  ].slice(0, 5);
+  return fields.length
+    ? `Check these fields: ${fields.join(', ')}. Review required values, date ranges and formats.`
+    : 'Check the supplied fields and remove unsupported values.';
+}
 export class PlatformError extends HttpException {
   constructor(
     readonly code: string,
@@ -35,11 +47,7 @@ export class PlatformErrors implements ExceptionFilter {
             : error instanceof PlatformError
               ? error
               : error instanceof ZodError
-                ? new PlatformError(
-                    'INVALID_INPUT',
-                    400,
-                    'Check the supplied fields.',
-                  )
+                ? new PlatformError('INVALID_INPUT', 400, validationHint(error))
                 : new PlatformError(
                     'REQUEST_FAILED',
                     error instanceof HttpException ? error.getStatus() : 500,

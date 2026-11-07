@@ -9,7 +9,20 @@ import type {
   PlatformSession,
   PlatformOrganizationView,
 } from '@gst/contracts/platform';
-import { api, setCsrf, requestKey, paise, money, download } from './api.js';
+import {
+  api,
+  setCsrf,
+  requestKey,
+  paise,
+  money,
+  download,
+  onIdentityRequired,
+  PlatformApiError,
+} from './api.js';
+import { IdentityConfirmation } from './IdentityConfirmation.js';
+import { Notification } from '@gst/ui/notifications';
+import { platformRecovery } from './problems.js';
+import type { PlatformRecovery } from './problems.js';
 export function App() {
   const [session, setSession] = useState<PlatformSession | null>(null),
     [starting, setStarting] = useState(true),
@@ -33,6 +46,41 @@ export function App() {
     [codes, setCodes] = useState<string[]>([]),
     [link, setLink] = useState('');
   const dirtyForms = useRef(new Set<string>());
+  const [errorCode, setErrorCode] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const pendingIdentity = useRef<{
+    resolve: () => void;
+    reject: (reason: Error) => void;
+  } | null>(null);
+  const cancelIdentity = () => {
+    pendingIdentity.current?.reject(
+      new PlatformApiError(0, 'CANCELLED', 'Identity confirmation cancelled.'),
+    );
+    pendingIdentity.current = null;
+    setConfirming(false);
+  };
+  useEffect(() => {
+    const remove = onIdentityRequired(
+      () =>
+        new Promise<void>((resolve, reject) => {
+          if (pendingIdentity.current) {
+            reject(
+              new Error('Complete the current identity confirmation first.'),
+            );
+            return;
+          }
+          pendingIdentity.current = { resolve, reject };
+          setConfirming(true);
+        }),
+    );
+    return () => {
+      remove();
+      pendingIdentity.current?.reject(
+        new PlatformApiError(0, 'CANCELLED', 'Page closed.'),
+      );
+      pendingIdentity.current = null;
+    };
+  }, []);
   const busyRef = useRef(false);
   const dirty = useRef(false),
     lastRoute = useRef(route);
@@ -45,7 +93,16 @@ export function App() {
   }
   useEffect(() => {
     void loadSession()
-      .catch(() => setSession(null))
+      .catch((reason: unknown) => {
+        setSession(null);
+        if (
+          reason instanceof PlatformApiError &&
+          reason.code !== 'UNAUTHENTICATED'
+        ) {
+          setError(reason.message);
+          setErrorCode(reason.code);
+        }
+      })
       .finally(() => setStarting(false));
   }, []);
   useEffect(() => {
@@ -57,6 +114,7 @@ export function App() {
         return;
       }
       dirty.current = false;
+      cancelIdentity();
       dirtyForms.current.clear();
       lastRoute.current = next;
       setRoute(next);
@@ -71,6 +129,7 @@ export function App() {
       }
     };
     const expired = () => {
+      cancelIdentity();
       setSession(null);
       setCsrf('');
       setDetail(null);
@@ -92,6 +151,7 @@ export function App() {
     busyRef.current = true;
     setBusy(true);
     setError('');
+    setErrorCode('');
     setMessage('');
     try {
       const result = await action();
@@ -100,6 +160,7 @@ export function App() {
       return result;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed.');
+      setErrorCode(e instanceof PlatformApiError ? e.code : '');
       throw e;
     } finally {
       setBusy(false);
@@ -143,7 +204,10 @@ export function App() {
     };
     void load()
       .catch((e) => {
-        if (active) setError(e.message);
+        if (active) {
+          setError(e.message);
+          setErrorCode(e instanceof PlatformApiError ? e.code : '');
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -157,6 +221,23 @@ export function App() {
     else dirtyForms.current.delete(source);
     dirty.current = dirtyForms.current.size > 0;
   };
+  const recover = (target: PlatformRecovery) => {
+    if (target === 'reload') {
+      if (
+        !dirty.current ||
+        confirm(
+          'Reload the latest page? Unsaved entries will be discarded. Copy any details you want to keep first.',
+        )
+      )
+        location.reload();
+    } else {
+      location.hash =
+        (target === 'payments' || target === 'licenses') && id && id !== 'new'
+          ? `#/organizations/${id}/${target}`
+          : `#/${target === 'payments' || target === 'licenses' ? 'organizations' : target}`;
+    }
+  };
+  const recovery = platformRecovery(errorCode);
   if (starting)
     return (
       <main className="auth">
@@ -170,9 +251,7 @@ export function App() {
           GST Billing <span>Platform Admin</span>
         </div>
         {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
+          <Notification message={error} onDismiss={() => setError('')} />
         )}
         <Form
           title="Publisher sign in"
@@ -202,9 +281,7 @@ export function App() {
       <main className="auth">
         <h1>Secure your platform account</h1>
         {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
+          <Notification message={error} onDismiss={() => setError('')} />
         )}
         {!session.mfaEnabled && !mfa && (
           <button
@@ -302,15 +379,25 @@ export function App() {
           </button>
         </header>
         {error && (
-          <div role="alert" className="error">
+          <Notification message={error} onDismiss={() => setError('')}>
             {error}
-            <button onClick={refresh}>Try again</button>
-          </div>
+            {recovery ? (
+              <button disabled={busy} onClick={() => recover(recovery.target)}>
+                {recovery.label}
+              </button>
+            ) : (
+              <button disabled={busy} onClick={refresh}>
+                Refresh status
+              </button>
+            )}
+          </Notification>
         )}
         {message && (
-          <p role="status" className="success">
-            {message}
-          </p>
+          <Notification
+            message={message}
+            kind="success"
+            onDismiss={() => setMessage('')}
+          />
         )}
         {codes.length > 0 && (
           <section className="card warning">
@@ -769,8 +856,8 @@ export function App() {
                     }
                   >
                     <p>
-                      Confirm your password and a fresh code in Account security
-                      first. Viewing and printing remain available.
+                      If identity confirmation is needed, it will open here.
+                      Viewing and printing remain available.
                     </p>
                     <Field label="Action" name="paused">
                       <option value="true">Pause writes</option>
@@ -969,6 +1056,17 @@ export function App() {
               </p>
             </section>
           </>
+        )}
+        {confirming && (
+          <IdentityConfirmation
+            onCancel={cancelIdentity}
+            onConfirmed={() => {
+              const pending = pendingIdentity.current;
+              pendingIdentity.current = null;
+              setConfirming(false);
+              pending?.resolve();
+            }}
+          />
         )}
         <footer>
           Publisher administration · Customer financial data is not available

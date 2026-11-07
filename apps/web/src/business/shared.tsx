@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useContext, useEffect, useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { indianStates } from '@gst/contracts';
 import type { Address, DirectoryPage, Permission } from '@gst/contracts';
@@ -6,6 +6,11 @@ import type { Mutate, RunAction } from '../security-forms.js';
 import { formText } from '../security-forms.js';
 import { securityRequest } from '../security-api.js';
 import { Icon } from '../ui.js';
+import {
+  ErrorRecoveryActions,
+  ErrorRecoveryContext,
+} from '../ErrorRecovery.js';
+import { Notification } from '@gst/ui/notifications';
 export interface BusinessScreenProps {
   recordId?: string | undefined;
   onRecordNavigate?: (id?: string, replace?: boolean) => void;
@@ -300,11 +305,22 @@ export function DirectoryPagination({
     </div>
   );
 }
-export function FormError({ message }: { message: string }) {
+export function FormError({
+  message,
+  onDismiss,
+}: {
+  message: string;
+  onDismiss?: () => void;
+}) {
+  const recovery = useContext(ErrorRecoveryContext);
+  // The shared notification host follows the active dialog, so workspace
+  // errors remain reachable there without duplicating the same failure.
+  if (recovery?.message === message) return null;
   return message ? (
-    <p role="alert" className="error">
+    <Notification message={message} onDismiss={onDismiss}>
       {message}
-    </p>
+      <ErrorRecoveryActions message={message} />
+    </Notification>
   ) : null;
 }
 
@@ -412,7 +428,7 @@ export function RecordLoading({
         <p role="status">Loading record...</p>
       ) : (
         <>
-          <p role="alert">{error}</p>
+          <Notification message={error} />
           <button className="button button-secondary" onClick={onRetry}>
             Try again
           </button>

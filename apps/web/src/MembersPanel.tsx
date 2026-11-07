@@ -28,7 +28,6 @@ interface Props {
   reload: () => Promise<void>;
   offset: number;
   setOffset: (value: number) => void;
-  error: string;
   onClearError: () => void;
 }
 export function MembersPanel({
@@ -43,7 +42,6 @@ export function MembersPanel({
   reload,
   offset,
   setOffset,
-  error,
   onClearError,
 }: Props) {
   const [editing, setEditing] = useState<MemberView | null>(null);
@@ -212,11 +210,6 @@ export function MembersPanel({
           onClose={close}
           busy={busy}
         >
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
           <form
             onSubmit={(event) => {
               const data = formValues(event);
@@ -287,11 +280,6 @@ export function MembersPanel({
           onClose={close}
           busy={busy}
         >
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
           {canManage ? (
             <>
               <form

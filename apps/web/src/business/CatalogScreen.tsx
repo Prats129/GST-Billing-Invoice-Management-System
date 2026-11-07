@@ -1,4 +1,5 @@
 import { PageActions, useUnsavedChanges } from '../PageActions.js';
+import { validationMessage } from '../validation-message.js';
 import { useState } from 'react';
 import {
   catalogInputSchema,
@@ -229,7 +230,10 @@ export function CatalogScreen({
           onClose={close}
           busy={busy}
         >
-          <FormError message={formError || error} />
+          <FormError
+            message={formError || error}
+            onDismiss={() => setFormError('')}
+          />
           <form
             key={editing?.version ?? 0}
             onChange={() => setDirty(true)}
@@ -256,10 +260,7 @@ export function CatalogScreen({
                 ),
               });
               if (!parsed.success) {
-                const issue = parsed.error.issues[0];
-                setFormError(
-                  `${issue?.path.join('.') ?? 'Item'}: ${issue?.message ?? 'Check the details.'}`,
-                );
+                setFormError(validationMessage(parsed.error));
                 return;
               }
               setFormError('');
@@ -448,10 +449,7 @@ export function CatalogScreen({
                       reference: formText(data, 'reference'),
                     });
                     if (!parsed.success) {
-                      setFormError(
-                        parsed.error.issues[0]?.message ??
-                          'Provide a review reference.',
-                      );
+                      setFormError(validationMessage(parsed.error));
                       return;
                     }
                     void run(async () => {

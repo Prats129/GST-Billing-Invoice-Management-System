@@ -43,6 +43,9 @@ import type { View } from './workspace-navigation.js';
 import { ConnectionIndicator, ConnectionPanel } from './connection.js';
 import type { ConnectionState } from './connection.js';
 import { useAppearance } from './appearance.js';
+import { ErrorRecoveryContext, ErrorRecoveryActions } from './ErrorRecovery.js';
+import type { BillingRecovery } from './error-guidance.js';
+import { Notification } from '@gst/ui/notifications';
 
 function activityText(action: string) {
   const labels: Record<string, string> = {
@@ -81,8 +84,28 @@ export function Workspace({
       : info?.appearance;
   useAppearance(appearance);
   const identityRef = useRef<string | undefined>(undefined);
-  const [error, setError] = useState('');
+  const [error, setErrorState] = useState('');
+  const [errorCode, setErrorCode] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const setError = (message: string) => {
+    setErrorState(message);
+    setErrorCode('');
+  };
+  const [setupOpen, setSetupOpen] = useState(false),
+    [setupDirty, setSetupDirty] = useState(false);
+  const setupLeaveGuard = useRef<(() => boolean) | null>(null);
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setupLeaveGuard.current = setupOpen
+      ? () => {
+          if (busy) return false;
+          if (setupDirty && !confirm('Discard unsaved business setup changes?'))
+            return false;
+          setSetupOpen(false);
+          return true;
+        }
+      : null;
+  }, [setupOpen, setupDirty, busy]);
   const [organizations, setOrganizations] = useState<OrganizationSummary[]>([]);
   const [orgLoading, setOrgLoading] = useState(false);
   const [invitations, setInvitations] = useState<
@@ -188,7 +211,10 @@ export function Workspace({
         );
         return;
       }
-      if (settingsLeaveGuard.current && !settingsLeaveGuard.current()) {
+      if (
+        (setupLeaveGuard.current && !setupLeaveGuard.current()) ||
+        (settingsLeaveGuard.current && !settingsLeaveGuard.current())
+      ) {
         window.history.replaceState(
           window.history.state,
           '',
@@ -401,23 +427,30 @@ export function Workspace({
       active = false;
     };
   }, [activeView, canAudit, selected]);
-  async function run(action: () => Promise<void>) {
+  async function run(
+    action: () => Promise<void>,
+    success = 'Action completed.',
+  ) {
     setError('');
+    setSuccessMessage('');
     setBusy(true);
     try {
       await action();
+      setSuccessMessage(success);
     } catch (e) {
       setError(
         e instanceof ApiError
-          ? e.code === 'FORBIDDEN'
-            ? 'You do not have permission to make this change. Ask an organization owner for help.'
-            : e.message
+          ? e.message
           : 'This request could not be completed. Please try again.',
       );
+      setErrorCode(e instanceof ApiError ? e.code : '');
       if (
         e instanceof ApiError &&
-        [401, 403].includes(e.status) &&
-        !['ENTITLEMENT_READ_ONLY', 'ORGANIZATION_WRITE_PAUSED'].includes(e.code)
+        [
+          'UNAUTHENTICATED',
+          'MFA_REQUIRED',
+          'PASSWORD_CHANGE_REQUIRED',
+        ].includes(e.code)
       ) {
         clearTenant();
         await refresh();
@@ -467,18 +500,29 @@ export function Workspace({
     setMembers(nextMembers);
   }
   const formProps = { run, mutate, busy, onComplete: applySession };
+  const recoverError = (action: BillingRecovery) => {
+    if (action === 'setup') {
+      if (!context?.access.permissions.includes('organization.manage')) return;
+      if (activeView === 'business') {
+        document.getElementById('business-tax')?.focus();
+        return;
+      }
+      setError('');
+      setSetupOpen(true);
+    } else if (action === 'system') setConnectionOpen(true);
+    else if (
+      !unsaved.current ||
+      confirm(
+        'Reload the latest page? Unsaved changes will be discarded. Copy anything you want to keep first.',
+      )
+    )
+      location.reload();
+  };
   const errorBanner = error && (
-    <div className="error" role="alert">
-      <Icon name="info" size={19} />
+    <Notification message={error} onDismiss={() => setError('')}>
       <span>{error}</span>
-      <button
-        className="icon-button"
-        aria-label="Dismiss message"
-        onClick={() => setError('')}
-      >
-        <Icon name="close" size={17} />
-      </button>
-    </div>
+      <ErrorRecoveryActions message={error} />
+    </Notification>
   );
   const recovery = recoveryCodes.length > 0 && (
     <section className="recovery recovery-codes">
@@ -725,7 +769,7 @@ export function Workspace({
       }
     />
   );
-  return (
+  const workspaceContent = (
     <div
       className={
         'app-shell workspace-refresh focused-workspace' +
@@ -849,14 +893,29 @@ export function Workspace({
               ))}
             </nav>
           )}
-          {!settingsTab && errorBanner}
+          {!settingsTab && !setupOpen && errorBanner}
+          {successMessage && (
+            <Notification
+              message={successMessage}
+              kind="success"
+              onDismiss={() => setSuccessMessage('')}
+            />
+          )}
           {!settingsTab && recovery}
           {context?.entitlement &&
             (context.entitlement.businessWritesPaused ||
               !['active', 'development'].includes(
                 context.entitlement.status,
               )) && (
-              <div className="warning-note" role="status">
+              <Notification
+                key={
+                  selected +
+                  context.entitlement.status +
+                  Boolean(context.entitlement.businessWritesPaused)
+                }
+                kind="warning"
+                message="This organization is read-only."
+              >
                 <strong>This organization is read-only.</strong>{' '}
                 {context.entitlement.businessWritesPaused
                   ? 'Your provider has paused business changes. Contact them for help.'
@@ -865,7 +924,7 @@ export function Workspace({
                     : 'Your license or subscription needs attention. Contact the host or platform operator.'}{' '}
                 You can still view and print records you have permission to
                 access.
-              </div>
+              </Notification>
             )}
           {invitations.length > 0 && (
             <section className="invitation-banner">
@@ -944,7 +1003,6 @@ export function Workspace({
                       reload={reloadTenant}
                       offset={memberOffset}
                       setOffset={setMemberOffset}
-                      error={error}
                       onClearError={() => setError('')}
                     />
                   )}
@@ -998,7 +1056,6 @@ export function Workspace({
                       reload={reloadTenant}
                       offset={roleOffset}
                       setOffset={setRoleOffset}
-                      error={error}
                       onClearError={() => setError('')}
                     />
                   )}
@@ -1109,6 +1166,47 @@ export function Workspace({
         />
       )}
       {connectionDialog}
+      {setupOpen && context && (
+        <Dialog
+          title="Business setup"
+          wide
+          busy={busy}
+          onClose={() => {
+            if (
+              !setupDirty ||
+              confirm(
+                'Discard unsaved business setup changes? Your invoice will stay open.',
+              )
+            ) {
+              setSetupOpen(false);
+              setError('');
+            }
+          }}
+        >
+          <p>
+            Complete and save the business details here, then close this dialog
+            and calculate your invoice again. Your invoice entries stay on the
+            page behind it.
+          </p>
+          {errorBanner}
+          <UnsavedChangesContext.Provider value={setSetupDirty}>
+            <BusinessProfileScreen {...businessProps} />
+          </UnsavedChangesContext.Provider>
+        </Dialog>
+      )}
     </div>
+  );
+  return (
+    <ErrorRecoveryContext.Provider
+      value={{
+        message: error,
+        code: errorCode,
+        busy,
+        permissions: context?.access.permissions ?? [],
+        onAction: recoverError,
+      }}
+    >
+      {workspaceContent}
+    </ErrorRecoveryContext.Provider>
   );
 }

@@ -408,3 +408,29 @@ footer {
     padding: 14px;
   }
 }
+.identity-dialog {
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #fff;
+  color: #172b42;
+}
+.identity-dialog::backdrop {
+  background: rgb(10 20 35 / 55%);
+}
+.recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  .identity-dialog {
+    background: #192738;
+    color: #e5edf7;
+    border-color: #384b62;
+  }
+}

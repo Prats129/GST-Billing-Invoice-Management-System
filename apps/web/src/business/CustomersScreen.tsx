@@ -1,4 +1,5 @@
 import { PageActions, useUnsavedChanges } from '../PageActions.js';
+import { validationMessage } from '../validation-message.js';
 import { useState } from 'react';
 import {
   customerInputSchema,
@@ -195,7 +196,10 @@ export function CustomersScreen({
           onClose={close}
           busy={busy}
         >
-          <FormError message={formError || error} />
+          <FormError
+            message={formError || error}
+            onDismiss={() => setFormError('')}
+          />
           <form
             onChange={() => setDirty(true)}
             onSubmit={(event) => {
@@ -211,10 +215,7 @@ export function CustomersScreen({
                 address: readAddress(data),
               });
               if (!parsed.success) {
-                setFormError(
-                  parsed.error.issues[0]?.message ??
-                    'Check the customer details.',
-                );
+                setFormError(validationMessage(parsed.error));
                 return;
               }
               setFormError('');

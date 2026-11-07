@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Notification } from '@gst/ui/notifications';
 import { logoDataSchema, MAX_LOGO_BYTES } from '@gst/contracts';
 export function LogoField({ initial }: { initial: string }) {
   const [value, setValue] = useState(initial);
@@ -59,11 +60,7 @@ export function LogoField({ initial }: { initial: string }) {
         Printed on new invoices. Existing issued documents retain their saved
         logo.
       </small>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Notification message={error} onDismiss={() => setError('')} />}
       {value && (
         <div>
           <img src={value} alt="Business logo preview" width="96" height="96" />

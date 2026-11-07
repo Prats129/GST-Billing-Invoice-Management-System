@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SessionInfo } from '@gst/contracts';
 import { securityRequest } from './security-api.js';
+import { Notification } from '@gst/ui/notifications';
 import {
   formText,
   formValues,
@@ -86,11 +87,7 @@ export function SecurityPanel({
   };
   return (
     <div className="security-layout" ref={panel}>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      {error && <Notification message={error} onDismiss={() => setError('')} />}
       {!section ? (
         <div className="security-overview">
           <p className="settings-intro">

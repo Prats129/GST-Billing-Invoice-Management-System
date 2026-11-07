@@ -1,10 +1,11 @@
+import { billingProblem } from './error-guidance.js';
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
     message: string,
   ) {
-    super(message);
+    super(billingProblem(code, message));
   }
 }
 export async function securityRequest<T>(
@@ -31,7 +32,20 @@ export async function securityRequest<T>(
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
-    const result = await response.json();
+    const result = await response.json().catch((error: unknown) => {
+      if (error instanceof Error && error.name === 'AbortError') throw error;
+      throw new ApiError(
+        response.status,
+        'REQUEST_FAILED',
+        'The server returned an unreadable response.',
+      );
+    });
+    if (!result || typeof result !== 'object')
+      throw new ApiError(
+        response.status,
+        'REQUEST_FAILED',
+        'The server returned an invalid response.',
+      );
     if (!response.ok)
       throw new ApiError(
         response.status,
@@ -39,6 +53,14 @@ export async function securityRequest<T>(
         result.error?.message ?? 'Request failed',
       );
     return result as T;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (
+      error instanceof TypeError ||
+      (error instanceof Error && error.name === 'AbortError')
+    )
+      throw new ApiError(0, 'NETWORK_UNAVAILABLE', 'Connection unavailable.');
+    throw error;
   } finally {
     clearTimeout(timeout);
   }

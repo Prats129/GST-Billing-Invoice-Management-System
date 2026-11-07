@@ -2404,3 +2404,130 @@ checkbox during the next billing MFA verification. Platform Admin still requires
 MFA at each new login and fresh proof for sensitive commands. Native Windows
 installer/service/reboot/LAN acceptance and production hosting remain outside
 this change and are not newly verified.
+
+# Error recovery UX — 2026-11-07 (completed)
+
+Reviewed both transports, admin identity/operations/forms and billing workspace,
+validation, account settings and editor error paths. Added code-based plain
+language guidance with destinations for common security, licensing, payment,
+tax, setup, stale-record and connectivity failures. Network failures do not
+replay mutations; users are directed to verify operation/record state first.
+
+Implemented an admin in-place identity dialog with cancel, keyboard/focus
+handling and preserved source form. Only an explicit REAUTH_REQUIRED rejection
+can be retried once after fresh server verification, preserving the same payload
+and idempotency key. Invalid password/code responses do not sign out a valid
+session. Added billing recovery actions, isolated unsaved-state handling for
+business setup over an invoice, safe links to related records in a new tab and
+field-named validation. Existing backend permissions/compliance gates remain.
+Frontend builds/type checking have started; tests and final verification are
+pending. No schema or live organization/security configuration changes.
+
+Recovery UX checkpoint: frontend builds and test TypeScript passed. Four new
+transport safety tests passed (one verified retry with unchanged submission,
+no retry for unknown network failure, cancellation, and wrong-proof versus actual
+expiry). All eleven Platform Admin integration tests passed, retaining MFA,
+CSRF, authorization, redaction and durable-operation behavior. The first full
+browser run passed the new in-place admin confirmation/one-commit case and other
+admin/navigation checks; the new invoice recovery scenario needed to explicitly
+reconfirm GST registration after saving setup. The test now performs that same
+required user review; no registration/compliance check was relaxed. Final browser
+rerun and repository checks are pending.
+
+Shutdown-resume checkpoint: verified the saved change set and rebuilt every
+workspace package and application successfully. Test TypeScript, all four retry
+safety tests, repository lint/format and whitespace checks passed again. The
+final browser run has passed all seven real billing scenarios, including setup
+recovery without losing invoice inputs, invalid-proof handling, provider expiry
+guidance and MFA. Remaining admin/workspace browser scenarios are running. No
+source rollback, environment-secret rewrite or live data reset was needed.
+
+Final verification after shutdown: all 18 Chrome browser tests passed, including
+both admin and billing, mobile layouts, one-commit sensitive actions, cancellation,
+wrong-password preservation, invoice setup recovery/save, field retention,
+classification links, expiry explanations, existing MFA and record navigation.
+All four new transport safety tests passed again; all eleven admin integration
+tests had passed before interruption with unchanged authorization semantics.
+Full workspace production rebuild, test TypeScript, repository lint/format and
+whitespace checks passed. Added the operator/user recovery guide in
+[error-recovery.md](error-recovery.md). Generic banners are not duplicated on
+ordinary editor pages; active dialogs keep their own reachable errors. Specific
+server expiry and customer-state details are retained alongside recovery advice.
+
+No migration, license change, security bypass, environment-secret modification,
+live database reset or Git staging/commit was performed for this UX update.
+Restart billing/admin development processes to see the changes. Native Windows
+installer/services/reboot/LAN acceptance and production deployment remain outside
+this work and are not claimed as verified.
+
+# Popup feedback — 2026-11-07 (completed)
+
+Replaced page-top action feedback in both frontends with dismissible viewport
+notifications. Both apps use the shared @gst/ui presentation component; customer
+and admin runtime/security boundaries remain separate. Messages
+stack in a fixed, bounded region and the host follows the active native dialog
+so errors and recovery buttons stay visible/reachable above modal backdrops.
+No automatic focus change or short error timeout; users explicitly dismiss
+feedback. New messages are brought into the notification stack's visible area
+without scrolling the page. Success, error and warning have separate visual
+and live-region semantics. Existing field-native validation and contextual
+issuance restrictions remain available by the affected controls.
+
+Converted workspace/admin errors and successes, local form errors, account and
+appearance feedback, onboarding errors, read-only warnings and business saves.
+Removed duplicate member/role dialog copies of the workspace error. Added
+explicit invoice save/preview success messages. Frontend builds passed; browser
+coverage now checks error visibility after submitting long forms in both apps,
+preserved values, dismissal and normal success/retry. Final verification pending.
+
+Popup verification checkpoint: builds/type checks passed. The initial browser
+run exposed an obsolete exact-alert-text assertion (notifications now include a
+heading/dismiss button), followed by a real stale-success overlay that blocked a
+new role dialog's Save button. The text assertion now checks the message content,
+and notification lifecycle clears prior non-error confirmations on navigation
+or entry into a different dialog. The latest browser run has passed settings and
+role/member workflows; remaining long-form and regression checks are running.
+Added repeated local-validation dismissal/retry coverage and kept source values
+intact. No permissions, API mutations or security checks were changed.
+
+Final verification: all 18 Chrome browser tests passed with real disposable
+databases and synthetic layout fixtures. New assertions verify viewport bounds
+and fixed positioning after errors at the bottom of business setup and payment
+forms, repeated invalid amount submissions after dismissal, retained field
+values, success feedback, and notifications inside Settings. Existing dialogs,
+MFA, onboarding, licenses/payments, invoice editing/printing, desktop/mobile
+layout, navigation and unsaved-change checks passed. Frontend production builds,
+test TypeScript, repository lint/format and whitespace checks passed. Visually
+inspected the dark mobile Settings success popup as well. No live data reset,
+schema migration, dependency installation, environment-secret change or Git
+staging/commit was performed. Refresh the running frontends to see the changes.
+
+# Focused cleanup review — 2026-11-07 (completed)
+
+Reviewed the staged recovery/notification changes without altering the user's
+index. Consolidated byte-identical notification TSX/CSS into the private @gst/ui
+workspace, consumed by both frontend builds. Removed the two duplicate copies,
+obsolete member/role error props, unreachable recovery/security guidance and
+legacy notification styling. The DOM observer now checks only dialog-related
+mutations before relocating the notification host, rather than querying dialogs
+for every ordinary form/text change. Existing popup, dialog and error recovery
+behavior is retained.
+
+Both request clients now reject malformed/null JSON replies rather than claiming
+a mutation succeeded; unknown outcomes are never retried automatically. Added
+focused tests for that behavior. Internal workspace linking used the existing
+offline store with lifecycle scripts disabled. The lockfile diff contains only
+the internal UI links/importer; no external package versions changed. Build,
+browser, request-safety and static verification are underway. No data reset,
+schema change, license change or secret rewrite.
+
+Final cleanup verification: full workspace/application production builds and all
+workspace/test TypeScript checks passed, including @gst/ui's standalone CSS/type
+declarations. Six request-safety tests passed, including malformed success replies
+on both transports; all 18 real/synthetic Chrome browser regressions passed with
+the single shared notification implementation. Repository lint, formatting and
+whitespace checks passed. The broad screen changes were retained because each
+implements the requested feedback/recovery behavior; no unrelated business or
+security redesign was introduced. The existing staged snapshot was preserved;
+the consolidation/removal/new workspace files remain working-tree edits to stage
+together before committing.

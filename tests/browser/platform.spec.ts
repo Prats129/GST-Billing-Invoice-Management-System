@@ -169,6 +169,48 @@ test('owner MFA, offline organization detail URLs, agreements and payments work 
   await receipt.getByLabel('Received amount (INR)').fill('400.25');
   await receipt.getByLabel('Received at').fill('2026-11-05T12:00');
   await receipt.getByLabel('Payment reference').fill('BANK-BROWSER-1');
+  await receipt.getByLabel('Received amount (INR)').fill('not-an-amount');
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await receipt.getByRole('button', { name: 'Save', exact: true }).click();
+    const validation = page
+      .locator('.gst-notification[data-kind="error"]')
+      .filter({ hasText: 'Enter an INR amount' });
+    await expect(validation).toBeVisible();
+    await validation
+      .getByRole('button', { name: 'Dismiss notification', exact: true })
+      .click();
+  }
+  await receipt.getByLabel('Received amount (INR)').fill('400.25');
+  await page.route(
+    '**/api/platform/v1/organizations/*/receipts',
+    (route) =>
+      route.fulfill({
+        status: 409,
+        json: { error: { code: 'OVERPAYMENT', message: 'Balance exceeded' } },
+      }),
+    { times: 1 },
+  );
+  await receipt.getByRole('button', { name: 'Save', exact: true }).click();
+  const popup = page
+    .locator('.gst-notification[data-kind="error"]')
+    .filter({ hasText: 'remaining balance' });
+  await expect(popup).toBeVisible();
+  const bounds = await popup.boundingBox();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(
+    (await page.evaluate(() => innerHeight)) + 1,
+  );
+  expect(
+    await popup
+      .locator('..')
+      .evaluate((node) => getComputedStyle(node).position),
+  ).toBe('fixed');
+  await expect(receipt.getByLabel('Received amount (INR)')).toHaveValue(
+    '400.25',
+  );
+  await popup
+    .getByRole('button', { name: 'Dismiss notification', exact: true })
+    .click();
   await receipt.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(
     page.getByRole('cell', { name: '₹400.25', exact: true }),
@@ -259,4 +301,84 @@ test('immutable request export, signed import, offline handoff and history refre
     path: 'test-results/platform-desktop.png',
     fullPage: true,
   });
+});
+
+test('sensitive actions verify in place, preserve the source form on cancel or wrong proof and commit once', async ({
+  page,
+}) => {
+  await page.goto(origin + '/#/security');
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page
+    .getByLabel('Verification or recovery code')
+    .fill(recoveryCodes[1]!);
+  await page.getByRole('button', { name: 'Verify', exact: true }).click();
+  const source = page
+    .getByRole('heading', {
+      name: 'Change password and sign out all sessions',
+      exact: true,
+    })
+    .locator('..');
+  const replacement = password + ' replacement';
+  await source
+    .getByLabel('New password (at least 15 characters)', { exact: true })
+    .fill(replacement);
+  await source.getByRole('button', { name: 'Save', exact: true }).click();
+  const dialog = page.getByRole('dialog', {
+    name: 'Confirm your identity',
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByLabel('Current password', { exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    source.getByLabel('New password (at least 15 characters)', { exact: true }),
+  ).toHaveValue(replacement);
+  await expect
+    .poll(
+      async () =>
+        (
+          await db.query(
+            "SELECT count(*)::int AS count FROM platform_audit WHERE action='owner.password_changed'",
+          )
+        ).rows[0].count,
+    )
+    .toBe(0);
+  await source.getByRole('button', { name: 'Save', exact: true }).click();
+  await dialog
+    .getByLabel('Current password', { exact: true })
+    .fill('wrong password');
+  await dialog
+    .getByLabel('Fresh verification or recovery code', { exact: true })
+    .fill(recoveryCodes[2]!);
+  await dialog
+    .getByRole('button', { name: 'Verify and continue', exact: true })
+    .click();
+  await expect(dialog.getByRole('alert')).toContainText(
+    'password was not accepted',
+  );
+  expect(
+    (await page.request.get(origin + '/api/platform/v1/auth/session')).status(),
+  ).toBe(200);
+  await dialog.getByLabel('Current password', { exact: true }).fill(password);
+  await dialog
+    .getByLabel('Fresh verification or recovery code', { exact: true })
+    .fill(recoveryCodes[2]!);
+  await dialog
+    .getByRole('button', { name: 'Verify and continue', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Publisher sign in', exact: true }),
+  ).toBeVisible();
+  expect(
+    (
+      await db.query(
+        "SELECT count(*)::int AS count FROM platform_audit WHERE action='owner.password_changed'",
+      )
+    ).rows[0].count,
+  ).toBe(1);
 });

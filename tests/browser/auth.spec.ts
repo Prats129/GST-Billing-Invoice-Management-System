@@ -237,9 +237,15 @@ test('account appearance persists across logins, follows system mode and preserv
   await settings
     .getByRole('button', { name: 'Save appearance', exact: true })
     .click();
-  await expect(settings.getByRole('alert')).toHaveText(
-    'Appearance temporarily unavailable.',
-  );
+  await expect(
+    settings.getByRole('alert').locator('.gst-notification-content'),
+  ).toHaveText('Appearance temporarily unavailable.');
+  await expect(settings.getByRole('alert')).toBeVisible();
+  const appearanceErrorBounds = await settings.getByRole('alert').boundingBox();
+  expect(appearanceErrorBounds!.y).toBeGreaterThanOrEqual(0);
+  expect(
+    appearanceErrorBounds!.y + appearanceErrorBounds!.height,
+  ).toBeLessThanOrEqual((await page.evaluate(() => innerHeight)) + 1);
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'blue');
   await page.unroute('**/api/v1/auth/appearance');
   await settings
@@ -542,12 +548,49 @@ test('business setup, customer archive/restore and catalog classification review
   await page
     .getByLabel('E-invoice applicability', { exact: true })
     .selectOption('not_required');
+  await page.route(
+    '**/api/v1/organizations/*/business-profile',
+    (route) =>
+      route.fulfill({
+        status: 403,
+        json: { error: { code: 'FORBIDDEN', message: 'Access denied' } },
+      }),
+    { times: 1 },
+  );
+  await page
+    .getByRole('button', { name: 'Save business details', exact: true })
+    .click();
+  const errorPopup = page
+    .locator('.gst-notification[data-kind="error"]')
+    .filter({ hasText: 'Your account does not have permission' });
+  await expect(errorPopup).toBeVisible();
+  const errorBounds = await errorPopup.boundingBox();
+  expect(errorBounds!.y).toBeGreaterThanOrEqual(0);
+  expect(errorBounds!.y + errorBounds!.height).toBeLessThanOrEqual(
+    (await page.evaluate(() => innerHeight)) + 1,
+  );
+  expect(
+    await errorPopup
+      .locator('..')
+      .evaluate((node) => getComputedStyle(node).position),
+  ).toBe('fixed');
+  await errorPopup
+    .getByRole('button', { name: 'Dismiss notification', exact: true })
+    .click();
+  await expect(
+    page.getByLabel('Legal business name', { exact: true }),
+  ).toHaveValue('Browser trading business');
   await page
     .getByRole('button', { name: 'Save business details', exact: true })
     .click();
   await expect(
     page.getByText('Business details saved.', { exact: true }),
   ).toBeVisible();
+  await page
+    .locator('.gst-notification[data-kind="success"]')
+    .filter({ hasText: 'Business details saved.' })
+    .getByRole('button', { name: 'Dismiss notification', exact: true })
+    .click();
   await page.reload();
   await expect(
     page.getByLabel('Legal business name', { exact: true }),
@@ -841,6 +884,86 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
   await page
     .getByLabel('Notes', { exact: true })
     .fill('Browser draft <script> is plain text');
+  // Recovery opens over the editor, saves separately, and never replaces its inputs.
+  await page.route(
+    '**/api/v1/organizations/*/invoices/preview',
+    (route) =>
+      route.fulfill({
+        status: 409,
+        json: {
+          error: { code: 'BILLING_SETUP_REQUIRED', message: 'Setup required' },
+        },
+      }),
+    { times: 1 },
+  );
+  await page
+    .getByRole('button', { name: 'Calculate & preview', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Open business setup', exact: true })
+    .first()
+    .click();
+  const setup = page.getByRole('dialog', {
+    name: 'Business setup',
+    exact: true,
+  });
+  await setup.getByLabel('Trade name', { exact: true }).fill('Recovery trade');
+  page.once('dialog', (prompt) => void prompt.dismiss());
+  await page.keyboard.press('Escape');
+  await expect(setup).toBeVisible();
+  await setup.locator('input[name="registrationConfirmed"]').check();
+  await setup
+    .getByRole('button', { name: 'Save business details', exact: true })
+    .click();
+  await expect(
+    setup.getByText('Business details saved.', { exact: true }),
+  ).toBeVisible();
+  await setup
+    .getByRole('button', { name: 'Close dialog', exact: true })
+    .click();
+  await expect(page.getByLabel('Notes', { exact: true })).toHaveValue(
+    'Browser draft <script> is plain text',
+  );
+  await expect(page.getByLabel('Quantity 1', { exact: true })).toHaveValue(
+    '2.5',
+  );
+  await page.route(
+    '**/api/v1/organizations/*/invoices/preview',
+    (route) =>
+      route.fulfill({
+        status: 401,
+        json: {
+          error: { code: 'INVALID_CREDENTIALS', message: 'Invalid code' },
+        },
+      }),
+    { times: 1 },
+  );
+  await page
+    .getByRole('button', { name: 'Calculate & preview', exact: true })
+    .click();
+  await expect(page.getByLabel('Notes', { exact: true })).toHaveValue(
+    'Browser draft <script> is plain text',
+  );
+  await expect(
+    page.getByRole('button', { name: /^Account menu for/ }),
+  ).toBeVisible();
+  await page.route(
+    '**/api/v1/organizations/*/invoices/preview',
+    (route) =>
+      route.fulfill({
+        status: 400,
+        json: { error: { code: 'TAX_NOT_REVIEWED', message: 'Needs review' } },
+      }),
+    { times: 1 },
+  );
+  await page
+    .getByRole('button', { name: 'Calculate & preview', exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole('link', { name: 'Open catalog in a new tab', exact: true })
+      .first(),
+  ).toHaveAttribute('target', '_blank');
   await page
     .getByRole('button', { name: 'Calculate & preview', exact: true })
     .click();
@@ -1228,11 +1351,18 @@ test('expired entitlement notice preserves the workspace and authorized reads af
     .click();
   await expect(
     page
-      .getByText('Your trial has expired. Existing records remain available.', {
-        exact: true,
+      .getByRole('alert')
+      .filter({
+        hasText: 'Your trial has expired. Existing records remain available.',
       })
       .first(),
   ).toBeVisible();
+  await expect(
+    page
+      .getByRole('alert')
+      .filter({ hasText: 'Your trial has expired.' })
+      .first(),
+  ).toContainText('Contact your provider');
   await expect(page.getByLabel('Organization', { exact: true })).toHaveValue(
     organizationId,
   );
