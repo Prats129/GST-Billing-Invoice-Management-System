@@ -36,6 +36,32 @@ export interface AdminSession {
   expires_at: Date;
   last_seen_at: Date;
 }
+// Use the same owner -> session lock order as MFA/recovery. Sensitive changes
+// must check live authority inside the transaction, after any password hashing.
+export async function lockPlatformSession(
+  tx: Tx,
+  session: AdminSession,
+  recent = false,
+) {
+  const [owner] = await rows<{ mfa_secret: string | null }>(
+    tx,
+    'SELECT mfa_secret FROM platform_owner WHERE id=$1 FOR UPDATE',
+    [session.owner_id],
+  );
+  const [live] = await rows<AdminSession>(
+    tx,
+    "SELECT * FROM platform_sessions WHERE token_hash=$1 AND owner_id=$2 AND expires_at>now() AND last_seen_at>now()-interval '30 minutes' FOR UPDATE",
+    [session.token_hash, session.owner_id],
+  );
+  if (!owner || !live) fail('UNAUTHENTICATED', 401);
+  if (!owner.mfa_secret || !live.mfa_verified) fail('MFA_REQUIRED', 403);
+  if (
+    recent &&
+    (!live.fresh_at || Date.now() - live.fresh_at.getTime() > 300000)
+  )
+    fail('REAUTH_REQUIRED', 403);
+  return live;
+}
 export class PlatformAuth {
   private nextCleanup = 0;
   private readonly dummy = hashPassword(token());
@@ -232,6 +258,7 @@ export class PlatformAuth {
     await this.recent(s);
     const hash = await hashPassword(password);
     await transaction(this.db, async (tx) => {
+      await lockPlatformSession(tx, s, true);
       await tx.query(
         'UPDATE platform_owner SET password_hash=$1,version=version+1',
         [hash],

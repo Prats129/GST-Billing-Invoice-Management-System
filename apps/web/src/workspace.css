@@ -11,15 +11,6 @@
 .workspace-refresh .sidebar-brand {
   padding-bottom: 24px;
 }
-.workspace-refresh .sidebar-workspace {
-  margin-bottom: 18px;
-}
-.workspace-refresh .sidebar-workspace strong {
-  font-size: 13px;
-}
-.workspace-refresh .sidebar-workspace small {
-  font-size: 11px;
-}
 .workspace-refresh .sidebar nav {
   padding-bottom: 12px;
   color-scheme: inherit;
@@ -69,16 +60,6 @@
     scrollbar-color: auto;
   }
 }
-.workspace-refresh .navigation-group {
-  margin-top: 20px;
-}
-.workspace-refresh .nav-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1.25px;
-  margin: 0 0 7px;
-  color: #9bb1c0;
-}
 .workspace-refresh .sidebar nav a {
   min-height: 41px;
   padding: 9px 12px;
@@ -98,19 +79,6 @@
 }
 .workspace-refresh .sidebar-bottom {
   border-top: 1px solid var(--line);
-}
-.workspace-refresh .sidebar-connection {
-  padding: 14px 8px;
-}
-.workspace-refresh .sidebar-user {
-  padding: 16px;
-  margin: 0 -16px;
-}
-.workspace-refresh .sidebar-user strong {
-  font-size: 12px;
-}
-.workspace-refresh .sidebar-user small {
-  font-size: 10px;
 }
 .workspace-refresh .topbar {
   height: 72px;
@@ -228,167 +196,8 @@
   box-shadow: 0 2px 4px #142c3e04;
   font-weight: 650;
 }
-.workspace-refresh .home-layout {
-  display: grid;
-  gap: 30px;
-}
-.workspace-refresh .home-welcome {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 28px;
-  padding: 28px 30px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-border);
-  border-radius: 14px;
-}
-.workspace-refresh .home-welcome h2 {
-  font-size: 26px;
-  color: var(--accent-text);
-  letter-spacing: -0.6px;
-  margin-bottom: 8px;
-}
-.workspace-refresh .home-welcome p:not(.eyebrow) {
-  max-width: 490px;
-  font-size: 14px;
-  color: var(--text-muted);
-}
-.workspace-refresh .home-organization {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 18px;
-  border-left: 1px solid var(--accent-border);
-  color: var(--accent-text);
-  min-width: 0;
-  max-width: 320px;
-}
-.workspace-refresh .home-organization strong {
-  display: block;
-  overflow-wrap: anywhere;
-  font-size: 14px;
-}
-.workspace-refresh .home-organization span {
-  display: block;
-  font-size: 12px;
-  margin-top: 3px;
-  color: var(--text-muted);
-}
-.workspace-refresh .home-group-heading {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
-  margin-bottom: 14px;
-}
-.workspace-refresh .home-group-heading h2 {
-  font-size: 18px;
-  margin-bottom: 4px;
-}
-.workspace-refresh .home-group-heading p {
-  font-size: 13px;
-}
-.workspace-refresh .home-group-count {
-  color: var(--muted);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.workspace-refresh .task-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-.workspace-refresh .home-group-business .task-grid,
-.workspace-refresh .home-group-account .task-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.workspace-refresh .task-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 24px 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  transition:
-    border-color 0.15s,
-    box-shadow 0.15s,
-    transform 0.15s;
-  min-width: 0;
-}
-.workspace-refresh .task-card:hover {
-  border-color: var(--accent-border);
-  box-shadow: 0 5px 15px #172f4510;
-  transform: translateY(-2px);
-}
-.workspace-refresh .task-card > svg {
-  color: var(--text-muted);
-  margin-left: auto;
-  margin-top: 10px;
-}
-.workspace-refresh .task-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 11px;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-.workspace-refresh .task-icon-business {
-  background: var(--info-bg);
-  color: var(--info-text);
-}
-.workspace-refresh .task-icon-account {
-  background: var(--info-bg);
-  color: var(--info-text);
-}
-.workspace-refresh .task-copy {
-  min-width: 0;
-}
-.workspace-refresh .task-copy strong {
-  display: block;
-  font-size: 15px;
-  color: var(--heading);
-  margin: 2px 0 6px;
-}
-.workspace-refresh .task-copy > span {
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-.workspace-refresh .access-disclosure {
-  padding: 0;
-}
-.workspace-refresh .access-disclosure > summary {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 22px;
-  cursor: pointer;
-}
-.workspace-refresh .access-disclosure > summary > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-}
-.workspace-refresh .access-disclosure-body {
-  border-top: 1px solid var(--border);
-  padding: 20px 22px;
-}
-.workspace-refresh .access-disclosure[open] > summary > svg {
-  transform: rotate(90deg);
-}
 .workspace-refresh .workspace-content:focus {
   outline: none;
-}
-.workspace-refresh .access-disclosure-body > p {
-  margin-bottom: 16px;
-  font-size: 13px;
 }
 .workspace-refresh .form-outline {
   display: flex;
@@ -510,18 +319,6 @@
   .workspace-refresh .workspace-content {
     padding: 28px 20px 18px 24px;
   }
-  .workspace-refresh .task-grid {
-    grid-template-columns: 1fr;
-  }
-  .workspace-refresh .task-card {
-    padding: 20px;
-  }
-  .workspace-refresh .home-welcome {
-    align-items: flex-start;
-  }
-  .workspace-refresh .home-organization {
-    max-width: 240px;
-  }
 }
 @media (max-width: 1100px) {
   .workspace-refresh .invoice-sidebar {
@@ -534,12 +331,6 @@
 @media (max-width: 900px) {
   .workspace-refresh .sidebar-mobile {
     width: 280px;
-  }
-  .workspace-refresh .home-group-sales .task-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .workspace-refresh .home-group-sales .task-card {
-    flex-wrap: wrap;
   }
 }
 @media (max-width: 650px) {
@@ -588,40 +379,6 @@
     font-size: 12px;
     padding: 9px;
   }
-  .workspace-refresh .home-welcome {
-    padding: 22px;
-    flex-direction: column;
-    gap: 18px;
-  }
-  .workspace-refresh .home-welcome h2 {
-    font-size: 23px;
-  }
-  .workspace-refresh .home-organization {
-    border-left: 0;
-    border-top: 1px solid var(--accent-border);
-    padding: 14px 0 0;
-    max-width: none;
-    width: 100%;
-  }
-  .workspace-refresh .task-grid,
-  .workspace-refresh .home-group-business .task-grid,
-  .workspace-refresh .home-group-account .task-grid,
-  .workspace-refresh .home-group-sales .task-grid {
-    grid-template-columns: 1fr;
-  }
-  .workspace-refresh .home-group-sales .task-card {
-    flex-wrap: nowrap;
-  }
-  .workspace-refresh .home-group-count {
-    display: none;
-  }
-  .workspace-refresh .home-layout {
-    gap: 26px;
-  }
-  .workspace-refresh .access-disclosure > summary {
-    align-items: flex-start;
-    flex-direction: column;
-  }
   .workspace-refresh .business-profile .form-section {
     padding: 16px;
   }
@@ -632,11 +389,5 @@
   .workspace-refresh .form-outline button {
     font-size: 11px;
     padding: 7px;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .workspace-refresh .task-card {
-    transition: none;
-    transform: none;
   }
 }

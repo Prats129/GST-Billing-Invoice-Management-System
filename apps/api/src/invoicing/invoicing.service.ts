@@ -735,30 +735,36 @@ export class InvoicingService {
       digest: checksum(snapshot),
       payload: snapshot,
     });
-    for (const l of snapshot.calculation.lines) {
-      await tx.insert(invoiceLines).values({
+    const draftLines = new Map(draft.lines.map((line) => [line.id, line]));
+    const printLines = new Map(
+      snapshot.print.lines.map((line) => [line.id, line]),
+    );
+    // Keep the organization lock and atomic snapshot/line/tax transaction, with
+    // one statement per table instead of two round trips for every invoice line.
+    await tx.insert(invoiceLines).values(
+      snapshot.calculation.lines.map((l) => ({
         organizationId: orgId,
         invoiceId: row.id,
         lineId: l.id,
-        catalogItemId: draft.lines.find((v) => v.id === l.id)!.catalogItemId,
-        description: snapshot.print.lines.find((v) => v.id === l.id)!
-          .description,
+        catalogItemId: draftLines.get(l.id)!.catalogItemId,
+        description: printLines.get(l.id)!.description,
         hsnSac: l.hsnSac,
         quantity: l.quantity,
         supplyValue: l.supplyValue,
         taxTotal: l.taxTotal,
         total: l.total,
-      });
-      if (l.taxComponents.length)
-        await tx.insert(invoiceTaxComponents).values(
-          l.taxComponents.map((c) => ({
-            organizationId: orgId,
-            invoiceId: row.id,
-            lineId: l.id,
-            ...c,
-          })),
-        );
-    }
+      })),
+    );
+    const components = snapshot.calculation.lines.flatMap((l) =>
+      l.taxComponents.map((c) => ({
+        organizationId: orgId,
+        invoiceId: row.id,
+        lineId: l.id,
+        ...c,
+      })),
+    );
+    if (components.length)
+      await tx.insert(invoiceTaxComponents).values(components);
   }
   private async cancelled(db: Store, orgId: string, id: string) {
     const [row] = await db

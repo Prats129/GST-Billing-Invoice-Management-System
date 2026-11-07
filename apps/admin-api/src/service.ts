@@ -9,6 +9,7 @@ import type { PlatformOrganizationView } from '@gst/contracts/platform';
 import { rows, transaction, audit } from './store.js';
 import type { Tx } from './store.js';
 import type { AdminSession } from './auth.js';
+import { lockPlatformSession } from './auth.js';
 import { fail } from './errors.js';
 const uuid = (s: string) => z.string().uuid().parse(s);
 export function canonical(value: unknown): string {
@@ -67,20 +68,11 @@ export class PlatformService {
     work: (tx: Tx) => Promise<T>,
   ) {
     return transaction(this.db, async (tx) => {
-      await tx.query('SELECT id FROM platform_owner WHERE id=$1 FOR UPDATE', [
-        actor.owner_id,
-      ]);
-      const [live] = await rows<{ fresh_at: Date | null }>(
+      await lockPlatformSession(
         tx,
-        "SELECT fresh_at FROM platform_sessions WHERE token_hash=$1 AND owner_id=$2 AND mfa_verified AND expires_at>now() AND last_seen_at>now()-interval '30 minutes' FOR UPDATE",
-        [actor.token_hash, actor.owner_id],
+        actor,
+        ['license.apply', 'writes.pause', 'setup.link'].includes(action),
       );
-      if (!live) fail('UNAUTHENTICATED', 401);
-      if (
-        ['license.apply', 'writes.pause', 'setup.link'].includes(action) &&
-        (!live.fresh_at || Date.now() - live.fresh_at.getTime() > 300000)
-      )
-        fail('REAUTH_REQUIRED', 403);
 
       await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))', [
         uuid(key),

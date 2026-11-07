@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Page, Request } from '@playwright/test';
 import { createIsolatedTestDatabase } from '../../packages/database/src/testing.js';
 import { IdentityService } from '../../apps/api/src/security/identity.service.js';
 import { OrganizationsService } from '../../apps/api/src/security/organizations.service.js';
@@ -1080,7 +1080,7 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
   });
   await cancellation
     .getByLabel('Cancellation reason', { exact: true })
-    .fill('Duplicate draft created by mistake');
+    .fill('     ');
   await cancellation
     .getByRole('checkbox', { name: 'No supply occurred under this document.' })
     .check();
@@ -1089,6 +1089,35 @@ test('invoice builder saves drafts, calculates discounts and GST, and prints a m
       name: 'This document has not been reported or registered with an IRP.',
     })
     .check();
+  const discardRequests: string[] = [];
+  const trackDiscard = (request: Request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/cancel'))
+      discardRequests.push(request.url());
+  };
+  page.on('request', trackDiscard);
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await cancellation
+        .getByRole('button', { name: 'Discard draft', exact: true })
+        .click();
+      const validation = cancellation.locator(
+        '.gst-notification[data-kind="error"]',
+      );
+      await expect(validation).toContainText('Reason:');
+      await validation
+        .getByRole('button', { name: 'Dismiss notification', exact: true })
+        .click();
+    }
+    expect(discardRequests).toHaveLength(0);
+    await expect(cancellation.getByLabel('Cancellation reason')).toHaveValue(
+      '     ',
+    );
+  } finally {
+    page.off('request', trackDiscard);
+  }
+  await cancellation
+    .getByLabel('Cancellation reason', { exact: true })
+    .fill('Duplicate draft created by mistake');
   await cancellation
     .getByRole('button', { name: 'Discard draft', exact: true })
     .click();

@@ -2531,3 +2531,76 @@ implements the requested feedback/recovery behavior; no unrelated business or
 security redesign was introduced. The existing staged snapshot was preserved;
 the consolidation/removal/new workspace files remain working-tree edits to stage
 together before committing.
+
+# Project-wide audit — 2026-11-07 (completed locally)
+
+Started from a clean worktree. Inventoried tracked source/configuration across all
+apps/packages, publisher tools, Windows scripts, tests and CI. Audit progress,
+verified findings and remaining release boundaries are recorded in
+[project-audit.md](project-audit.md). Strict unused-code diagnostics and dependency
+ownership review precede removal; no live database/security configuration changes.
+
+Batch 1: traced every workspace's dependency imports and public/CLI entry points;
+removed the API's redundant Argon2 declaration, moved test-only OTPAuth to dev,
+enabled strict unused compiler checks after a clean baseline, and simplified the
+password capacity guard. Shared builds and four focused crypto tests passed.
+The production registry audit reported zero known advisories across 153
+production dependencies. RxJS remains as a NestJS runtime peer.
+
+Batch 2: consolidated transaction-local platform session validation and applied
+it to password changes, other-session revocation and existing platform mutations.
+This closes a revoked/stale-session race after initial request authorization.
+All 12 platform integration tests passed, including the new regression. Customer
+identity already revalidates sessions and password state inside its mutations.
+
+Batch 3: found and fixed an uncaught client validation error in draft discard
+when the reason is only whitespace. Uses the existing field-error popup and
+preserves entered data and cancellation checks. Browser coverage now verifies
+repeat invalid submission without a mutation request before a valid discard.
+Full regression checks are underway; no historical financial/signature formats
+or immutable SQL migrations were rewritten.
+
+Batch 4: completed the subsystem source/contract review and the four safe Windows
+CI checks (27 PowerShell files parsed; task-definition/native-parser and mocked
+deployment/update checks passed without machine mutations). Finalization had up
+to 200 normalized-row inserts for 100 invoice lines under one organization lock;
+it now uses one line insert and one tax-component insert, retaining the same
+transaction, snapshot, numbering and database guards. Added a full-size 100-line
+financial association/idempotent retry regression. All 290 unit tests passed in
+the complete rerun. The first run had a CLI subprocess timeout during concurrent
+build work; no production/test timeout was weakened. Full integration is running.
+
+Batch 5: traced unused CSS candidates against all tracked TS/TSX/HTML/scripts and
+the current sidebar/home markup. Removed approximately 600 lines belonging to
+the replaced dashboard/sidebar/toolbar, including their obsolete responsive
+rules. Kept live selectors in shared comma groups and dynamic theme swatches;
+no layout redesign or new dependency. Full browser regression will use fresh
+production builds of both frontends.
+
+Batch 5 verification: the full integration run passed 86 tests across 14 files,
+including both platform/customer backup/restore, permission/license/concurrency
+and full-size invoice regressions. One separate installer-database test is opt-in
+and is now running in its own fresh labeled Docker container. A CSS AST comparison
+against HEAD confirmed all 544 retained selectors keep their declarations and
+cascade order; only 126 unreachable selectors were removed. Browser verification
+and final compiler/build/format checks remain.
+
+Final verification after resuming: all existing audit changes were present and
+the final command completed successfully. All 290 unit tests passed; all 87
+integration tests passed (86 in the main run plus the opt-in fresh Docker-cluster
+test). All 18 Chrome browser tests passed against fresh builds, including repeated
+whitespace-only discard validation, valid cancellation, desktop/mobile layouts,
+themes, both security domains, financial workflows and printing. Full repository
+format/lint, workspace/test TypeScript and all application builds passed. The
+isolated customer runtime contained 145 packages/6,549 entries and successfully
+used its own Argon2/OTPAuth with external module fallback prohibited. Web CSS
+decreased from 60.67 to 50.92 kB without changing retained rule declarations/order.
+
+No source changes were skipped or overwritten on resume; the user's staged
+snapshot was preserved. Final audit/verification notes were updated in the
+working tree. No live database reset, migration rewrite, external dependency
+version upgrade, native service/firewall/trust mutation, Git staging or commit
+was performed by this audit. Production hosting/signing/custody and real isolated
+Windows installer/reboot/LAN acceptance remain the existing external release
+requirements, not claims established by these checks. Detailed scope, findings
+and limits are in [project-audit.md](project-audit.md).

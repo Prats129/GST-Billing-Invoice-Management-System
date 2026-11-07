@@ -171,6 +171,7 @@ export function CancellationDialog({
   onSaved,
 }: Props) {
   const [key] = useState(() => crypto.randomUUID());
+  const [localError, setLocalError] = useState('');
   const issued = record.number !== null;
   return (
     <Dialog
@@ -189,23 +190,31 @@ export function CancellationDialog({
           correction workflow.
         </p>
       )}
-      <FormError message={error} />
+      <FormError
+        message={localError || error}
+        onDismiss={() => setLocalError('')}
+      />
       <form
         onSubmit={(event) => {
           event.preventDefault();
           const fields = new FormData(event.currentTarget);
-          const data = cancelInvoiceSchema.parse({
+          const parsed = cancelInvoiceSchema.safeParse({
             version: record.version,
             requestKey: key,
             reason: fields.get('reason'),
             noSupplyConfirmed: fields.has('noSupplyConfirmed'),
             notReportedConfirmed: fields.has('notReportedConfirmed'),
           });
+          if (!parsed.success) {
+            setLocalError(validationMessage(parsed.error));
+            return;
+          }
+          setLocalError('');
           void run(async () =>
             onSaved(
               await mutate<InvoiceRecord>(
                 `${basePath}/invoices/${record.id}/cancel`,
-                data,
+                parsed.data,
               ),
             ),
           );

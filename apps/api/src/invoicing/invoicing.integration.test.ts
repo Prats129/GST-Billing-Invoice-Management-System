@@ -22,7 +22,7 @@ import {
 } from '@gst/database';
 import { createIsolatedTestDatabase } from '@gst/database/testing';
 import { invoiceDraftSchema } from '@gst/contracts';
-import type { InvoicePreview } from '@gst/contracts';
+import type { InvoicePreview, InvoiceRecord } from '@gst/contracts';
 import { createApp } from '../app.js';
 import { parseConfig } from '../config.js';
 import { IdentityService } from '../security/identity.service.js';
@@ -562,6 +562,64 @@ test('released ordinary transaction assigns numbers once, retries safely and sto
   ])
     await expect(operation).rejects.toThrow();
 });
+test('finalizes a full 100-line invoice with exact normalized line and tax associations', async () => {
+  const own = await setup();
+  const row = await create(own, {
+    ...own.draft,
+    lines: Array.from({ length: 100 }, (_, index) => ({
+      ...own.draft.lines[0]!,
+      id: `batch-${index + 1}`,
+      quantity: `${index + 1}.000000`,
+    })),
+  });
+  const { record: result, data } = await finalizeSynthetic(own, row.id);
+  const record: InvoiceRecord = result;
+  expect(record.snapshot!.totals.total).toBe('595900.00');
+  const lines = await isolated.database.db
+    .select()
+    .from(invoiceLines)
+    .where(eq(invoiceLines.invoiceId, row.id));
+  const taxes = await isolated.database.db
+    .select()
+    .from(invoiceTaxComponents)
+    .where(eq(invoiceTaxComponents.invoiceId, row.id));
+  expect(lines).toHaveLength(100);
+  expect(taxes).toHaveLength(200);
+  for (const printed of record.snapshot!.lines) {
+    expect(lines.find((line) => line.lineId === printed.id)).toMatchObject({
+      organizationId: own.organizationId,
+      catalogItemId: own.itemId,
+      description: printed.description,
+      quantity: printed.quantity,
+      supplyValue: printed.supplyValue,
+      total: printed.total,
+    });
+    expect(
+      taxes
+        .filter((tax) => tax.lineId === printed.id)
+        .map(({ kind, ratePercent, amount }) => ({ kind, ratePercent, amount }))
+        .sort((a, b) => a.kind.localeCompare(b.kind)),
+    ).toEqual([...printed.taxes].sort((a, b) => a.kind.localeCompare(b.kind)));
+  }
+  await http()
+    .post(`${own.path}/${row.id}/finalize`)
+    .set(own.auth)
+    .send(data)
+    .expect(201);
+  expect(
+    await isolated.database.db
+      .select()
+      .from(invoiceLines)
+      .where(eq(invoiceLines.invoiceId, row.id)),
+  ).toHaveLength(100);
+  expect(
+    await isolated.database.db
+      .select()
+      .from(invoiceTaxComponents)
+      .where(eq(invoiceTaxComponents.invoiceId, row.id)),
+  ).toHaveLength(200);
+});
+
 test('released concurrent finalization is consecutive and transaction rollback reuses uncommitted allocation', async () => {
   const own = await setup();
   const a = await create(own);

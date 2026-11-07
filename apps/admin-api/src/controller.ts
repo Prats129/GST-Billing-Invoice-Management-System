@@ -18,6 +18,7 @@ import { randomUUID } from 'node:crypto';
 import { token, digest, hashPassword, csrfToken } from '@gst/security';
 import * as c from '@gst/contracts/platform';
 import type { PlatformAuth } from './auth.js';
+import { lockPlatformSession } from './auth.js';
 import type { PlatformService } from './service.js';
 import { rows, transaction, audit } from './store.js';
 import { fail } from './errors.js';
@@ -210,6 +211,7 @@ export class PlatformController {
     const s = await this.auth(req, true);
     await this.services.auth.recent(s);
     await transaction(this.services.auth.db, async (tx) => {
+      await lockPlatformSession(tx, s, true);
       await tx.query('DELETE FROM platform_sessions WHERE token_hash<>$1', [
         s.token_hash,
       ]);

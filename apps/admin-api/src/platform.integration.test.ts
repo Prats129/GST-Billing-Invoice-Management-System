@@ -168,6 +168,53 @@ describe.skipIf(!adminUrl)(
         ).status,
       ).toBe(401);
     });
+    it('rechecks recent authentication and revocation inside sensitive mutation transactions', async () => {
+      const original = await auth.owner();
+      const raw = await auth.login(email, password, 'transaction-guard-test');
+      const initial = await auth.session(raw);
+      await db.query(
+        'UPDATE platform_sessions SET mfa_verified=true,fresh_at=now() WHERE token_hash=$1',
+        [initial.token_hash],
+      );
+      const actor = await auth.session(raw);
+      try {
+        // Simulate expiry/revocation after request authentication but before commit.
+        await db.query(
+          "UPDATE platform_sessions SET fresh_at=now()-interval '6 minutes' WHERE token_hash=$1",
+          [actor.token_hash],
+        );
+        await expect(
+          auth.changePassword(actor, password + ' rejected'),
+        ).rejects.toMatchObject({ code: 'REAUTH_REQUIRED' });
+        expect((await auth.owner()).password_hash).toBe(original.password_hash);
+        await db.query('DELETE FROM platform_sessions WHERE token_hash=$1', [
+          actor.token_hash,
+        ]);
+        await expect(
+          auth.changePassword(actor, password + ' revoked'),
+        ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+        let mutationExecuted = false;
+        await expect(
+          service.mutate(
+            actor,
+            'audit.guard.fixture',
+            randomUUID(),
+            {},
+            null,
+            async () => {
+              mutationExecuted = true;
+              return { ok: true };
+            },
+          ),
+        ).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+        expect(mutationExecuted).toBe(false);
+        expect((await auth.owner()).password_hash).toBe(original.password_hash);
+      } finally {
+        await db.query('DELETE FROM platform_sessions WHERE token_hash=$1', [
+          actor.token_hash,
+        ]);
+      }
+    });
     it('records offline organizations once without adopting duplicate mappings', async () => {
       const input = {
         name: 'Offline customer',

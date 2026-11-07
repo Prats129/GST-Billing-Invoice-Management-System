@@ -21,10 +21,7 @@ export function secureEqual(a: string, b: string): boolean {
 }
 let activePasswordWork = 0;
 async function passwordWork<T>(work: () => Promise<T>): Promise<T> {
-  if (activePasswordWork >= 4)
-    (() => {
-      throw new CryptoRateLimitError();
-    })();
+  if (activePasswordWork >= 4) throw new CryptoRateLimitError();
   activePasswordWork++;
   try {
     return await work();
