@@ -13,6 +13,7 @@
     "bundle:verify": "tsx scripts/issuer/windows-bundle-cli.ts verify",
     "bundle:smoke": "tsx scripts/issuer/windows-bundle-cli.ts smoke",
     "setup:env": "node scripts/setup-env.mjs",
+    "setup:check": "tsx scripts/setup-check.ts",
     "identity:host": "pnpm build:packages && tsx apps/api/src/security/host-cli.ts",
     "smoke": "node --env-file=.env scripts/smoke.mjs",
     "dev": "pnpm build:packages && concurrently -k -n api,web \"pnpm --filter @gst/api dev\" \"pnpm --filter @gst/web dev\"",

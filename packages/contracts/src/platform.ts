@@ -294,7 +294,42 @@ export const platformDetail = z
   })
   .strict();
 // Validate complete read responses at the HTTP boundary and in the admin client.
+export const platformDiagnostics = z
+  .object({
+    checkedAt: stamp,
+    checks: z
+      .array(
+        z
+          .object({
+            code: z.enum([
+              'WORKER_ENABLED',
+              'WORKER_DISABLED',
+              'PLATFORM_CONTROL_UNAVAILABLE',
+              'SAAS_NOT_CONFIGURED',
+              'SAAS_REACHABLE',
+              'SAAS_TARGET_UNCONFIRMED',
+              'SAAS_TARGET_MATCHED',
+              'SAAS_TARGET_MISMATCH',
+              'SAAS_MIGRATIONS_REQUIRED',
+              'SAAS_PERMISSIONS_REQUIRED',
+              'SAAS_ROLE_UNSAFE',
+              'SAAS_OPERATOR_READY',
+              'SAAS_PROBE_FAILED',
+              'SAAS_ORIGIN_CONFIGURED',
+              'SAAS_ORIGIN_MISSING',
+              'TRUST_CONFIGURED',
+              'TRUST_MISSING',
+            ]),
+            state: z.enum(['ready', 'blocked']),
+          })
+          .strict(),
+      )
+      .max(10),
+  })
+  .strict();
+export type PlatformDiagnostics = z.infer<typeof platformDiagnostics>;
 export function platformReadResponse(path: string, value: unknown): unknown {
+  if (path === 'diagnostics') return platformDiagnostics.parse(value);
   if (path === 'auth/session') return platformSession.parse(value);
   if (path.split('?')[0] === 'organizations')
     return platformDirectory.parse(value);

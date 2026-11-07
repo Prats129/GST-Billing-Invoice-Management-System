@@ -14,6 +14,7 @@ import { store, migratePlatform, rows } from './store.js';
 import { PlatformAuth } from './auth.js';
 import { PlatformService } from './service.js';
 import { Operations } from './operations.js';
+import { diagnosePlatform } from './diagnostics.js';
 import { config } from './config.js';
 import { createPlatformApp } from './app.js';
 import { createApp } from '../../api/src/app.js';
@@ -117,6 +118,7 @@ describe.skipIf(!adminUrl)(
     });
     it('requires isolated platform credentials and MFA before data access', async () => {
       expect((await get('organizations')).status).toBe(401);
+      expect((await get('diagnostics')).status).toBe(401);
       expect(
         (
           await request(app.getHttpServer())
@@ -130,6 +132,7 @@ describe.skipIf(!adminUrl)(
       cookie = String(login.headers['set-cookie']?.[0]).split(';')[0]!;
       csrf = login.body.csrfToken;
       expect((await get('organizations')).status).toBe(403);
+      expect((await get('diagnostics')).status).toBe(403);
       const setup = await post('auth/mfa/setup', {});
       secret = setup.body.secret;
       const enrolled = await post('auth/mfa/enroll', {
@@ -150,6 +153,16 @@ describe.skipIf(!adminUrl)(
       csrf = proof.body.csrfToken;
 
       expect((await get('organizations')).status).toBe(200);
+      const diagnostics = await get('diagnostics');
+      expect(diagnostics.status).toBe(200);
+      expect(diagnostics.body.checks).toContainEqual({
+        code: 'SAAS_ROLE_UNSAFE',
+        state: 'blocked',
+      });
+      expect(diagnostics.body.checks).toContainEqual({
+        code: 'SAAS_TARGET_UNCONFIRMED',
+        state: 'blocked',
+      });
       expect(
         (
           await request(app.getHttpServer())
@@ -523,6 +536,43 @@ describe.skipIf(!adminUrl)(
         await client.connect();
         try {
           await client.query('SET ROLE "' + role + '"');
+          const diagnosticConfig = {
+            ...operations.config,
+            SAAS_EXPECTED_DATABASE_NAME: new URL(
+              saas.connectionString,
+            ).pathname.slice(1),
+          };
+          const probe = () =>
+            diagnosePlatform(
+              db,
+              {
+                operator: client,
+                config: diagnosticConfig,
+              },
+              true,
+            );
+          expect((await probe()).checks).toContainEqual({
+            code: 'SAAS_OPERATOR_READY',
+            state: 'ready',
+          });
+          expect((await probe()).checks).toContainEqual({
+            code: 'SAAS_TARGET_MATCHED',
+            state: 'ready',
+          });
+          await operations.operator!.query(
+            'REVOKE EXECUTE ON FUNCTION platform_operator.execute(uuid,text,jsonb) FROM "' +
+              role +
+              '"',
+          );
+          expect((await probe()).checks).toContainEqual({
+            code: 'SAAS_PERMISSIONS_REQUIRED',
+            state: 'blocked',
+          });
+          await operations.operator!.query(
+            'GRANT EXECUTE ON FUNCTION platform_operator.execute(uuid,text,jsonb) TO "' +
+              role +
+              '"',
+          );
           expect(
             (
               await client.query('SELECT platform_operator.lookup($1)', [

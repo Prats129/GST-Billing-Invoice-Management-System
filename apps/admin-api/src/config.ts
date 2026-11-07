@@ -14,11 +14,15 @@ const schema = z.object({
   PLATFORM_TRUST_FILE: z.string().optional(),
   SAAS_OPERATOR_DATABASE_URL: z.string().url().optional(),
   SAAS_APP_ORIGIN: z.string().url().optional(),
+  SAAS_EXPECTED_DATABASE_NAME: z.string().min(1).max(63).optional(),
 });
 export type PlatformConfig = z.infer<typeof schema>;
 export function config(env: NodeJS.ProcessEnv) {
   const parsed = schema.safeParse(env);
-  if (!parsed.success) throw new Error('Invalid platform configuration');
+  if (!parsed.success)
+    throw new Error(
+      `Invalid platform configuration fields: ${parsed.error.issues.map((issue) => issue.path.join('.')).join(', ')}`,
+    );
   const c = parsed.data;
   for (const value of [c.PLATFORM_ORIGIN, c.SAAS_APP_ORIGIN].filter(
     (v): v is string => Boolean(v),

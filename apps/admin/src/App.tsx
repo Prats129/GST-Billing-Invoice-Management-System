@@ -1,6 +1,8 @@
 import type { Detail, Operation } from './types.js';
 import { Field, Form, Table, OperationList } from './components.js';
 import { LicensePanel } from './LicensePanel.js';
+import { Diagnostics } from './Diagnostics.js';
+import type { PlatformDiagnostics } from '@gst/contracts/platform';
 import { value, iso } from './forms.js';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -47,6 +49,9 @@ export function App() {
     [link, setLink] = useState('');
   const dirtyForms = useRef(new Set<string>());
   const [errorCode, setErrorCode] = useState('');
+  const [diagnostics, setDiagnostics] = useState<PlatformDiagnostics | null>(
+    null,
+  );
   const [confirming, setConfirming] = useState(false);
   const pendingIdentity = useRef<{
     resolve: () => void;
@@ -192,8 +197,27 @@ export function App() {
           setHasMore(d.hasMore);
         }
       } else if (section === 'operations') {
-        const d = await api<Operation[]>('operations');
-        if (active) setOperations(d);
+        setDiagnostics(null);
+        const [d, checks] = await Promise.all([
+          api<Operation[]>('operations'),
+          api<PlatformDiagnostics>('diagnostics').catch((reason: unknown) => {
+            if (active) {
+              setError(
+                reason instanceof Error
+                  ? reason.message
+                  : 'System checks are unavailable. Refresh to try again.',
+              );
+              setErrorCode(
+                reason instanceof PlatformApiError ? reason.code : '',
+              );
+            }
+            return null;
+          }),
+        ]);
+        if (active) {
+          setOperations(d);
+          setDiagnostics(checks);
+        }
       } else if (section === 'security') {
         const d = await api<Record<string, unknown>[]>('auth/sessions');
         if (active) setSessions(d);
@@ -986,20 +1010,23 @@ export function App() {
           </>
         )}
         {section === 'operations' && (
-          <section className="card">
-            <h2>Cross-database operations</h2>
-            <p>
-              Completed means a committed SaaS receipt was verified. Failed
-              requests can need reconciliation before retry.
-            </p>
-            <OperationList
-              operations={operations}
-              busy={busy}
-              retry={(operation) =>
-                save('operations/' + operation + '/retry', {})
-              }
-            />
-          </section>
+          <>
+            {diagnostics && <Diagnostics value={diagnostics} />}
+            <section className="card">
+              <h2>Cross-database operations</h2>
+              <p>
+                Completed means a committed SaaS receipt was verified. Failed
+                requests can need reconciliation before retry.
+              </p>
+              <OperationList
+                operations={operations}
+                busy={busy}
+                retry={(operation) =>
+                  save('operations/' + operation + '/retry', {})
+                }
+              />
+            </section>
+          </>
         )}
         {section === 'security' && (
           <>

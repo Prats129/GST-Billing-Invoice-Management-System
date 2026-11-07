@@ -119,6 +119,37 @@ test('owner MFA, offline organization detail URLs, agreements and payments work 
     (c) => c.trim(),
   );
   await page.getByRole('button', { name: 'I saved them' }).click();
+  await page.getByRole('link', { name: 'Operations', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Setup & system checks' }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('SAAS_NOT_CONFIGURED', { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByText('WORKER_DISABLED', { exact: false }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Setup & system checks' }),
+  ).toBeVisible();
+  await page.route('**/api/platform/v1/diagnostics', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: { code: 'REQUEST_FAILED', message: 'Checks unavailable' },
+      }),
+    }),
+  );
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: 'Cross-database operations' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Setup & system checks' }),
+  ).toHaveCount(0);
+  await page.unroute('**/api/platform/v1/diagnostics');
   await page.getByRole('link', { name: 'Organizations', exact: true }).click();
   await page.getByRole('link', { name: 'Add organization' }).click();
   await page

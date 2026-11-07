@@ -2,7 +2,12 @@
 
 ## Audit and proposed implementation plan
 
-**Status: proposed — documentation only. Implementation has not started.**
+**Status: approved for implementation — batch 1 implemented; batches 2–6 pending.**
+
+Implemented progress and verification are recorded in
+[review coverage](review-coverage.md); current diagnostic instructions are in
+[Setup & system checks](setup-operations.md). Unchecked acceptance criteria and
+later batches remain planned work, not completed functionality.
 
 This document preserves the operational audit and implementation plan discussed
 with the project owner. It covers the Admin App, Billing App, Windows host tools,
@@ -833,9 +838,14 @@ migration or undoing a committed operation.**
 ## 7. Prioritized implementation roadmap
 
 These are six bounded delivery batches, not additional open-ended product phases.
-All batches below are proposed and not yet implemented by this plan.
+The batches below define the approved scope. Batch 1 diagnostics are implemented;
+later batches and unchecked acceptance criteria remain pending.
 
 ### Batch 1 — Operational diagnostics foundation
+
+**Implemented:** read-only Admin Operations checks, strict diagnostic contracts,
+safe codes/guidance, a local `setup:check` command and a current setup runbook.
+See [review coverage](review-coverage.md) for verified checks and limitations.
 
 **Deliver:** safe error codes, verified status, prerequisite models and a current
 runbook structure.
@@ -898,8 +908,9 @@ errors before exposing more operational controls.
 
 ## 8. Testing and acceptance criteria
 
-The following are requirements for future implementation, not newly executed
-tests or claims of completed functionality.
+The following are whole-plan acceptance requirements. An unchecked item is not a
+claim of completed functionality. Executed batch checks and their limits are
+recorded in [review coverage](review-coverage.md).
 
 ### Setup and configuration
 

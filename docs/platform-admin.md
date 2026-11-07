@@ -7,6 +7,10 @@ owner in this version. Organization ownership never confers platform access.
 
 ## Local setup
 
+For read-only setup checks and actionable operational status, see
+[Setup & system checks](setup-operations.md). Existing commands below remain the
+supported protected setup procedure until the guided setup batch is delivered.
+
 Use the pinned project toolchain in a new PowerShell terminal:
 
 ```powershell

@@ -22,6 +22,7 @@ import { lockPlatformSession } from './auth.js';
 import type { PlatformService } from './service.js';
 import { rows, transaction, audit } from './store.js';
 import { fail } from './errors.js';
+import { diagnosePlatform } from './diagnostics.js';
 import type { Operations } from './operations.js';
 const bodyContract = (schema: z.ZodType) =>
   ApiBody({
@@ -654,6 +655,17 @@ export class PlatformController {
       await audit(tx, s.owner_id, 'operation.retry', null, id);
     });
     return { ok: true };
+  }
+  @Get('diagnostics')
+  @ApiOperation({ summary: 'Read-only operational prerequisite checks' })
+  @responseContract(c.platformDiagnostics)
+  async diagnostics(@Req() req: Request) {
+    await this.auth(req);
+    return diagnosePlatform(
+      this.services.auth.db,
+      this.services.operations,
+      this.services.service.trust.size > 0,
+    );
   }
   @Get('configuration')
   @ApiOperation({

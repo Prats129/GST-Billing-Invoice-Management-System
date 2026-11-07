@@ -1,5 +1,46 @@
 # Review coverage
 
+## System Setup & Operations implementation (2026-11-07)
+
+Editor follow-up: the script previously opened in an inferred TypeScript project
+without Node types. Added a root `tsconfig.json` reusing the existing no-emit
+test/tool configuration so the editor can discover it. The extra change to the
+test configuration's script glob was redundant (the setup test already imports
+the checker) and has been removed. App builds and checker behavior are unchanged.
+Verified after removing the redundant glob: a fresh language server selected the
+root configuration and reported zero script diagnostics; the no-emit compiler and
+format checks passed. Reload the editor if its Problems panel retains old errors.
+
+Batch 1 implemented: added an MFA-protected, read-only diagnostics endpoint and
+Admin Operations card with stable codes and corrective guidance. Checks cover
+worker enablement, operator connectivity, required routines, restricted-role
+permissions/ownership and expected database-name comparison. Public trust/origin
+configuration is distinguished from verified deployment health. Existing worker,
+license, transaction, recovery and authentication behavior is preserved.
+
+Added `pnpm setup:check`, which reuses the existing configuration validators and
+inspects tool versions without changing files, running SQL or exposing values.
+Added a current setup runbook and linked it from the Admin instructions. No real
+environment files, migration history, secrets or production resources changed.
+The compatibility configuration endpoint remains unchanged; its historical
+`saasConnected` flag is explicitly documented as configured-only.
+
+Verification: all 300 unit tests passed (including 10 new diagnostic/setup tests),
+all 12 platform integration tests passed, and all three Admin Chrome browser tests
+passed against fresh builds. Real PostgreSQL checks cover a restricted role,
+missing EXECUTE permission, superuser rejection and expected-target comparison.
+Browser assertions cover refresh and a failed diagnostics request without losing
+the existing Operations list. Workspace/test type checks, all application builds,
+lint and repository formatting passed. `pnpm setup:check` also passed locally,
+reporting only syntax/tool status rather than database/deployment readiness.
+
+Tests used a new disposable PostgreSQL container, with no customer volumes or
+real credentials mounted. No native installation, Windows service, firewall,
+certificate trust, reboot/LAN or production hosting acceptance was performed.
+Batch 2 and subsequent roadmap batches remain pending. The expected database-name
+check is optional and advisory; it does not verify server identity, API edition or
+origin, and diagnostics do not alter existing operation authorization/execution.
+
 ## Platform Admin App implementation (2026-11-05)
 
 - Batch 1 complete: separate owner-only admin UI/API and platform database/migrations, private bootstrap/recovery, mandatory MFA, rotated opaque sessions, step-up confirmation and isolated customer cookies. Shared crypto/verifier extraction preserves customer wrappers; no signing code or private keys are loaded by the portal.
