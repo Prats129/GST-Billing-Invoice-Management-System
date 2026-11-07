@@ -1,5 +1,69 @@
 # Review coverage
 
+## Guided initial setup — batch 2 (2026-11-08)
+
+Optimization review: bounded interrupted offline-owner reconciliation to two rows;
+only zero/one/multiple matches affect the decision. Added a conflicting-account
+regression that checks the original owner/password stay unchanged before a safe
+retry. This limits result transfer and memory use for a populated users/membership
+join. All 17 focused unit tests and all eight setup integration tests passed;
+test/tool type checks, lint and formatting passed. Other changes remain scoped
+to setup, its checks, tests and operating instructions.
+
+Added the Windows `setup:prepare` package shortcut to the existing preparation
+script, with no execution-policy bypass. Direct PowerShell remains the entry
+point when incompatible Node/pnpm versions prevent package scripts from running.
+This shortcut does not change setup behavior or require another installation run.
+
+Batch 2 implemented for new local development profiles. `Setup-Project.ps1`
+selects existing pinned tools, installs frozen dependencies and builds shared
+packages before `setup:guided`. The assistant asks for individual fields and
+hidden passwords, displays new resource names before confirmation, then reuses
+the reviewed migrations, runtime/operator grants and initial-owner services.
+There is no hand-written SQL or owner-password input JSON in this supported path.
+
+Private profiles preserve generated credentials, encryption/installation identity
+and recovery proof before database/bootstrap commits. Existing root environments
+and databases are untouched. Cluster/role/database identities and resource tags
+prevent adopting collisions or recreating known missing/replaced databases.
+Ambiguous database creation stops for inspection. Interrupted owner creation is
+reconciled through its prepared recovery proof without another account, changed
+password or duplicate organization. PostgreSQL session locks serialize setup.
+
+`setup:launch` selects runtime configuration without database-admin credentials,
+provisioning or migrations. Its child environment excludes operator and inherited
+PostgreSQL credentials; the setup administrator connection closes before launch.
+`setup:check --profile <folder>` checks selected runtime files and handles offline
+profiles without requiring an Admin environment. Existing development commands
+and file-based operator procedures remain available. The operator CLI additionally
+supports bounded stdin input and an explicitly selected runtime environment file.
+
+Initial SaaS processing needs separate confirmation and an empty, verified new
+installation. Existing history is refused even when its processing flag is
+already enabled. A recorded approval never removes later host-managed disables;
+restored installations still require full reconciliation. MFA, entitlement,
+publisher signing, RBAC and tax/compliance rules are unchanged.
+
+Verification: all 307 unit tests passed; all 94 enabled integration tests passed
+with one existing opt-in fresh-cluster installer test skipped; all 18 Chrome
+Billing/Admin browser tests passed against fresh builds. The final eight setup
+integration tests passed again after tightening worker approval. The final 17
+focused unit tests, workspace/test type checks, all application builds, lint and
+format checks passed. PowerShell launcher syntax was parsed successfully.
+
+The real Windows terminal check verified password hiding and confirmation
+cancellation without creating a profile; Ctrl+C cancellation in the final wizard
+exited cleanly. Prompt history is disabled. Fresh provisioning for both editions
+was exercised through the workflow integration tests, not a manual full interactive
+installation. ACL tests used new private user-profile folders because TEMP has
+unsafe ancestor permissions; the production security checks were not weakened.
+
+No real root environment, existing database, Windows service, firewall, trust,
+signing material or migration history was changed. Physical power-loss durability
+and real installer/reboot/LAN/production hosting acceptance remain unverified.
+Full run instructions, failure guidance and scope are in
+[guided setup](guided-setup.md). Batches 3–6 remain pending.
+
 ## System Setup & Operations implementation (2026-11-07)
 
 Editor follow-up: the script previously opened in an inferred TypeScript project

@@ -267,9 +267,14 @@ export class PlatformAuth {
       await audit(tx, s.owner_id, 'owner.password_changed');
     });
   }
-  async bootstrap(email: string, name: string, password: string) {
+  async bootstrap(
+    email: string,
+    name: string,
+    password: string,
+    suppliedRecovery?: string,
+  ) {
     const id = randomUUID(),
-      recovery = token(),
+      recovery = suppliedRecovery ?? token(),
       hash = await hashPassword(password);
     await transaction(this.db, async (tx) => {
       await tx.query(

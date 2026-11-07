@@ -8,8 +8,10 @@ owner in this version. Organization ownership never confers platform access.
 ## Local setup
 
 For read-only setup checks and actionable operational status, see
-[Setup & system checks](setup-operations.md). Existing commands below remain the
-supported protected setup procedure until the guided setup batch is delivered.
+[Setup & system checks](setup-operations.md). For a new local profile, use
+[guided setup](guided-setup.md) to avoid hand-written SQL/password JSON. The
+technical commands below remain available for reviewed host procedures and
+existing installations; guided setup does not adopt those installations.
 
 Use the pinned project toolchain in a new PowerShell terminal:
 

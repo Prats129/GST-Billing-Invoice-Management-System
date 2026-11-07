@@ -8,7 +8,9 @@ import { config } from './config.js';
 import { store, migratePlatform, transaction, audit, rows } from './store.js';
 import { PlatformAuth } from './auth.js';
 loadEnv({
-  path: fileURLToPath(new URL('../../../.env.admin', import.meta.url)),
+  path:
+    process.env.PLATFORM_RUNTIME_ENV_FILE ??
+    fileURLToPath(new URL('../../../.env.admin', import.meta.url)),
   quiet: true,
 });
 loadEnv({
@@ -29,15 +31,28 @@ try {
   if (command === 'migrate') await migratePlatform(db);
   else {
     if (!inputPath) throw new Error('Private input required');
-    const info = await lstat(inputPath);
-    if (
-      !info.isFile() ||
-      info.isSymbolicLink() ||
-      info.size > 16384 ||
-      (process.platform !== 'win32' && (info.mode & 0o077) !== 0)
-    )
-      throw new Error('Private file required');
-    const data: unknown = JSON.parse(await readFile(inputPath, 'utf8'));
+    let data: unknown;
+    if (inputPath === '-') {
+      const chunks: Buffer[] = [];
+      let bytes = 0;
+      for await (const chunk of process.stdin) {
+        const buffer = Buffer.from(chunk as Uint8Array);
+        bytes += buffer.length;
+        if (bytes > 16384) throw new Error('Private input exceeds limit');
+        chunks.push(buffer);
+      }
+      data = JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
+    } else {
+      const info = await lstat(inputPath);
+      if (
+        !info.isFile() ||
+        info.isSymbolicLink() ||
+        info.size > 16384 ||
+        (process.platform !== 'win32' && (info.mode & 0o077) !== 0)
+      )
+        throw new Error('Private file required');
+      data = JSON.parse(await readFile(inputPath, 'utf8')) as unknown;
+    }
     if (command === 'provision' || command === 'recover') {
       if (!outputPath) throw new Error('Private output required');
       output = await open(outputPath, 'wx', 0o600);

@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
+import { resolve, join } from 'node:path';
 import { config as platformConfig } from '../apps/admin-api/src/config.js';
 import { parseConfig } from '../apps/api/src/config.js';
 
@@ -20,6 +21,7 @@ export async function checkSetup(
   root = new URL('../', import.meta.url),
   environment: NodeJS.ProcessEnv = process.env,
   nodeVersion = process.versions.node,
+  scope: 'all' | 'billing' = 'all',
 ): Promise<Check[]> {
   const manifest = JSON.parse(
     await readFile(new URL('package.json', root), 'utf8'),
@@ -51,17 +53,25 @@ export async function checkSetup(
     ['.env', 'BILLING', parseConfig],
     ['.env.admin', 'ADMIN', platformConfig],
   ] as const) {
+    if (scope === 'billing' && label === 'ADMIN') continue;
+    const selected =
+      label === 'BILLING'
+        ? environment.ENV_FILE
+        : environment.PLATFORM_ENV_FILE;
+    const displayFile = selected
+      ? `the selected ${label.toLowerCase()} environment file`
+      : file;
     let values: NodeJS.ProcessEnv;
     try {
       values = {
-        ...parse(await readFile(new URL(file, root), 'utf8')),
+        ...parse(await readFile(selected ?? new URL(file, root), 'utf8')),
         ...environment,
       };
     } catch {
       checks.push({
         code: label + '_ENV_UNAVAILABLE',
         ready: false,
-        guidance: `Prepare ${file} using the local setup runbook. Existing files must be preserved.`,
+        guidance: `Prepare ${displayFile} using the local setup runbook. Existing files must be preserved.`,
       });
       continue;
     }
@@ -82,7 +92,7 @@ export async function checkSetup(
       checks.push({
         code: label + '_CONFIG_INVALID',
         ready: false,
-        guidance: `${fields ? `Check fields: ${fields}. ` : ''}Review ${file}: required values, placeholders, PostgreSQL URLs, encryption key, exact origins and HTTPS requirements. See docs/setup-operations.md. Private values are not printed.`,
+        guidance: `${fields ? `Check fields: ${fields}. ` : ''}Review ${displayFile}: required values, placeholders, PostgreSQL URLs, encryption key, exact origins and HTTPS requirements. See docs/setup-operations.md. Private values are not printed.`,
       });
     }
     if (
@@ -104,7 +114,26 @@ if (
   pathToFileURL(process.argv[1]).href === import.meta.url
 ) {
   try {
-    const checks = await checkSetup();
+    const args = process.argv.slice(2);
+    if (
+      args.length &&
+      (args.length !== 2 || args[0] !== '--profile' || !args[1])
+    )
+      throw new Error('Invalid setup check arguments');
+    let environment = process.env;
+    let scope: 'all' | 'billing' = 'all';
+    if (args[1]) {
+      const directory = resolve(args[1]);
+      const { loadProfile } = await import('./setup/workflow.js');
+      const { runtimeEnvironment } = await import('./setup/runner.js');
+      const profile = await loadProfile(directory);
+      scope = profile.edition === 'offline' ? 'billing' : 'all';
+      environment = runtimeEnvironment({
+        ENV_FILE: join(directory, 'billing.env'),
+        PLATFORM_ENV_FILE: join(directory, 'admin.env'),
+      });
+    }
+    const checks = await checkSetup(undefined, environment, undefined, scope);
     for (const check of checks)
       console.log(
         `${check.ready ? 'PASS' : 'ACTION NEEDED'} [${check.code}] ${check.guidance}`,

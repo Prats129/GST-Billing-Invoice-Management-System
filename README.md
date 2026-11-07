@@ -49,6 +49,14 @@ See [runtime support](https://nodejs.org/en/about/previous-releases),
 
 ## Local startup
 
+For a **new isolated local profile**, use the
+[guided setup assistant](docs/guided-setup.md):
+`& ./scripts/Setup-Project.ps1`. It prepares dependencies, databases, restricted
+roles, settings and the initial owner without hand-written SQL/password JSON.
+Existing installations can keep using the commands below; guided setup never
+adopts or overwrites their databases/configuration. Daily profile startup is
+`pnpm setup:launch`.
+
 On Windows, this checkout can select its existing compatible cached tools:
 
 ```powershell

@@ -2,7 +2,7 @@
 
 ## Audit and proposed implementation plan
 
-**Status: approved for implementation — batch 1 implemented; batches 2–6 pending.**
+**Status: approved for implementation — batches 1–2 implemented for local development; batches 3–6 pending.**
 
 Implemented progress and verification are recorded in
 [review coverage](review-coverage.md); current diagnostic instructions are in
@@ -838,7 +838,7 @@ migration or undoing a committed operation.**
 ## 7. Prioritized implementation roadmap
 
 These are six bounded delivery batches, not additional open-ended product phases.
-The batches below define the approved scope. Batch 1 diagnostics are implemented;
+The batches below define the approved scope. Diagnostics and guided local setup are implemented;
 later batches and unchecked acceptance criteria remain pending.
 
 ### Batch 1 — Operational diagnostics foundation
@@ -855,6 +855,14 @@ bad permissions, a disabled worker and connectivity failures can be distinguishe
 without leaking secrets.
 
 ### Batch 2 — Guided initial setup
+
+**Implemented for new local development profiles:** pinned preparation launcher,
+hidden interactive input, protected environment/recovery files, new database and
+role creation, reviewed migrations/permissions, durable initial-owner provisioning,
+safe reruns, explicit empty-installation worker enablement and runtime-only daily
+launch. See [guided setup](guided-setup.md). Existing installations retain their
+reviewed host procedures; production hosting and the Windows installer remain
+within the existing later batches and external release gates.
 
 **Deliver:** developer preparation assistant and protected platform/billing
 bootstrap workflows.

@@ -1,7 +1,8 @@
 # Setup & system checks
 
-This is the current entry point for setup diagnostics. Guided setup, backup and
-Windows lifecycle interfaces remain separate delivery batches in
+This is the current entry point for setup diagnostics. New local profiles can use
+[guided initial setup](guided-setup.md). Backup and Windows lifecycle interfaces
+remain separate delivery batches in
 [the implementation plan](system-setup-operations-plan.md).
 
 ## Local source checkout

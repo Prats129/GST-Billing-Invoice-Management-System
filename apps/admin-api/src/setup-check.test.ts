@@ -72,6 +72,14 @@ test('setup inspection distinguishes missing files, wrong tools and edition with
     );
     expect(valid.every((c) => c.ready)).toBe(true);
     expect(valid.map((c) => c.code)).not.toContain('BILLING_OFFLINE_EDITION');
+    const selected = await checkSetup(
+      url,
+      { npm_config_user_agent: 'pnpm/10.34.9', ENV_FILE: join(root, '.env') },
+      '24.22.1',
+      'billing',
+    );
+    expect(selected.every((c) => c.ready)).toBe(true);
+    expect(selected.map((c) => c.code)).not.toContain('ADMIN_CONFIG_VALID');
   } finally {
     await rm(root, { recursive: true, force: true });
   }
