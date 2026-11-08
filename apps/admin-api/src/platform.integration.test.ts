@@ -119,6 +119,7 @@ describe.skipIf(!adminUrl)(
     it('requires isolated platform credentials and MFA before data access', async () => {
       expect((await get('organizations')).status).toBe(401);
       expect((await get('diagnostics')).status).toBe(401);
+      expect((await get('operations/search')).status).toBe(401);
       expect(
         (
           await request(app.getHttpServer())
@@ -292,6 +293,10 @@ describe.skipIf(!adminUrl)(
       ).toBe(201);
       const detail = await get('organizations/' + offlineId);
       expect(detail.body.agreements[0].paid_paise).toBe('5000');
+      expect(detail.body.commercialSummary).toEqual({
+        agreementCount: 1,
+        outstandingPaise: '5000',
+      });
       await expect(db.query('DELETE FROM platform_receipts')).rejects.toThrow();
     });
     it('matches externally signed grants, bindings, exact requests and complete history', async () => {
@@ -707,6 +712,62 @@ describe.skipIf(!adminUrl)(
         await root.query('DROP ROLE "' + role + '"');
         await rm(directory, { recursive: true, force: true });
       }
+    });
+    it('paginates operation history and omits private command payloads', async () => {
+      const ids = Array.from({ length: 51 }, () => randomUUID());
+      await db.query(
+        "INSERT INTO platform_operations(id,organization_id,kind,payload,state) SELECT x,$1,'pause','{\"tokenHash\":\"never-exposed\"}'::jsonb,'completed' FROM unnest($2::uuid[]) AS x",
+        [offlineId, ids],
+      );
+      const first = await get(
+        `operations/search?state=completed&kind=pause&organizationId=${offlineId}`,
+      );
+      expect(first.status).toBe(200);
+      expect(first.body.items).toHaveLength(50);
+      expect(first.body.hasMore).toBe(true);
+      const second = await get(
+        `operations/search?state=completed&kind=pause&organizationId=${offlineId}&offset=50`,
+      );
+      expect(second.body.items).toHaveLength(1);
+      expect(second.body.hasMore).toBe(false);
+      expect(
+        first.body.items.some(
+          (operation: { id: string }) =>
+            operation.id === second.body.items[0].id,
+        ),
+      ).toBe(false);
+      const single = await get('operations/' + ids[0]);
+      expect(single.status).toBe(200);
+      expect(single.body.id).toBe(ids[0]);
+      expect(single.body.payload).toBeUndefined();
+      expect(JSON.stringify(single.body)).not.toContain('never-exposed');
+      expect((await get('operations/' + randomUUID())).status).toBe(404);
+      expect((await get('operations/search?offset=-1')).status).toBe(400);
+      expect((await get('operations/search?state=unknown')).status).toBe(400);
+      expect((await get('operations')).body).toBeInstanceOf(Array);
+    });
+    it('commercial balances include agreements beyond the recent detail page', async () => {
+      const id = (
+        await post('organizations', {
+          name: 'Balance paging test',
+          email: 'balance@example.test',
+          edition: 'offline',
+          runtimeId: randomUUID(),
+          installationId: randomUUID(),
+          requestKey: randomUUID(),
+        })
+      ).body.id;
+      await db.query(
+        "INSERT INTO platform_agreements(id,organization_id,kind,starts_at,ends_at,due_date,total_paise,reference) SELECT gen_random_uuid(),$1,'subscription',now(),now()+interval '1 year',current_date,100,'fixture' FROM generate_series(1,101)",
+        [id],
+      );
+      const detail = await get('organizations/' + id);
+      expect(detail.status).toBe(200);
+      expect(detail.body.agreements).toHaveLength(100);
+      expect(detail.body.commercialSummary).toEqual({
+        agreementCount: 101,
+        outstandingPaise: '10100',
+      });
     });
     it('blocks expired admin sessions, consumes recovery codes once and recovers the owner without a bypass', async () => {
       await db.query(

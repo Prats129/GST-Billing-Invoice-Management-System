@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./notifications": "./src/Notification.tsx"
+    "./notifications": "./src/Notification.tsx",
+    "./json-files": "./src/json-files.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"

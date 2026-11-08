@@ -634,6 +634,38 @@ export class PlatformController {
       },
     );
   }
+  @Get('operations/search')
+  @responseContract(c.platformOperationPage)
+  async searchOperations(@Req() req: Request, @Query() query: unknown) {
+    await this.auth(req);
+    const b = c.platformOperationQuery.parse(query);
+    const items = await rows(
+      this.services.auth.db,
+      `SELECT id,organization_id,kind,state,attempts,error_code,result,created_at,completed_at FROM platform_operations
+       WHERE ($1='' OR state=$1) AND ($2='' OR kind=$2) AND ($3='' OR organization_id::text=$3) AND ($4='' OR id::text LIKE '%'||$4||'%')
+       ORDER BY created_at DESC,id DESC LIMIT 51 OFFSET $5`,
+      [
+        b.state,
+        b.kind,
+        b.organizationId.toLowerCase(),
+        b.q.toLowerCase(),
+        b.offset,
+      ],
+    );
+    return { items: items.slice(0, 50), hasMore: items.length > 50 };
+  }
+  @Get('operations/:id')
+  @responseContract(c.platformOperationView)
+  async operation(@Req() req: Request, @Param('id') id: string) {
+    await this.auth(req);
+    const [operation] = await rows(
+      this.services.auth.db,
+      'SELECT id,organization_id,kind,state,attempts,error_code,result,created_at,completed_at FROM platform_operations WHERE id=$1',
+      [z.string().uuid().parse(id)],
+    );
+    if (!operation) fail('NOT_FOUND', 404);
+    return operation;
+  }
   @Get('operations') async operations(@Req() req: Request) {
     await this.auth(req);
     return rows(
@@ -648,6 +680,7 @@ export class PlatformController {
     const s = await this.auth(req, true);
     await this.services.auth.recent(s);
     await transaction(this.services.auth.db, async (tx) => {
+      await lockPlatformSession(tx, s, true);
       await tx.query(
         "UPDATE platform_operations SET state='pending',next_attempt_at=now() WHERE id=$1 AND state='retryable'",
         [z.string().uuid().parse(id)],

@@ -238,6 +238,44 @@ test('publisher CLI writes a consumable grant, refuses overwrite and sanitizes f
     await expect(
       registerCli('init', '--register', register),
     ).rejects.toMatchObject({ code: 1 });
+    const handoffPath = join(directory, 'request.json');
+    const renewal = {
+      ...f.claims,
+      sequence: 2,
+      kind: 'perpetual',
+      entitlementId: randomUUID(),
+      expiresAt: null,
+    };
+    await writeFile(
+      handoffPath,
+      JSON.stringify({
+        format: 'gst-license-request',
+        version: 1,
+        requestId: randomUUID(),
+        claims: renewal,
+        predecessor: JSON.parse(bytes),
+      }),
+    );
+    args.splice(args.indexOf('--claims'), 2, '--request', handoffPath);
+    args.splice(args.indexOf('--new-organization'), 1);
+    const renewedOutput = join(directory, 'renewed.json');
+    args[args.indexOf('--output') + 1] = renewedOutput;
+    expect((await invoke()).stdout.trim()).toBe(
+      '{"event":"entitlement_issued"}',
+    );
+    expect(
+      verifyEntitlement(
+        JSON.parse(await readFile(renewedOutput, 'utf8')),
+        loadEntitlementTrust(f.trust),
+      ),
+    ).toEqual(renewal);
+    await expect(
+      promisify(execFile)(process.execPath, [...args, '--claims', claims], {
+        env: { ...process.env, ISSUER_KEY_PASSPHRASE: passphrase },
+        timeout: 45000,
+        windowsHide: true,
+      }),
+    ).rejects.toMatchObject({ code: 1 });
   } finally {
     await removeIssuerFixture(parent, directory);
   }

@@ -202,7 +202,27 @@ async function workspace(
           updatedAt: new Date().toISOString(),
         };
       } else result = { profile: null };
-    } else if (/\/(customers|catalog|invoices)$/.test(path))
+    } else if (path.endsWith('/setup-status'))
+      result = {
+        checkedAt: new Date().toISOString(),
+        businessConfigured: false,
+        registrationConfirmed: false,
+        eInvoiceApplicability: 'unknown',
+        issuanceBlockers: [
+          'Confirm e-invoicing applicability in Business setup.',
+        ],
+        customersPresent: permissions.includes('customers.read') ? false : null,
+        catalogPresent: permissions.includes('catalog.read') ? false : null,
+        entitlement: { status: 'active', businessWritesPaused: false },
+        offlineRegistration: {
+          format: 'gst-offline-registration',
+          version: 1,
+          organizationId,
+          installationId: userId,
+          name: 'Aster Trading Co.',
+        },
+      };
+    else if (/\/(customers|catalog|invoices)$/.test(path))
       result = { items: [], hasMore: false };
     else {
       unexpected.push(path);
@@ -221,6 +241,46 @@ async function workspace(
   await expect(page.locator('.overview-intro')).toBeVisible();
   return { saved: () => saved, unexpected };
 }
+
+test('workspace checklist loads on demand, exports only registration metadata and opens the corrective screen', async ({
+  page,
+}) => {
+  await workspace(page);
+  await page.getByText('Workspace setup checklist', { exact: true }).click();
+  const checklist = page.locator('.workspace-setup');
+  await expect(
+    checklist.getByText('Business and GST registration', { exact: true }),
+  ).toBeVisible();
+  await expect(checklist).toContainText(
+    'Add an item and review its tax classification',
+  );
+  const download = page.waitForEvent('download');
+  await checklist
+    .getByRole('button', { name: 'Export offline registration' })
+    .click();
+  const file = await download;
+  expect(JSON.parse(await readFile((await file.path())!, 'utf8'))).toEqual({
+    format: 'gst-offline-registration',
+    version: 1,
+    organizationId,
+    installationId: userId,
+    name: 'Aster Trading Co.',
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await checklist
+    .getByRole('button', { name: 'Open business setup', exact: true })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/#\/business$/);
+  await expect(
+    page.getByLabel('Legal business name', { exact: true }),
+  ).toBeVisible();
+});
 
 test('desktop uses compact navigation, a persistent icon rail and one page action area', async ({
   page,

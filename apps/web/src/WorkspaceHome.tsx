@@ -10,6 +10,7 @@ import { Badge, EmptyState, Icon } from './ui.js';
 import { securityRequest } from './security-api.js';
 import { canOpenView, viewInfo } from './workspace-navigation.js';
 import type { View } from './workspace-navigation.js';
+import { WorkspaceSetup } from './WorkspaceSetup.js';
 
 export function WorkspaceHome({
   context,
@@ -183,6 +184,7 @@ export function WorkspaceHome({
           </EmptyState>
         </section>
       )}
+      <WorkspaceSetup context={context} info={info} navigate={navigate} />
       <p className="overview-settings-note">
         <Icon name="settings" size={16} />
         Business details and team access are in Business settings. Personal

@@ -555,3 +555,43 @@
 .record-page > .section-heading {
   margin-bottom: 1rem;
 }
+/* Compact setup guidance reuses workspace surfaces, buttons and theme tokens. */
+.workspace-setup {
+  padding: 16px;
+}
+.workspace-setup summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.workspace-setup ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.workspace-setup li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+}
+.workspace-setup li > div {
+  flex: 1;
+  min-width: 0;
+}
+.workspace-setup li p {
+  margin: 4px 0 0;
+}
+.workspace-setup .setup-state {
+  white-space: nowrap;
+  font-size: 0.85em;
+}
+@media (max-width: 640px) {
+  .workspace-setup li {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .workspace-setup li > div {
+    flex-basis: 100%;
+  }
+}

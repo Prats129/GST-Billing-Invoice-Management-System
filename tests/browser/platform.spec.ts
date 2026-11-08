@@ -4,7 +4,7 @@ import { randomUUID, generateKeyPairSync, sign } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { createTotp } from '../../packages/security/src/index.js';
@@ -160,10 +160,39 @@ test('owner MFA, offline organization detail URLs, agreements and payments work 
     .fill('offline-buyer@example.test');
   await page.getByLabel('Edition', { exact: true }).selectOption('offline');
   await page.getByLabel('Registration method').selectOption('link');
+  const descriptor = {
+    format: 'gst-offline-registration',
+    version: 1,
+    organizationId: randomUUID(),
+    installationId: randomUUID(),
+    name: 'Platform browser customer',
+  };
   await page
-    .getByLabel('Existing runtime organization UUID')
-    .fill(randomUUID());
-  await page.getByLabel('Offline installation UUID').fill(randomUUID());
+    .getByLabel('Import offline registration descriptor')
+    .setInputFiles({
+      name: 'registration.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(descriptor)),
+    });
+  await expect(
+    page.getByLabel('Existing runtime organization UUID'),
+  ).toHaveValue(descriptor.organizationId);
+  await expect(page.getByLabel('Offline installation UUID')).toHaveValue(
+    descriptor.installationId,
+  );
+  await page
+    .getByRole('button', { name: 'Review organization', exact: true })
+    .click();
+  await expect(
+    page.getByRole('heading', { name: 'Review organization' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Edit details' }).click();
+  await expect(page.getByLabel('Owner/contact email')).toHaveValue(
+    'offline-buyer@example.test',
+  );
+  await page
+    .getByRole('button', { name: 'Review organization', exact: true })
+    .click();
   await page
     .getByRole('button', { name: 'Register organization', exact: true })
     .click();
@@ -282,8 +311,40 @@ test('immutable request export, signed import, offline handoff and history refre
     .getByRole('heading', { name: 'Prepare immutable signing request' })
     .locator('..');
   await form.getByLabel('Entitlement type').selectOption('perpetual');
+  page.once('dialog', (dialog) => void dialog.dismiss());
+  await form.getByRole('button', { name: 'Prepare request' }).click();
+  await expect(form.getByLabel('Entitlement type')).toHaveValue('perpetual');
+  let rejectedResponse = false;
+  await page.route(
+    '**/api/platform/v1/organizations/*/license-requests',
+    async (route) => {
+      if (!rejectedResponse) {
+        rejectedResponse = true;
+        const response = await route.fetch();
+        expect(response.status()).toBe(201);
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            error: {
+              code: 'REQUEST_FAILED',
+              message: 'Simulated lost response',
+            },
+          }),
+        });
+      } else await route.continue();
+    },
+  );
   page.once('dialog', (d) => void d.accept());
   await form.getByRole('button', { name: 'Prepare request' }).click();
+  await expect(
+    page
+      .getByRole('alert')
+      .filter({ hasText: 'server could not complete this request' }),
+  ).toBeVisible();
+  page.once('dialog', (d) => void d.accept());
+  await form.getByRole('button', { name: 'Prepare request' }).click();
+  await page.unroute('**/api/platform/v1/organizations/*/license-requests');
   await expect(
     page.getByRole('button', { name: 'Export claims for issuer CLI' }),
   ).toBeVisible();
@@ -292,6 +353,21 @@ test('immutable request export, signed import, offline handoff and history refre
     [organizationId],
   );
   const r = response.rows[0]!;
+  expect(response.rows).toHaveLength(1);
+  const packageDownload = page.waitForEvent('download');
+  await page
+    .getByRole('button', { name: 'Export signing handoff', exact: true })
+    .click();
+  const handoffFile = await packageDownload;
+  const exported = JSON.parse(
+    await readFile((await handoffFile.path())!, 'utf8'),
+  );
+  expect(exported).toMatchObject({
+    format: 'gst-license-request',
+    requestId: r.id,
+    claims: r.claims,
+    predecessor: null,
+  });
   const payload = Buffer.from(JSON.stringify(r.claims)).toString('base64url');
   const envelope = {
     keyId: 'test',
@@ -306,9 +382,20 @@ test('immutable request export, signed import, offline handoff and history refre
     .getByRole('heading', { name: 'Import signed grant or reconcile history' })
     .locator('..');
   await imported.getByLabel('Request to match').selectOption(r.id);
-  await imported
-    .getByLabel('Signed envelope JSON (or ordered array)')
-    .fill(JSON.stringify(envelope));
+  await imported.getByLabel('Signed grant file (JSON)').setInputFiles({
+    name: 'bad.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('not JSON'),
+  });
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'not valid JSON' }),
+  ).toBeVisible();
+  await imported.getByLabel('Signed grant file (JSON)').setInputFiles({
+    name: 'signed.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(envelope)),
+  });
+  await expect(imported.getByRole('status')).toContainText('Unverified until');
   await imported.getByRole('button', { name: 'Verify and import' }).click();
   await expect(
     page.getByText('Sequence 1 · perpetual', { exact: true }),
@@ -332,6 +419,75 @@ test('immutable request export, signed import, offline handoff and history refre
     path: 'test-results/platform-desktop.png',
     fullPage: true,
   });
+});
+
+test('online onboarding tracks a durable operation and operation URLs preserve refresh and history', async ({
+  page,
+}) => {
+  await page.goto(origin + '/#/organizations/new');
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await page
+    .getByLabel('Verification or recovery code')
+    .fill(recoveryCodes[3]!);
+  await page.getByRole('button', { name: 'Verify', exact: true }).click();
+  await page
+    .getByLabel('Business name', { exact: true })
+    .fill('Online onboarding fixture');
+  await page
+    .getByLabel('Owner/contact email')
+    .fill('online-owner@example.test');
+  await expect(page.getByLabel('Offline installation UUID')).toHaveCount(0);
+  await page
+    .getByRole('button', { name: 'Review organization', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Register organization', exact: true })
+    .click();
+  await expect(page).toHaveURL(/#\/organizations\/[a-f0-9-]{36}$/);
+  const createdId = page.url().split('/').at(-1)!;
+  await expect(
+    page.getByRole('button', { name: 'Generate owner setup link' }),
+  ).toBeDisabled();
+  const operation = (
+    await db.query<{ id: string }>(
+      "SELECT id FROM platform_operations WHERE organization_id=$1 AND kind='provision'",
+      [createdId],
+    )
+  ).rows[0]!;
+  await page.getByRole('link', { name: 'View provisioning operation' }).click();
+  await expect(page).toHaveURL(
+    new RegExp('#/operations/' + operation.id + '$'),
+  );
+  await page.reload();
+  await expect(
+    page.getByRole('heading', { name: 'Operation details' }),
+  ).toBeVisible();
+  expect(await page.locator('main').innerText()).not.toMatch(
+    /passwordHash|tokenHash/,
+  );
+  await page
+    .getByRole('link', { name: 'All operations', exact: false })
+    .click();
+  await page
+    .getByLabel('Operation ID', { exact: true })
+    .fill(operation.id.slice(0, 8));
+  await page.getByLabel('Operation state').selectOption('pending');
+  await page.getByRole('button', { name: 'Search operations' }).click();
+  await page.reload();
+  await expect(page.getByLabel('Operation ID', { exact: true })).toHaveValue(
+    operation.id.slice(0, 8),
+  );
+  await page
+    .getByRole('link', { name: 'provision · ' + operation.id.slice(0, 8) })
+    .click();
+  await page.goBack();
+  await expect(page.getByLabel('Operation state')).toHaveValue('pending');
+  await page.goForward();
+  await expect(
+    page.getByRole('heading', { name: 'Operation details' }),
+  ).toBeVisible();
 });
 
 test('sensitive actions verify in place, preserve the source form on cancel or wrong proof and commit once', async ({

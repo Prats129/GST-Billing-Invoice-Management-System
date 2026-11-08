@@ -1,6 +1,10 @@
 import type { Detail, Operation } from './types.js';
 import { Field, Form, Table, OperationList } from './components.js';
 import { LicensePanel } from './LicensePanel.js';
+import { OrganizationOnboarding } from './OrganizationOnboarding.js';
+import { HostedOnboarding, HostedPauseSummary } from './HostedOnboarding.js';
+import { OperationFilters } from './OperationFilters.js';
+import { CommercialSteps } from './CommercialSteps.js';
 import { Diagnostics } from './Diagnostics.js';
 import type { PlatformDiagnostics } from '@gst/contracts/platform';
 import { value, iso } from './forms.js';
@@ -45,8 +49,11 @@ export function App() {
     [operations, setOperations] = useState<Operation[]>([]),
     [sessions, setSessions] = useState<Record<string, unknown>[]>([]),
     [mfa, setMfa] = useState<{ secret: string; uri: string } | null>(null),
-    [codes, setCodes] = useState<string[]>([]),
-    [link, setLink] = useState('');
+    [codes, setCodes] = useState<string[]>([]);
+  const [selectedOperation, setSelectedOperation] = useState<Operation | null>(
+    null,
+  );
+  const [operationsMore, setOperationsMore] = useState(false);
   const dirtyForms = useRef(new Set<string>());
   const [errorCode, setErrorCode] = useState('');
   const [diagnostics, setDiagnostics] = useState<PlatformDiagnostics | null>(
@@ -89,7 +96,10 @@ export function App() {
   const busyRef = useRef(false);
   const dirty = useRef(false),
     lastRoute = useRef(route);
-  const [section, id, tab = 'overview'] = route.replace(/^#\//, '').split('/');
+  const [section, id, tab = 'overview'] = route
+    .split('?')[0]!
+    .replace(/^#\//, '')
+    .split('/');
   const refresh = () => setAttempt((v) => v + 1);
   async function loadSession() {
     const s = platformSession.parse(await api('auth/session'));
@@ -125,7 +135,6 @@ export function App() {
       setRoute(next);
       setError('');
       setMessage('');
-      setLink('');
     };
     const unload = (e: BeforeUnloadEvent) => {
       if (dirty.current) {
@@ -164,6 +173,8 @@ export function App() {
       refresh();
       return result;
     } catch (e) {
+      if (e instanceof PlatformApiError && e.code === 'REQUEST_CANCELLED')
+        throw e;
       setError(e instanceof Error ? e.message : 'Request failed.');
       setErrorCode(e instanceof PlatformApiError ? e.code : '');
       throw e;
@@ -198,8 +209,20 @@ export function App() {
         }
       } else if (section === 'operations') {
         setDiagnostics(null);
+        setSelectedOperation(null);
+        if (id) {
+          if (!/^[a-f0-9-]{36}$/i.test(id))
+            throw new Error(
+              'This operation link is invalid. Open Operations to search its ID.',
+            );
+          const operation = await api<Operation>('operations/' + id);
+          if (active) setSelectedOperation(operation);
+          return;
+        }
         const [d, checks] = await Promise.all([
-          api<Operation[]>('operations'),
+          api<{ items: Operation[]; hasMore: boolean }>(
+            'operations/search?' + (route.split('?')[1] ?? ''),
+          ),
           api<PlatformDiagnostics>('diagnostics').catch((reason: unknown) => {
             if (active) {
               setError(
@@ -215,7 +238,8 @@ export function App() {
           }),
         ]);
         if (active) {
-          setOperations(d);
+          setOperations(d.items);
+          setOperationsMore(d.hasMore);
           setDiagnostics(checks);
         }
       } else if (section === 'security') {
@@ -564,60 +588,14 @@ export function App() {
           </>
         )}
         {section === 'organizations' && id === 'new' && (
-          <Form
-            title="Organization details"
-            submit="Register organization"
+          <OrganizationOnboarding
             busy={busy}
-            dirty={mark}
-            onSave={(d) =>
-              run(async () => {
-                const edition = value(d, 'edition'),
-                  runtime = value(d, 'runtimeId'),
-                  installation = value(d, 'installationId');
-                const r = await api<{ id: string }>('organizations', {
-                  name: value(d, 'name'),
-                  email: value(d, 'email'),
-                  contactName: value(d, 'contactName'),
-                  phone: value(d, 'phone'),
-                  edition,
-                  mode: value(d, 'mode'),
-                  ...(runtime ? { runtimeId: runtime } : {}),
-                  ...(installation ? { installationId: installation } : {}),
-                  requestKey: requestKey(),
-                });
-                location.hash = '/organizations/' + r.id;
-              })
-            }
-          >
-            <div className="grid">
-              <Field label="Business name" name="name" />
-              <Field label="Owner/contact email" name="email" type="email" />
-              <Field label="Contact name" name="contactName" required={false} />
-              <Field label="Phone" name="phone" required={false} />
-              <Field label="Edition" name="edition">
-                <option value="saas">Online SaaS</option>
-                <option value="offline">Offline Windows</option>
-              </Field>
-              <Field label="Registration method" name="mode">
-                <option value="create">Create online organization</option>
-                <option value="link">Link existing organization</option>
-              </Field>
-              <Field
-                label="Existing runtime organization UUID"
-                name="runtimeId"
-                required={false}
-              />
-              <Field
-                label="Offline installation UUID"
-                name="installationId"
-                required={false}
-              />
-            </div>
-            <p className="muted">
-              Offline records require both existing host IDs. Online links are
-              verified against the hosted service.
-            </p>
-          </Form>
+            mark={(dirty) => mark(dirty, 'onboarding')}
+            run={run}
+            onDone={(organizationId) => {
+              location.hash = '/organizations/' + organizationId;
+            }}
+          />
         )}
         {org && (
           <>
@@ -646,6 +624,7 @@ export function App() {
             </nav>
             {tab === 'overview' && (
               <>
+                <CommercialSteps detail={detail!} />
                 <section className="card">
                   <h2>Runtime identity</h2>
                   <p>
@@ -662,7 +641,7 @@ export function App() {
                 </section>
                 <Form
                   title="Contact and lifecycle"
-                  busy={busy}
+                  busy={busy || org.state === 'pending'}
                   dirty={mark}
                   onSave={(d) =>
                     save(
@@ -680,6 +659,13 @@ export function App() {
                     )
                   }
                 >
+                  {org.state === 'pending' && (
+                    <p role="status">
+                      Owner onboarding is pending. Follow the hosted setup steps
+                      below, then verify hosted status before editing lifecycle
+                      details.
+                    </p>
+                  )}
                   <div className="grid">
                     <Field
                       label="Business name"
@@ -718,48 +704,13 @@ export function App() {
                   </p>
                 </Form>
                 {org.edition === 'saas' && (
-                  <section className="card">
-                    <h2>Hosted status and owner onboarding</h2>
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        void save(base + '/check', {}).catch(() => {})
-                      }
-                    >
-                      Verify hosted status
-                    </button>
-                    {detail!.observation ? (
-                      <Table rows={[detail!.observation]} />
-                    ) : (
-                      <p>Hosted status has not been verified yet.</p>
-                    )}
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        void run(async () => {
-                          const r = await api<{ url?: string; state?: string }>(
-                            base + '/setup-link',
-                            { requestKey: requestKey() },
-                          );
-                          setLink(
-                            r.url ??
-                              'Setup link pending. Resolve operation status, then generate a new link.',
-                          );
-                        }).catch(() => {})
-                      }
-                    >
-                      Generate owner setup link
-                    </button>
-                    {link && (
-                      <p className="secret" role="status">
-                        {link}
-                      </p>
-                    )}
-                    <p>
-                      Links expire after 24 hours. Generating a new link
-                      invalidates the previous one.
-                    </p>
-                  </section>
+                  <HostedOnboarding
+                    key={org.id}
+                    detail={detail!}
+                    busy={busy}
+                    save={save}
+                    run={run}
+                  />
                 )}
               </>
             )}
@@ -867,28 +818,42 @@ export function App() {
                   <Field label="Reason" name="reason" />
                 </Form>
                 {org.edition === 'saas' && (
-                  <Form
-                    title="Pause or resume business changes"
-                    busy={busy}
-                    dirty={mark}
-                    onSave={(d) =>
-                      save(base + '/pause', {
-                        paused: value(d, 'paused') === 'true',
-                        reason: value(d, 'reason'),
-                        requestKey: requestKey(),
-                      })
-                    }
-                  >
-                    <p>
-                      If identity confirmation is needed, it will open here.
-                      Viewing and printing remain available.
-                    </p>
-                    <Field label="Action" name="paused">
-                      <option value="true">Pause writes</option>
-                      <option value="false">Resume writes</option>
-                    </Field>
-                    <Field label="Reason" name="reason" />
-                  </Form>
+                  <>
+                    <section className="card">
+                      <h2>Verified business-write status</h2>
+                      <HostedPauseSummary detail={detail!} />
+                      <button
+                        disabled={busy}
+                        onClick={() =>
+                          void save(base + '/check', {}).catch(() => {})
+                        }
+                      >
+                        Verify hosted status
+                      </button>
+                    </section>
+                    <Form
+                      title="Pause or resume business changes"
+                      busy={busy}
+                      dirty={mark}
+                      onSave={(d) =>
+                        save(base + '/pause', {
+                          paused: value(d, 'paused') === 'true',
+                          reason: value(d, 'reason'),
+                          requestKey: requestKey(),
+                        })
+                      }
+                    >
+                      <p>
+                        If identity confirmation is needed, it will open here.
+                        Viewing and printing remain available.
+                      </p>
+                      <Field label="Action" name="paused">
+                        <option value="true">Pause writes</option>
+                        <option value="false">Resume writes</option>
+                      </Field>
+                      <Field label="Reason" name="reason" />
+                    </Form>
+                  </>
                 )}
               </>
             )}
@@ -982,6 +947,7 @@ export function App() {
             )}
             {tab === 'licenses' && (
               <LicensePanel
+                key={org.id}
                 detail={detail!}
                 busy={busy}
                 mark={mark}
@@ -1011,21 +977,45 @@ export function App() {
         )}
         {section === 'operations' && (
           <>
-            {diagnostics && <Diagnostics value={diagnostics} />}
-            <section className="card">
-              <h2>Cross-database operations</h2>
-              <p>
-                Completed means a committed SaaS receipt was verified. Failed
-                requests can need reconciliation before retry.
-              </p>
-              <OperationList
-                operations={operations}
-                busy={busy}
-                retry={(operation) =>
-                  save('operations/' + operation + '/retry', {})
-                }
-              />
-            </section>
+            {id ? (
+              <section className="card">
+                <a href="#/operations">← All operations</a>
+                <h2>Operation details</h2>
+                <code>{id}</code>
+                {selectedOperation && (
+                  <OperationList
+                    operations={[selectedOperation]}
+                    busy={busy}
+                    retry={(operation) =>
+                      save('operations/' + operation + '/retry', {})
+                    }
+                  />
+                )}
+              </section>
+            ) : (
+              <>
+                {diagnostics && <Diagnostics value={diagnostics} />}
+                <section className="card">
+                  <h2>Cross-database operations</h2>
+                  <p>
+                    Completed means a committed SaaS receipt was verified.
+                    Failed requests can need reconciliation before retry.
+                  </p>
+                  <OperationFilters
+                    route={route}
+                    hasMore={operationsMore}
+                    busy={busy || loading}
+                  />
+                  <OperationList
+                    operations={operations}
+                    busy={busy}
+                    retry={(operation) =>
+                      save('operations/' + operation + '/retry', {})
+                    }
+                  />
+                </section>
+              </>
+            )}
           </>
         )}
         {section === 'security' && (

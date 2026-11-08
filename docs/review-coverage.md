@@ -1,5 +1,65 @@
 # Review coverage
 
+## Commercial guide placement (2026-11-08)
+
+Moved the full commercial workflow guide into the organization's Overview tab.
+Subscription, Payments, Licenses and Activity retain their existing contextual
+instructions without repeating the guide. No commercial or license logic changed.
+Admin type checking, focused ESLint, formatting and diff whitespace checks passed.
+This placement-only follow-up was not rerun in a browser.
+
+## Guided daily workflows — batch 3 (2026-11-08)
+
+Implementation started with a clean working tree after reviewing the current
+organization forms, owner-link operations, license importer/exporter, operation
+receipts and Billing overview. Scope: guided onboarding, workspace readiness,
+bounded file handoffs and useful operation history/details. Existing permission,
+signature, signing-authority, idempotency and tax/compliance checks remain the
+authority. Progress and verification will be recorded here after each slice.
+
+Slice 1: added permission-scoped, read-only workspace setup checks, an on-demand
+Billing checklist and owner-only offline registration export. Added two-step
+Admin organization review, descriptor import and guided hosted-owner status.
+Shared bounded JSON readers support signed-grant file selection without trusting
+MIME/type or claiming a signature is verified before server import. A single
+signing handoff is accepted by the existing external publisher CLI; register/key
+requirements and legacy claims/predecessor flags remain intact.
+
+Slice 2: added filtered/paginated operations and stable detail URLs, preserving the
+legacy operations array endpoint and hiding command payloads from new responses.
+Retry revalidates fresh authorization inside its transaction. Readable status
+separates historical receipts from current hosted state. Complete commercial
+balances now aggregate all active agreements rather than the recent 100-row page.
+License request cancellation preserves inputs; retries reuse the same immutable
+claims/key after a lost response instead of generating a conflicting payload.
+Final verification after resuming: all 311 unit tests, all 97 enabled integration
+tests and all 20 Chrome browser tests passed (one existing opt-in installer test
+skipped). Workspace and test type checks, all application builds, lint,
+repository formatting and diff whitespace checks passed. Two test files needed
+formatting and are corrected. An earlier focused browser run reached the correct
+Business settings form but asserted its wrong heading; the assertion now checks
+the real legal-business-name field and passed in the complete run.
+
+New regression evidence covers permission-filtered setup status and descriptor
+export, strict/bounded JSON inputs, external CLI handoff signing with a disposable
+register, onboarding review/import, exact balances beyond the recent agreement
+page, operation pagination and secret-payload exclusion. Browser coverage includes
+mobile checklist layout, corrective navigation, malformed/signed file import,
+cancelled and lost-response request retries, stable operation URLs, reload and
+Back/Forward. The generated Admin license-page screenshot was also inspected.
+Tests used a disposable PostgreSQL container, ephemeral keys and isolated
+databases, not the configured customer/platform databases.
+
+User instructions are in [daily workflows](daily-workflows.md). No dependency,
+root development-command, database migration, live configuration, signing-key or
+production-data changes were required. Existing customer authentication, MFA,
+commercial writes, grant verification and issuer/register regressions passed.
+Only operation history gained pagination: the broader inventory proposal for
+full commercial/audit history remains unimplemented, and those tables retain
+their recent-record limits. Production deployment, prepared signing custody,
+backup/recovery interfaces, Windows lifecycle interfaces and real Windows
+installer/reboot/LAN acceptance are not completed by this UI batch.
+
 ## Guided initial setup — batch 2 (2026-11-08)
 
 Optimization review: bounded interrupted offline-owner reconciliation to two rows;

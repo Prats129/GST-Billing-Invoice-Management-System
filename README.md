@@ -17,6 +17,8 @@ A separate owner-only Platform Admin app manages online/offline organizations,
 software agreements/receipts, external signing handoffs and approved SaaS operations.
 It has its own database, credentials and MFA; customer ownership grants no platform
 access. See [Platform Admin setup and operations](docs/platform-admin.md).
+For organization onboarding, workspace checks, license handoffs and operation
+history, see [guided daily workflows](docs/daily-workflows.md).
 Use `pnpm dev:admin` after the separate database/owner setup. The existing `pnpm dev`
 continues to run only the customer application.
 Apply the reviewed customer migration with `pnpm db:migrate` before starting the

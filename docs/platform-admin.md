@@ -7,6 +7,10 @@ owner in this version. Organization ownership never confers platform access.
 
 ## Local setup
 
+For normal use after setup, see [Guided daily workflows](daily-workflows.md):
+organization review, owner onboarding, commercial steps, license files and
+operation recovery.
+
 For read-only setup checks and actionable operational status, see
 [Setup & system checks](setup-operations.md). For a new local profile, use
 [guided setup](guided-setup.md) to avoid hand-written SQL/password JSON. The

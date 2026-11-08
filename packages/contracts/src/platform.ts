@@ -276,9 +276,36 @@ export const platformOperationView = z
     completed_at: stamp.nullable().optional(),
   })
   .strict();
+export const platformOperationQuery = z
+  .object({
+    q: z
+      .string()
+      .trim()
+      .max(36)
+      .regex(/^[a-f0-9-]*$/i)
+      .default(''),
+    state: platformOperationView.shape.state.or(z.literal('')).default(''),
+    kind: platformOperationView.shape.kind.or(z.literal('')).default(''),
+    organizationId: z.string().uuid().or(z.literal('')).default(''),
+    offset: z.coerce.number().int().min(0).max(10000).default(0),
+  })
+  .strict();
+export const platformOperationPage = z
+  .object({
+    items: z.array(platformOperationView).max(50),
+    hasMore: z.boolean(),
+  })
+  .strict();
 export const platformDetail = z
   .object({
     organization: platformOrganizationView,
+    commercialSummary: z
+      .object({
+        agreementCount: z.number().int().nonnegative(),
+        outstandingPaise: amount,
+      })
+      .strict()
+      .optional(),
     agreements: z.array(agreementView),
     receipts: z.array(receiptView),
     adjustments: z.array(adjustmentView),
@@ -336,6 +363,10 @@ export function platformReadResponse(path: string, value: unknown): unknown {
   if (/^organizations\/[a-f0-9-]{36}$/.test(path))
     return platformDetail.parse(value);
   if (path === 'operations') return z.array(platformOperationView).parse(value);
+  if (path.split('?')[0] === 'operations/search')
+    return platformOperationPage.parse(value);
+  if (/^operations\/[a-f0-9-]{36}$/i.test(path))
+    return platformOperationView.parse(value);
   if (/^organizations\/[a-f0-9-]{36}\/grants\/[a-f0-9-]{36}$/.test(path))
     return signedEntitlementSchema.parse(value);
   return value;

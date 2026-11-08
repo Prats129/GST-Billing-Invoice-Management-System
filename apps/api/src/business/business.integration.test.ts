@@ -99,6 +99,7 @@ beforeAll(async () => {
     NODE_ENV: 'test',
     DATABASE_URL: isolated.connectionString,
     AUTH_DATA_KEY: 'ab'.repeat(32),
+    OFFLINE_INSTALLATION_ID: '849cb1a0-6b7e-4b0e-8c7f-c4ce444a42b1',
   });
   orgs = new OrganizationsService(
     new IdentityService(isolated.database, config),
@@ -113,6 +114,84 @@ afterAll(async () => {
   await app?.close();
   await isolated?.cleanup();
 });
+test('setup checks isolate tenants, hide restricted directories and use authoritative invoice blockers', async () => {
+  const own = await setup(),
+    other = await setup();
+  await http().get(`${own.path}/setup-status`).set(headers).expect(401);
+  await http().get(`${own.path}/setup-status`).set(other.auth).expect(403);
+  const empty = (
+    await http().get(`${own.path}/setup-status`).set(own.auth).expect(200)
+  ).body;
+  expect(empty).toMatchObject({
+    businessConfigured: false,
+    registrationConfirmed: false,
+    customersPresent: false,
+    catalogPresent: false,
+    eInvoiceApplicability: 'unknown',
+    offlineRegistration: {
+      organizationId: own.organizationId,
+      installationId: '849cb1a0-6b7e-4b0e-8c7f-c4ce444a42b1',
+    },
+  });
+  await http()
+    .put(`${own.path}/business-profile`)
+    .set(own.auth)
+    .send({
+      ...profile,
+      registrationConfirmed: true,
+      eInvoiceApplicability: 'required',
+    })
+    .expect(200);
+  await http()
+    .post(`${own.path}/customers`)
+    .set(own.auth)
+    .send(customer)
+    .expect(201);
+  await http().post(`${own.path}/catalog`).set(own.auth).send(item).expect(201);
+  const configured = (
+    await http().get(`${own.path}/setup-status`).set(own.auth).expect(200)
+  ).body;
+  expect(configured).toMatchObject({
+    businessConfigured: true,
+    registrationConfirmed: true,
+    customersPresent: true,
+    catalogPresent: true,
+  });
+  expect(configured.issuanceBlockers.join(' ')).toContain(
+    'IRP integration is on hold',
+  );
+  const [membership] = await isolated.database.db
+    .insert(memberships)
+    .values({
+      organizationId: own.organizationId,
+      userId: other.userId,
+      edition: 'offline',
+    })
+    .returning();
+  const [staff] = await isolated.database.db
+    .select()
+    .from(roles)
+    .where(
+      and(
+        eq(roles.organizationId, own.organizationId),
+        eq(roles.name, 'Staff'),
+      ),
+    );
+  await isolated.database.db.insert(membershipRoles).values({
+    organizationId: own.organizationId,
+    membershipId: membership!.id,
+    roleId: staff!.id,
+  });
+  const restricted = (
+    await http().get(`${own.path}/setup-status`).set(other.auth).expect(200)
+  ).body;
+  expect(restricted).toMatchObject({
+    customersPresent: null,
+    catalogPresent: null,
+    offlineRegistration: null,
+  });
+});
+
 test('profile updates preserve registration history, enforce versions and reject unsupported setup', async () => {
   const own = await setup();
   expect(

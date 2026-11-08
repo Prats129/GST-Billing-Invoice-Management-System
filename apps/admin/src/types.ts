@@ -34,8 +34,12 @@ export interface Operation {
   error_code: string | null;
   result: unknown;
   created_at: string;
+  organization_id?: string;
+  attempts?: number;
+  completed_at?: string | null;
 }
 export interface Detail {
+  commercialSummary?: { agreementCount: number; outstandingPaise: string };
   observation: Record<string, unknown> | null;
   organization: PlatformOrganizationView;
   agreements: Agreement[];

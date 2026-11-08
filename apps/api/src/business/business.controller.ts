@@ -31,6 +31,7 @@ import {
   catalogViewSchema,
   catalogPageSchema,
   taxHistorySchema,
+  workspaceSetupSchema,
 } from '@gst/contracts';
 import type { Request } from 'express';
 import {
@@ -44,6 +45,7 @@ import {
 import type { SecurityServices } from '../security/controllers.js';
 import type { BusinessService } from './business.service.js';
 import { deny } from '../security/errors.js';
+import { workspaceSetup } from './workspace-setup.js';
 
 export const BUSINESS = Symbol('BUSINESS');
 @ApiTags('business setup, customers and catalog')
@@ -68,6 +70,19 @@ export class BusinessController extends SecurityController {
   }
   private get business() {
     return this.businessService ?? deny('SECURITY_UNAVAILABLE');
+  }
+  @Get('setup-status')
+  @contractResponse(workspaceSetupSchema)
+  @ApiOperation({
+    summary:
+      'Read permission-scoped workspace setup checks; never authorizes invoice issuance',
+  })
+  async setupStatus(@Param('orgId') orgId: string, @Req() req: Request) {
+    return workspaceSetup(
+      this.business,
+      await this.authenticated(req),
+      uuid(orgId),
+    );
   }
   @Get('business-profile')
   @contractResponse(businessProfileResponseSchema)

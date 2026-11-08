@@ -160,3 +160,4 @@ export * from './billing.js';
 export * from './invoicing.js';
 export * from './logo.js';
 export * from './entitlements.js';
+export * from './setup.js';

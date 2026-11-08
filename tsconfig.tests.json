@@ -10,6 +10,7 @@
   "include": [
     "apps/**/*.test.ts",
     "packages/**/*.test.ts",
+    "packages/ui/src/assets.d.ts",
     "tests/**/*.ts",
     "scripts/issuer/**/*.ts",
     "scripts/setup/**/*.ts",

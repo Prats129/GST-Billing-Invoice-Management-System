@@ -875,6 +875,17 @@ normal supported path. Reruns preserve existing resources and secrets.
 **Deliver:** onboarding wizard, setup checklist, file-based license handoff/import
 and useful operation details.
 
+Implemented scope (2026-11-08): two-step organization review with offline
+descriptor import, hosted-owner progress, permission-scoped Billing checklist,
+complete commercial balance/step guidance, single-package external signing,
+bounded signed-file import, and filtered/paginated operation lists with stable
+details and retry guidance. See [daily workflows](daily-workflows.md) and
+[review coverage](review-coverage.md) for usage and verification evidence.
+Existing signing, MFA, onboarding and commercial mutation services remain the
+authority. Inventory B11's broader audit/commercial-history pagination is not
+implemented: those tables retain their existing recent-record limits; the new
+complete balance is not computed from those limited tables.
+
 **Complete when:** users can onboard an organization and understand each pending
 access step without searching several runbooks or guessing at JSON.
 

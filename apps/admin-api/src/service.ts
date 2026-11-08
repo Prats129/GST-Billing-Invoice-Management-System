@@ -142,6 +142,14 @@ export class PlatformService {
   }
   async details(id: string) {
     const org = await this.organization(this.db, id);
+    const [commercialSummary] = await rows(
+      this.db,
+      `SELECT count(*)::int AS "agreementCount",
+       coalesce(sum(a.total_paise - coalesce((SELECT sum(r.amount_paise) FROM platform_receipts r WHERE r.agreement_id=a.id),0)
+       + coalesce((SELECT sum(j.amount_paise) FROM platform_adjustments j WHERE j.agreement_id=a.id),0)),0)::text AS "outstandingPaise"
+       FROM platform_agreements a WHERE a.organization_id=$1 AND a.state='active'`,
+      [id],
+    );
     const agreements = await rows(
       this.db,
       `SELECT a.*,coalesce((SELECT sum(amount_paise) FROM platform_receipts WHERE agreement_id=a.id),0)-coalesce((SELECT sum(amount_paise) FROM platform_adjustments WHERE agreement_id=a.id),0) AS paid_paise FROM platform_agreements a WHERE organization_id=$1 ORDER BY created_at DESC LIMIT 100`,
@@ -189,6 +197,7 @@ export class PlatformService {
     );
     return {
       organization: org,
+      commercialSummary,
       agreements,
       receipts,
       adjustments,

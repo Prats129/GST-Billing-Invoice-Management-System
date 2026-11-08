@@ -151,23 +151,30 @@ export function OperationList({
 }) {
   return (
     <>
-      <Table
-        rows={operations.map((o) => ({
-          id: o.id,
-          action: o.kind,
-          state: o.state,
-          detail: o.error_code
-            ? platformProblem(o.error_code, o.error_code)
-            : o.state === 'pending'
-              ? 'Waiting for the worker. Refresh status; if this remains pending, ask the host operator to check that operations are enabled and the billing connection is configured.'
-              : o.state === 'running'
-                ? 'Processing. Wait and refresh status; do not submit a duplicate request.'
-                : o.state === 'completed'
-                  ? 'The billing database confirmed this operation.'
-                  : '',
-          result: o.result,
-        }))}
-      />
+      {!operations.length && <p className="muted">No matching operations.</p>}
+      {operations.map((o) => (
+        <article className="operation" key={o.id}>
+          <h3>
+            <a href={'#/operations/' + o.id}>
+              {o.kind.replaceAll('_', ' ')} · {o.id.slice(0, 8)}
+            </a>{' '}
+            <span className="badge">{o.state}</span>
+          </h3>
+          <p>{operationGuidance(o)}</p>
+          <p className="muted">
+            Requested {new Date(o.created_at).toLocaleString()}
+            {o.attempts !== undefined ? ` · Attempts: ${o.attempts}` : ''}
+            {o.completed_at
+              ? ` · Receipt confirmed ${new Date(o.completed_at).toLocaleString()}`
+              : ''}
+          </p>
+          {o.organization_id && (
+            <a href={'#/organizations/' + o.organization_id}>
+              Open organization
+            </a>
+          )}
+        </article>
+      ))}
       {operations
         .filter((o) => o.state === 'retryable')
         .map((o) => (
@@ -181,4 +188,18 @@ export function OperationList({
         ))}
     </>
   );
+}
+
+export function operationGuidance(operation: Operation) {
+  if (operation.error_code)
+    return platformProblem(operation.error_code, operation.error_code);
+  if (operation.state === 'pending')
+    return 'Waiting for the worker. Refresh status; if it remains pending, ask the host operator to check processing and the billing connection. Do not create another request.';
+  if (operation.state === 'running')
+    return 'Processing. Wait and refresh this operation. Its ID stays the same; do not submit a duplicate.';
+  if (operation.state === 'retryable')
+    return 'The result needs reconciliation. Retry this same operation after checking the connection; a committed billing receipt prevents duplicate changes.';
+  if (operation.state === 'conflict')
+    return 'Existing state conflicts with this request. Inspect the organization and saved history with the host operator. Retrying with a new ID will not resolve the conflict.';
+  return 'The billing database confirmed a committed receipt. This is historical completion; verify hosted status for current access. Offline installation is not verified here.';
 }
