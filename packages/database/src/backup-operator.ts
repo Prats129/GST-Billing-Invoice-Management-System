@@ -24,6 +24,20 @@ export interface BackupOperatorOptions {
   workDirectory: string;
   pgBinDirectory?: string;
   dockerContainer?: string;
+  // Persist the generated candidate identity before database creation, so a
+  // host crash cannot erase the evidence needed to inspect an unknown outcome.
+  onRecoveryPlanned?: (database: string) => Promise<void>;
+  // Trusted host code only, never supplied through JSON/browser configuration.
+  // The platform schema is a separate domain, not another customer migration.
+  databaseAdapter?: {
+    kind: 'platform';
+    schemaDigest: string;
+    validate: (db: Client) => Promise<void>;
+    quarantine: (
+      db: Client,
+      context: { installationId: string; backupCreatedAt: string },
+    ) => Promise<number>;
+  };
 }
 function connection(options: BackupOperatorOptions, database?: string) {
   const url = new URL(options.connectionString);
@@ -304,7 +318,11 @@ export async function createEncryptedBackup(
     )
       throw new BackupError('PostgreSQL 18 server required.');
     await db.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const schemaDigest = await assertMigrationHistory(db);
+    let schemaDigest: string;
+    if (options.databaseAdapter) {
+      await options.databaseAdapter.validate(db);
+      schemaDigest = options.databaseAdapter.schemaDigest;
+    } else schemaDigest = await assertMigrationHistory(db);
     const snapshot = String(
       (await db.query('SELECT pg_export_snapshot() AS snapshot')).rows[0]
         .snapshot,
@@ -350,7 +368,7 @@ async function restoreArchive(
   let work: string | undefined = await privateWorkDirectory(
     options.workDirectory,
   );
-  const targetName = `gst_${prepare ? 'recovery' : 'restore'}_${randomUUID().replaceAll('-', '')}`;
+  const targetName = `gst_${options.databaseAdapter ? 'platform_' : ''}${prepare ? 'recovery' : 'restore'}_${randomUUID().replaceAll('-', '')}`;
   const admin = client(options);
   let created = false;
   let retained = false;
@@ -360,9 +378,16 @@ async function restoreArchive(
     const dump = join(work, 'restore.dump');
     const metadata = await decryptBackup(artifact, dump, options.key, {
       installationId: options.installationId,
-      schemaDigest: await supportedMigrationDigests(),
+      schemaDigest: options.databaseAdapter
+        ? [options.databaseAdapter.schemaDigest]
+        : await supportedMigrationDigests(),
     });
-    const releaseSchemaDigest = await migrationDigest();
+    const releaseSchemaDigest =
+      options.databaseAdapter?.schemaDigest ?? (await migrationDigest());
+    if (options.databaseAdapter && upgradeToSchema)
+      throw new BackupError(
+        'Platform recovery requires its exact current schema; automatic upgrades are not supported.',
+      );
     if (upgradeToSchema && upgradeToSchema !== releaseSchemaDigest)
       throw new BackupError(
         'The confirmed upgrade target does not match this release. No recovery database was created.',
@@ -376,12 +401,23 @@ async function restoreArchive(
         "Recovery preparation requires this release's exact schema. Use the matching release or explicitly confirm --upgrade-to-schema; no automatic migration or downgrade is performed.",
       );
     await admin.connect();
+    if (prepare) await options.onRecoveryPlanned?.(targetName);
     // Prevent PUBLIC connections before any customer data is restored. Only the
     // operator/database owner can connect after the explicit grant restriction.
     await admin.query(
       `CREATE DATABASE "${targetName}" TEMPLATE template0 ALLOW_CONNECTIONS false`,
     );
     created = true;
+    const recoveryMarker = JSON.stringify({
+      format: 'gst-recovery-candidate',
+      installationId: options.installationId,
+      domain: options.databaseAdapter ? 'platform' : 'billing',
+      schemaDigest: metadata.schemaDigest,
+      backupCreatedAt: metadata.createdAt,
+    });
+    await admin.query(
+      `COMMENT ON DATABASE "${targetName}" IS '${recoveryMarker.replaceAll("'", "''")}'`,
+    );
     await admin.query(`REVOKE ALL ON DATABASE "${targetName}" FROM PUBLIC`);
     await admin.query(`ALTER DATABASE "${targetName}" ALLOW_CONNECTIONS true`);
     await tool(
@@ -401,7 +437,12 @@ async function restoreArchive(
     const restored = client(options, targetName);
     try {
       await restored.connect();
-      if ((await assertMigrationHistory(restored)) !== metadata.schemaDigest)
+      let restoredDigest: string;
+      if (options.databaseAdapter) {
+        await options.databaseAdapter.validate(restored);
+        restoredDigest = options.databaseAdapter.schemaDigest;
+      } else restoredDigest = await assertMigrationHistory(restored);
+      if (restoredDigest !== metadata.schemaDigest)
         throw new BackupError(
           'Restored schema does not match the authenticated manifest.',
         );
@@ -424,7 +465,9 @@ async function restoreArchive(
         }
         tables = Object.keys(await counts(restored)).length;
       }
-      const candidateSchemaDigest = await assertMigrationHistory(restored);
+      const candidateSchemaDigest = options.databaseAdapter
+        ? restoredDigest
+        : await assertMigrationHistory(restored);
       if (prepare && candidateSchemaDigest !== releaseSchemaDigest)
         throw new BackupError(
           'Recovery schema did not reach the confirmed release target.',
@@ -432,30 +475,40 @@ async function restoreArchive(
       if (prepare) {
         await restored.query('BEGIN');
         try {
-          const cleared = await restored.query('DELETE FROM public.sessions');
-          if (
-            (
-              await restored.query(
-                "SELECT to_regclass('public.trusted_devices') AS name",
-              )
-            ).rows[0]?.name
-          ) {
-            await restored.query('DELETE FROM public.trusted_devices');
-          }
-          sessionsInvalidated = cleared.rowCount ?? 0;
-          await restored.query(
-            'INSERT INTO public.audit_events (action, metadata) VALUES ($1, $2::jsonb)',
-            [
-              'recovery.prepared',
-              JSON.stringify({
+          if (options.databaseAdapter) {
+            sessionsInvalidated = await options.databaseAdapter.quarantine(
+              restored,
+              {
                 installationId: options.installationId,
                 backupCreatedAt: metadata.createdAt,
-                sessionsInvalidated: String(sessionsInvalidated),
-                backupSchemaDigest: metadata.schemaDigest,
-                schemaDigest: candidateSchemaDigest,
-              }),
-            ],
-          );
+              },
+            );
+          } else {
+            const cleared = await restored.query('DELETE FROM public.sessions');
+            if (
+              (
+                await restored.query(
+                  "SELECT to_regclass('public.trusted_devices') AS name",
+                )
+              ).rows[0]?.name
+            ) {
+              await restored.query('DELETE FROM public.trusted_devices');
+            }
+            sessionsInvalidated = cleared.rowCount ?? 0;
+            await restored.query(
+              'INSERT INTO public.audit_events (action, metadata) VALUES ($1, $2::jsonb)',
+              [
+                'recovery.prepared',
+                JSON.stringify({
+                  installationId: options.installationId,
+                  backupCreatedAt: metadata.createdAt,
+                  sessionsInvalidated: String(sessionsInvalidated),
+                  backupSchemaDigest: metadata.schemaDigest,
+                  schemaDigest: candidateSchemaDigest,
+                }),
+              ],
+            );
+          }
           await restored.query('COMMIT');
         } catch (error) {
           await restored.query('ROLLBACK');
@@ -467,7 +520,7 @@ async function restoreArchive(
     }
     const schemaDigest = upgradeToSchema ?? metadata.schemaDigest;
     const currentReleaseCompatible = schemaDigest === releaseSchemaDigest;
-    if (currentReleaseCompatible) {
+    if (currentReleaseCompatible && !options.databaseAdapter) {
       const db = createDatabase(connection(options, targetName).toString());
       try {
         await db.ready();

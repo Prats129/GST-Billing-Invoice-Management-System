@@ -894,6 +894,16 @@ access step without searching several runbooks or guessing at JSON.
 **Deliver:** backup profiles/status, platform-specific tooling, guided recovery
 and reconciliation.
 
+Implementation (2026-11-08): protected host profiles, fixed backup/verify/recovery
+actions, immutable job evidence, sanitized read-only Admin status, encrypted
+off-device export, a platform-specific restore/quarantine adapter, guided existing
+Billing cutover/rollback, bounded platform receipt/grant reconciliation and owned
+artifact inventory. See [guided backup and recovery](guided-backup-recovery.md)
+and [review coverage](review-coverage.md). No privileged browser executor was
+introduced. Platform live cutover/authority re-enablement remains a reviewed host
+procedure; retention/deletion policy, actual scheduler deployment/alerting and
+real Windows acceptance are not assumed complete by local verification.
+
 **Complete when:** verified backups and isolated restores work. Cutover and
 rollback preserve evidence and require the correct authority/approvals.
 

@@ -23,6 +23,7 @@ import type { PlatformService } from './service.js';
 import { rows, transaction, audit } from './store.js';
 import { fail } from './errors.js';
 import { diagnosePlatform } from './diagnostics.js';
+import { readBackupStatus } from './backup-status.js';
 import type { Operations } from './operations.js';
 const bodyContract = (schema: z.ZodType) =>
   ApiBody({
@@ -73,6 +74,14 @@ export class PlatformController {
   }
   @Get('health') health() {
     return { status: 'ok', service: 'gst-platform' };
+  }
+  @Get('backups/status')
+  @responseContract(c.backupStatusResponseSchema)
+  async backupStatus(@Req() req: Request) {
+    await this.auth(req);
+    return readBackupStatus(
+      this.services.auth.config.PLATFORM_BACKUP_STATUS_FILE,
+    );
   }
   @Get('ready') async ready() {
     await this.services.auth.db.query('SELECT id FROM platform_owner LIMIT 0');

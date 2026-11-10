@@ -6,6 +6,9 @@ import { HostedOnboarding, HostedPauseSummary } from './HostedOnboarding.js';
 import { OperationFilters } from './OperationFilters.js';
 import { CommercialSteps } from './CommercialSteps.js';
 import { Diagnostics } from './Diagnostics.js';
+import { BackupStatus } from './BackupStatus.js';
+import { backupStatusResponseSchema } from '@gst/contracts';
+import type { BackupStatusResponse } from '@gst/contracts';
 import type { PlatformDiagnostics } from '@gst/contracts/platform';
 import { value, iso } from './forms.js';
 import { useEffect, useRef, useState } from 'react';
@@ -54,6 +57,9 @@ export function App() {
     null,
   );
   const [operationsMore, setOperationsMore] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<BackupStatusResponse | null>(
+    null,
+  );
   const dirtyForms = useRef(new Set<string>());
   const [errorCode, setErrorCode] = useState('');
   const [diagnostics, setDiagnostics] = useState<PlatformDiagnostics | null>(
@@ -219,7 +225,7 @@ export function App() {
           if (active) setSelectedOperation(operation);
           return;
         }
-        const [d, checks] = await Promise.all([
+        const [d, checks, backups] = await Promise.all([
           api<{ items: Operation[]; hasMore: boolean }>(
             'operations/search?' + (route.split('?')[1] ?? ''),
           ),
@@ -236,11 +242,15 @@ export function App() {
             }
             return null;
           }),
+          api('backups/status')
+            .then((value) => backupStatusResponseSchema.parse(value))
+            .catch(() => null),
         ]);
         if (active) {
           setOperations(d.items);
           setOperationsMore(d.hasMore);
           setDiagnostics(checks);
+          setBackupStatus(backups);
         }
       } else if (section === 'security') {
         const d = await api<Record<string, unknown>[]>('auth/sessions');
@@ -995,6 +1005,7 @@ export function App() {
             ) : (
               <>
                 {diagnostics && <Diagnostics value={diagnostics} />}
+                <BackupStatus value={backupStatus} />
                 <section className="card">
                   <h2>Cross-database operations</h2>
                   <p>

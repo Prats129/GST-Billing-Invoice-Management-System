@@ -6,11 +6,13 @@ node_modules
 .cache
 .local
 scripts/issuer
+scripts/operations
 **/*.key
 **/*.pem
 **/*.pfx
 **/*.p12
 **/*.gstbackup
+**/*.gstplatformbackup
 **/*.dump
 test-results
 playwright-report

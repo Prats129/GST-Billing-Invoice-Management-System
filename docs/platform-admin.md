@@ -201,6 +201,13 @@ The API description is available at `/api/platform/openapi.json`.
 
 ## Backups, restore and reconciliation
 
+The [guided host backup assistant](guided-backup-recovery.md) now prepares
+encrypted, restore-verified customer/platform backups, quarantined recovery
+copies and a read-only reconciliation report. Operations can display its separate
+sanitized publication through `PLATFORM_BACKUP_STATUS_FILE`. No backup credentials,
+keys, archive downloads or host execution are exposed through the portal. The
+manual activation/authority review below remains required for platform recovery.
+
 Back up the separate platform database using PostgreSQL custom-format dumps,
 encrypted storage, restricted access and an off-device copy. Protect the TOTP
 encryption key separately. Also back up the independent publisher register,

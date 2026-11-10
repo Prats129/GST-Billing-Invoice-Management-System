@@ -15,6 +15,7 @@ coverage/
 *.pfx
 *.p12
 *.gstbackup
+*.gstplatformbackup
 *.dump
 test-results/
 playwright-report/

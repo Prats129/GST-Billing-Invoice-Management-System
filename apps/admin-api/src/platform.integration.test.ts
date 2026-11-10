@@ -120,6 +120,7 @@ describe.skipIf(!adminUrl)(
       expect((await get('organizations')).status).toBe(401);
       expect((await get('diagnostics')).status).toBe(401);
       expect((await get('operations/search')).status).toBe(401);
+      expect((await get('backups/status')).status).toBe(401);
       expect(
         (
           await request(app.getHttpServer())
@@ -134,6 +135,7 @@ describe.skipIf(!adminUrl)(
       csrf = login.body.csrfToken;
       expect((await get('organizations')).status).toBe(403);
       expect((await get('diagnostics')).status).toBe(403);
+      expect((await get('backups/status')).status).toBe(403);
       const setup = await post('auth/mfa/setup', {});
       secret = setup.body.secret;
       const enrolled = await post('auth/mfa/enroll', {
@@ -154,6 +156,10 @@ describe.skipIf(!adminUrl)(
       csrf = proof.body.csrfToken;
 
       expect((await get('organizations')).status).toBe(200);
+      expect((await get('backups/status')).body).toEqual({
+        state: 'not_configured',
+        report: null,
+      });
       const diagnostics = await get('diagnostics');
       expect(diagnostics.status).toBe(200);
       expect(diagnostics.body.checks).toContainEqual({

@@ -239,6 +239,15 @@ test('missing required dependencies and private-looking package files fail close
     assembleWindowsRuntime(f.repo, join(f.root, 'secret'), '0.1.0'),
   ).rejects.toThrow('Private-looking');
   await rm(join(f.repo, 'node_modules/alpha/.env'));
+  await put(
+    f.repo,
+    'node_modules/alpha/customer.gstplatformbackup',
+    'must never ship',
+  );
+  await expect(
+    assembleWindowsRuntime(f.repo, join(f.root, 'platform-archive'), '0.1.0'),
+  ).rejects.toThrow('Private-looking');
+  await rm(join(f.repo, 'node_modules/alpha/customer.gstplatformbackup'));
   await rm(join(f.repo, 'node_modules/beta'), { recursive: true });
   await expect(
     assembleWindowsRuntime(f.repo, join(f.root, 'missing'), '0.1.0'),

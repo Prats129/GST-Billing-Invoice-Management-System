@@ -1,5 +1,10 @@
 # Host-operated encrypted backup and restore verification
 
+For reusable protected profiles, fixed host actions and Admin status publication,
+see [guided backup and recovery](guided-backup-recovery.md). The lower-level
+commands below remain supported. Customer artifact format/compatibility checks
+are preserved; platform backups use a separate schema adapter and domain.
+
 Phase 6 implementation. These are host/platform-operator commands, not tenant
 endpoints. Full shared SaaS restoration is never delegated to organization admins.
 Commercial scheduling/retention and managed-provider backups still need deployment

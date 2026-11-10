@@ -51,6 +51,9 @@ See [runtime support](https://nodejs.org/en/about/previous-releases),
 
 ## Local startup
 
+For host-operated verified backups, recovery profiles and read-only Admin backup
+status, see [guided backup and recovery](docs/guided-backup-recovery.md).
+
 For a **new isolated local profile**, use the
 [guided setup assistant](docs/guided-setup.md):
 `& ./scripts/Setup-Project.ps1`. It prepares dependencies, databases, restricted

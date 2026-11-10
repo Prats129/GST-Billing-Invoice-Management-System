@@ -371,3 +371,4 @@ export function platformReadResponse(path: string, value: unknown): unknown {
     return signedEntitlementSchema.parse(value);
   return value;
 }
+export { backupStatusResponseSchema } from './backup.js';

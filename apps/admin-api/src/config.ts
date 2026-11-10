@@ -12,6 +12,7 @@ const schema = z.object({
   PLATFORM_TLS_CERT: z.string().optional(),
   PLATFORM_WEB_ROOT: z.string().optional(),
   PLATFORM_TRUST_FILE: z.string().optional(),
+  PLATFORM_BACKUP_STATUS_FILE: z.string().optional(),
   SAAS_OPERATOR_DATABASE_URL: z.string().url().optional(),
   SAAS_APP_ORIGIN: z.string().url().optional(),
   SAAS_EXPECTED_DATABASE_NAME: z.string().min(1).max(63).optional(),

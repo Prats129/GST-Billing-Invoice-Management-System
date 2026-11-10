@@ -129,6 +129,43 @@ test('owner MFA, offline organization detail URLs, agreements and payments work 
   await expect(
     page.getByText('WORKER_DISABLED', { exact: false }),
   ).toBeVisible();
+  await page.getByText('Backup & recovery status', { exact: true }).click();
+  await expect(
+    page.getByText('The host has not connected a backup status report.', {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.route('**/api/platform/v1/backups/status', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        state: 'reported',
+        report: {
+          version: 1,
+          checkedAt: new Date().toISOString(),
+          targets: [
+            {
+              id: 'platform',
+              kind: 'platform',
+              state: 'interrupted',
+              maximumAgeHours: 24,
+              lastAttemptAt: new Date().toISOString(),
+              lastVerifiedAt: null,
+            },
+          ],
+        },
+      }),
+    }),
+  );
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(
+    page.getByText('A job has no confirmed completion.', { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /restore|download backup|run backup/i }),
+  ).toHaveCount(0);
+  await page.unroute('**/api/platform/v1/backups/status');
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Setup & system checks' }),

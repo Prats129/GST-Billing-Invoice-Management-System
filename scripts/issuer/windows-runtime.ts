@@ -91,7 +91,11 @@ const ignoredDirectories = new Set([
   'benchmarks',
 ]);
 function runtimeFile(path: string) {
-  if (/(?:^|\/)\.env(?:\.|$)|\.(?:pem|key|pfx|p12|dump|gstbackup)$/i.test(path))
+  if (
+    /(?:^|\/)\.env(?:\.|$)|\.(?:pem|key|pfx|p12|dump|gstbackup|gstplatformbackup)$/i.test(
+      path,
+    )
+  )
     throw new Error('Private-looking data in a runtime package.');
   return !/\.(?:map|ts|mts|cts|tsx|cpp|c|h|hpp|gyp|sln|vcxproj)$/i.test(path);
 }

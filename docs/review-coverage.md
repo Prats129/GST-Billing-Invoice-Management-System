@@ -1,5 +1,77 @@
 # Review coverage
 
+## Backup and recovery operations — batch 4 (2026-11-08)
+
+Started from a clean working tree. Reviewed customer encrypted backup/restore,
+quarantine, runtime provisioning and switch engines, platform restore drill,
+worker authority, private setup profiles and operations diagnostics. Privileged
+execution stays host-only: the running Admin API must not gain backup credentials
+or a generic command executor. Reuse customer archive/tool safeguards; add a
+separate platform schema adapter, protected reusable profiles, durable job/status
+evidence and guided recovery/reconciliation. No automatic retention policy or
+live production cutover is authorized by this implementation. Results and
+remaining deployment/Windows boundaries will be recorded after each slice.
+
+Slice 1 checkpoint: both new status/profile unit tests and all four focused
+workflow integration tests passed against a new disposable PostgreSQL 18
+container. The drills exercised real customer/platform encrypted archives,
+domain rejection, serialized jobs, database-OID checks, sealed platform recovery,
+copied-session revocation, source preservation, immutable audit history,
+read-only missing-receipt reconciliation, interruption acknowledgement and
+tampered/failed backup status. Focused lint found a control-character-regex style
+issue and a type-only import, now corrected. Broader regression checks follow.
+
+Delivered local host workflows: `backup:guided` prepares protected profiles with
+existing/new backup identity review, exact source cluster/OID pinning, approved
+tool selection and explicit recovery-kit acknowledgement. Fixed actions create
+encrypted archives and perform real isolated restore drills, verify/export
+encrypted copies without overwrite, record interruption/candidate evidence,
+inventory marked owned databases and guide the existing Billing runtime/switch
+engines. Platform recovery uses its own migration/table/trigger/financial checks,
+revokes copied sessions and disables processing in the sealed candidate. Bounded
+read-only reconciliation reports SaaS receipt/payload/history discrepancies and
+missing installed grants without modifying either ledger or publisher authority.
+
+The Admin Operations panel reads only a separate sanitized publication. It has
+no backup credentials, key/archive access or command/restore endpoint. Reports
+show observation times, age policy and actionable fixed failure categories;
+stale, missing, changed, incompatible and unconfirmed outcomes fail closed.
+Optional publication updates after jobs; no retention/deletion policy or scheduler
+is silently installed. The new platform archive extension is excluded from Git,
+Docker contexts and customer runtime packages.
+
+Verification: full unit suite passed 313 tests before the final export-helper
+extraction; all three final focused status/profile/export unit tests passed.
+The integration sweep passed 101 tests, with one existing opt-in installer test
+skipped and one host-CLI test rejecting the direct Vitest command because it
+requires pnpm's `npm_execpath`. Rerunning the complete 21-test security file via
+the documented `pnpm test:integration` command passed, covering all 102 enabled
+integration tests across the sweep and focused rerun. This includes five new
+workflow drills (automatic sanitized publication, locked/mismatched targets,
+platform quarantine/reconciliation, interrupted/tampered outcomes and guided
+Billing switch confirmations). All 20 Chrome Billing/Admin browser tests passed,
+including missing/unconfirmed report guidance and absence of privileged controls.
+Workspace/test type checks and all app builds passed. After final export and
+distribution-exclusion changes, all 12 focused export/status/Windows packaging
+unit tests, test/tool type checking, repository lint and formatting passed again.
+No new dependencies or database migrations were added. Final diff whitespace
+checks passed. The disposable test container was stopped after verification.
+
+The interactive Windows terminal smoke test displayed the menu and exited on
+Ctrl+C without creating a profile or changing a database. Full interactive
+provisioning, native PostgreSQL/scheduled service-account execution, live recovery,
+reboot/LAN behavior and production deployment were not exercised. Tests use a
+new disposable PostgreSQL container, isolated databases, private fixtures and
+ephemeral keys; existing customer/platform databases and private environments
+are untouched. A single scoped lint exception preserves only a safe failure
+category as cause instead of retaining credential-bearing driver errors.
+
+See [guided backup and recovery](guided-backup-recovery.md). Platform live cutover
+and authority re-enablement remain reviewed host procedures after reconciliation;
+publisher/offline-delivery review, protected storage custody and retention/alert
+decisions cannot be invented by the assistant. Actual scheduler deployment and
+Windows lifecycle interfaces remain in their original later/deployment scope.
+
 ## Commercial guide placement (2026-11-08)
 
 Moved the full commercial workflow guide into the organization's Overview tab.

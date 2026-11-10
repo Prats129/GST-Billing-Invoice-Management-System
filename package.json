@@ -39,6 +39,7 @@
     "db:down": "docker compose down",
     "backup": "tsx packages/database/src/backup-cli.ts",
     "backup:health": "tsx packages/database/src/backup-health-cli.ts",
+    "backup:guided": "pnpm build:packages && tsx scripts/operations/cli.ts",
     "license:install": "pnpm build:packages && tsx apps/api/src/licensing/host-cli.ts",
     "license:issue": "pnpm build:packages && tsx scripts/issuer/entitlement-cli.ts",
     "license:register": "pnpm build:packages && tsx scripts/issuer/register-cli.ts",
