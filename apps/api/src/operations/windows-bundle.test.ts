@@ -1,6 +1,8 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import {
   mkdtemp,
   mkdir,
@@ -13,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { assembleWindowsRuntime } from '../../../../scripts/issuer/windows-runtime.js';
 import { smokeWindowsBundle } from '../../../../scripts/issuer/windows-bundle-smoke.js';
+import { buildWindowsLauncher } from '../../../../scripts/issuer/windows-launcher.js';
 import {
   assembleWindowsBundle,
   sealWindowsBundle,
@@ -69,6 +72,7 @@ async function fixture() {
   await put(repo, 'apps/api/dist/main.js', 'export {};');
   for (const path of [
     'operations/offline-install-cli.js',
+    'operations/windows-lifecycle-cli.js',
     'operations/offline-repair-ready-cli.js',
     'operations/offline-repair-tree-cli.js',
   ])
@@ -163,6 +167,9 @@ async function fixture() {
     'OfflineRepair.ps1',
     'UpdateService.ps1',
     'Invoke-UpdateService.ps1',
+    'Capture-BackupCredential.ps1',
+    'Invoke-LifecycleBackup.ps1',
+    'Trust-LanCa.ps1',
   ];
   for (const name of helpers)
     await put(
@@ -443,3 +450,83 @@ test('nested signatures verify with ephemeral test keys and detect payload or no
   await put(candidate.root, 'app/apps/api/dist/main.js', 'tampered app');
   await expect(verifyWindowsBundle(candidate.root, f.trust)).rejects.toThrow();
 });
+
+test.skipIf(process.platform !== 'win32')(
+  'native maintenance assembly binds every runtime file and remains unsigned until publisher signing',
+  async () => {
+    const f = await vendorFixture();
+    // A real ZIP containing inert text. The test never executes this fake Node.
+    const archive = join(f.vendor, 'vendor/node.zip');
+    await rm(archive);
+    const source = [
+      'Add-Type -AssemblyName System.IO.Compression.FileSystem',
+      'Add-Type -AssemblyName System.IO.Compression',
+      '$file=[IO.File]::Open($env:GST_TEST_ZIP,[IO.FileMode]::CreateNew)',
+      '$zip=New-Object IO.Compression.ZipArchive($file,[IO.Compression.ZipArchiveMode]::Create)',
+      "try {$entry=$zip.CreateEntry('node-v24.22.1-win-x64/node.exe');$writer=New-Object IO.StreamWriter($entry.Open());try{$writer.Write('inert test runtime')}finally{$writer.Dispose()}}finally{$zip.Dispose();$file.Dispose()}",
+    ].join('\n');
+    await promisify(execFile)(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-EncodedCommand',
+        Buffer.from(source, 'utf16le').toString('base64'),
+      ],
+      { env: { ...process.env, GST_TEST_ZIP: archive }, windowsHide: true },
+    );
+    const reviewFile = join(f.vendor, 'review.json');
+    const review = JSON.parse(await readFile(reviewFile, 'utf8'));
+    review.node.executables['node.exe'] = sha('inert test runtime');
+    const raw = JSON.stringify(review);
+    await writeFile(reviewFile, raw);
+    const approvalFile = join(f.vendor, 'approval.json');
+    const approval = JSON.parse(await readFile(approvalFile, 'utf8'));
+    approval.reviewSha256 = sha(raw);
+    approval.files['vendor/node.zip'] = createHash('sha256')
+      .update(await readFile(archive))
+      .digest('hex');
+    await writeFile(approvalFile, JSON.stringify(approval));
+    const candidate = await assembleWindowsBundle({
+      ...f.config,
+      vendor: { directory: f.vendor, reviewFile, approvalFile },
+    });
+    await sealWindowsBundle({
+      ...f,
+      root: candidate.root,
+      metadata: f.config.metadata,
+    });
+    const output = join(f.root, 'native-launcher');
+    const report = await buildWindowsLauncher({
+      bundle: candidate.root,
+      trust: f.trust,
+      output,
+    });
+    expect(report.needs).toContain('authenticode-signing');
+    expect(report.needs).toContain('publisher-code-signing-certificate');
+    const inventory = JSON.parse(
+      await readFile(join(output, 'bootstrap.json'), 'utf8'),
+    );
+    expect(inventory.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'node.exe',
+          sha256: sha('inert test runtime'),
+        }),
+        expect.objectContaining({
+          path: 'app/apps/api/dist/operations/windows-lifecycle-cli.js',
+        }),
+        expect.objectContaining({ path: 'release-trust.json' }),
+      ]),
+    );
+    expect(
+      (await readFile(join(output, 'maintenance/GSTBillingMaintenance.exe')))
+        .subarray(0, 2)
+        .toString(),
+    ).toBe('MZ');
+    await expect(
+      buildWindowsLauncher({ bundle: candidate.root, trust: f.trust, output }),
+    ).rejects.toThrow();
+  },
+  60000,
+);

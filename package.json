@@ -12,6 +12,8 @@
     "bundle:seal": "pnpm build:packages && tsx scripts/issuer/windows-bundle-cli.ts seal",
     "bundle:verify": "tsx scripts/issuer/windows-bundle-cli.ts verify",
     "bundle:smoke": "tsx scripts/issuer/windows-bundle-cli.ts smoke",
+    "bundle:launcher": "tsx scripts/issuer/windows-launcher-cli.ts",
+    "signing:internal": "powershell.exe -NoLogo -NoProfile -File scripts/issuer/Internal-WindowsSigning.ps1",
     "setup:env": "node scripts/setup-env.mjs",
     "setup:prepare": "powershell.exe -NoProfile -File scripts/Setup-Project.ps1",
     "setup:guided": "tsx scripts/setup/cli.ts",

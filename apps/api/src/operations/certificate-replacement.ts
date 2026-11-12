@@ -326,7 +326,11 @@ async function apply(
 
 export async function replaceCertificate(
   options: CertificateOptions,
-  source: { keyPath: string; certPath: string },
+  source: {
+    keyPath: string;
+    certPath: string;
+    expected?: { key: string; certificate: string };
+  },
   service: CertificateService,
   confirmation: { installationId: string; maintenance: boolean },
 ) {
@@ -362,6 +366,12 @@ export async function replaceCertificate(
       key: certificateHash(loaded.httpsOptions.key),
       cert: certificateHash(loaded.httpsOptions.cert),
     };
+    if (
+      source.expected &&
+      (replacement.key !== source.expected.key ||
+        replacement.cert !== source.expected.certificate)
+    )
+      throw new Error();
     journal = await acquireUpdateJournal(
       options.journalParent,
       options.installationId,

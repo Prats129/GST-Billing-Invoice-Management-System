@@ -223,7 +223,18 @@ test('replacement validates trusted TLS, preserves file identity and original pa
   const f = await fixture();
   const inode = (await lstat(f.options.keyPath)).ino;
   await expect(
-    replaceCertificate(f.options, f.source, f.service, f.confirmation),
+    replaceCertificate(
+      f.options,
+      {
+        ...f.source,
+        expected: {
+          key: certificateHash(await readFile(f.source.keyPath)),
+          certificate: certificateHash(await readFile(f.source.certPath)),
+        },
+      },
+      f.service,
+      f.confirmation,
+    ),
   ).resolves.toMatchObject({ state: 'replaced' });
   expect((await lstat(f.options.keyPath)).ino).toBe(inode);
   expect(await readFile(f.options.certPath)).toEqual(
@@ -282,6 +293,30 @@ test('wrong hostname, wrong approved trust and missing confirmation fail before 
   ).rejects.toThrow();
   expect(f.service.stop).not.toHaveBeenCalled();
   expect(f.service.admit).not.toHaveBeenCalled();
+}, 120000);
+
+test('a certificate changed since approval fails before maintenance or journal creation', async () => {
+  const f = await fixture();
+  const previous = await readFile(f.options.certPath);
+  await expect(
+    replaceCertificate(
+      f.options,
+      {
+        ...f.source,
+        expected: {
+          key: '0'.repeat(64),
+          certificate: certificateHash(await readFile(f.source.certPath)),
+        },
+      },
+      f.service,
+      f.confirmation,
+    ),
+  ).rejects.toThrow();
+  expect(f.service.stop).not.toHaveBeenCalled();
+  expect(await readFile(f.options.certPath)).toEqual(previous);
+  await expect(
+    lstat(join(f.options.journalParent, 'gst-update.lock')),
+  ).rejects.toMatchObject({ code: 'ENOENT' });
 }, 120000);
 
 test('failed admission remains stopped and explicitly restores the retained pair; the application updater refuses the certificate journal', async () => {

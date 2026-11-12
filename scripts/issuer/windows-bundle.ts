@@ -75,6 +75,9 @@ const operatorHelpers = [
   'OfflineRepair.ps1',
   'UpdateService.ps1',
   'Invoke-UpdateService.ps1',
+  'Capture-BackupCredential.ps1',
+  'Invoke-LifecycleBackup.ps1',
+  'Trust-LanCa.ps1',
 ] as const;
 function child(root: string, path: string) {
   const target = resolve(root, ...path.split('/'));
@@ -292,6 +295,7 @@ async function checkBundleContents(root: string) {
   for (const path of [
     'apps/api/dist/main.js',
     'apps/api/dist/operations/offline-install-cli.js',
+    'apps/api/dist/operations/windows-lifecycle-cli.js',
     'apps/api/dist/operations/offline-repair-ready-cli.js',
     'apps/api/dist/operations/offline-repair-tree-cli.js',
     'apps/web/dist/index.html',

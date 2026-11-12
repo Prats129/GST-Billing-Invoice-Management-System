@@ -1,5 +1,9 @@
 # Initial offline installation and preserving uninstall
 
+The customer-facing native launcher wraps this engine:
+[Windows Setup & Recovery](windows-maintenance.md). The CLI remains available
+for trusted host operators and existing automation.
+
 This is an operator-run installation workflow, with local verification recorded
 in [review coverage](review-coverage.md). It is **not an approved commercial
 installer release**. Do not run deployment commands on the development laptop.

@@ -1,5 +1,10 @@
 # Offline Windows operator tools
 
+The native **Setup & Recovery** launcher and its publisher build are documented
+in [Windows maintenance](../../docs/windows-maintenance.md). It wraps the existing
+host engines and requires Authenticode signing before host actions. Local compile,
+pure decision and off-screen form checks do not complete real Windows acceptance.
+
 Initial signed-bundle installation and data-preserving uninstall now have an
 operator entrypoint: [installation workflow](../../docs/windows-installation.md).
 Approved vendor artifacts, distribution signing and native acceptance are still

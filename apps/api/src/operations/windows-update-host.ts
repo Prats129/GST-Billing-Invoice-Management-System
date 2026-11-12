@@ -20,6 +20,7 @@ export function createWindowsUpdateHost(
       origin: string;
       port: number;
       backupTaskName: string | null;
+      backupAccountSid?: string;
       scripts: ScriptTrust;
     };
   },

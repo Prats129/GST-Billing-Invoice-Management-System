@@ -26,7 +26,7 @@ function Assert-OfflinePath([string] $Path, [bool] $Private = $false, [bool] $Pa
             if (($rule.FileSystemRights -band $rights) -ne 0 -or ($first -and $Private -and ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::ReadData) -ne 0)) { throw 'Untrusted installer access.' }
         }
         $first = $false
-        if ($item.PSIsContainer) { $item = $item.Parent } else { $item = $item.Directory }
+        if ($item -is [IO.DirectoryInfo]) { $item = $item.Parent } else { $item = $item.Directory }
     }
 }
 function Grant-OfflineAccess([string] $Path, [string] $Sid, [string] $Rights, [bool] $Inherit = $false) {

@@ -909,6 +909,25 @@ rollback preserve evidence and require the correct authority/approvals.
 
 ### Batch 5 — Windows lifecycle interface
 
+Local engineering (2026-11-12): native .NET Framework launcher, protected isolated
+maintenance runtime and publisher assembly, fixed host facade, guided
+installation/owner/credential inputs, signed license import, owned scheduled
+backup, update/certificate/repair/preserving-uninstall and existing interrupted
+recovery paths are connected. See [Windows maintenance](windows-maintenance.md)
+and [review coverage](review-coverage.md). The launcher requires real Authenticode
+trust and its pinned publisher before executing host actions. Production signing
+and the postponed disposable host/client acceptance remain open; the batch's
+commercial completion criterion below is not yet satisfied.
+
+Follow-up guidance completion: installation suggests a new standard folder,
+observed unused ports and an unambiguous private interface/subnet; all inputs
+remain editable and are rechecked by strict preflight. Backup preparation guides
+Windows standard-account creation/selection and verifies effective batch-logon
+rights before saving protected credentials, without changing policy. A connection
+guide presents the saved address with configured public certificate identity and
+client CA instructions. These local additions do not waive signing or native
+acceptance gates.
+
 **Deliver:** a signed launcher around installation, licensing, updates,
 certificates, repair and preserving uninstall.
 

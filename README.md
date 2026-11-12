@@ -53,6 +53,9 @@ See [runtime support](https://nodejs.org/en/about/previous-releases),
 
 For host-operated verified backups, recovery profiles and read-only Admin backup
 status, see [guided backup and recovery](docs/guided-backup-recovery.md).
+The separate offline Windows launcher is documented in
+[Windows Setup & Recovery](docs/windows-maintenance.md); production signing and
+the postponed native host/client acceptance are still required.
 
 For a **new isolated local profile**, use the
 [guided setup assistant](docs/guided-setup.md):

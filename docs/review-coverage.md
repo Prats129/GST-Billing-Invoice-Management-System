@@ -1,5 +1,161 @@
 # Review coverage
 
+## Internal Windows code signing — 2026-11-12
+
+Added publisher/test-only certificate creation, fixed-launcher signing, explicit
+CurrentUser test-trust/removal and strict verification. Keys are non-exportable in
+the Windows signing user's My store; no private key/password enters the app,
+bundle, command arguments or JSON. Certificate SHA-256 is checked against the
+embedded launcher pin, runtime inventory and unsigned build hash. Sign attempts
+are recorded outside the runtime before mutation; existing attempts/signatures
+are refused. Internal builds carry an explicit INTERNAL TEST ONLY window label.
+No alternate native trust mode or signature bypass was added. Production signing
+and actual isolated host/client acceptance remain open.
+
+Checkpoint: the real ephemeral signing test passed without importing root trust
+or running the signed executable. The test key was deleted afterward. It checked
+non-exportability, real signing, wrong pins, overwrite refusal, runtime tampering,
+untrusted verification denial and WhatIf trust/removal with an unchanged Root
+store. The signing test exposed an existing strict-mode parent-directory bug in
+`Assert-OfflinePath`; checking the actual DirectoryInfo type fixes traversal
+without relaxing owner/ACL/reparse checks. Shared-writable repository ancestors
+were correctly refused; private LocalAppData fixtures are used instead.
+
+The signing command is available as `pnpm signing:internal`; the full procedure
+is in [Internal Windows signing](internal-windows-signing.md). CI runs the
+ephemeral signing test with trust/removal in WhatIf mode. Native preview checks
+also require the INTERNAL TEST ONLY title. Actual trusted verification and
+trust/removal on a disposable account are intentionally not claimed as tested.
+
+Final checks: 34 focused packaging/installer/lifecycle unit tests passed; test
+TypeScript checking and targeted issuer lint passed. Native compilation/rendering,
+PowerShell syntax parsing and mocked retained-data repair regression passed. The
+final real signing test passed after added unlisted-file rejection; its positive
+Valid-status decision is mocked, while real untrusted verification is rejected.
+Ephemeral key removal was confirmed. No production certificate, persistent test
+key, root trust, services or live database state were created. Documentation
+formatting and whitespace checks passed. Existing staging was preserved.
+
+## Batch 5 remaining guidance — 2026-11-12
+
+Resumed from the staged lifecycle tool without changing the index. Added read-only
+installation suggestions (new standard folder, available-port observation, single
+private IPv4 interface and its real mask), explicit review and editable inputs.
+Multiple interfaces require an operator choice; no network settings are changed.
+Backup preparation now guides standard local account creation in Windows settings
+and verifies effective batch-logon policy before saving its DPAPI credential.
+No account, group membership or machine policy is silently changed. A consolidated
+connection guide combines the saved origin, configured public certificate identity
+and client CA instructions, keeping server and CA fingerprints distinct.
+
+Checkpoint: native compilation/pure safety checks/off-screen form creation,
+mocked backup-policy decisions and lifecycle-host decisions passed. These checks
+did not perform an actual account logon, installation or trust-store mutation.
+Final verification: all 27 focused lifecycle/certificate/packaging unit tests
+passed. Real ephemeral DER/PEM identity and CA fingerprint checks passed; WhatIf
+left the trust store unchanged. Native warning-as-error compilation, pure
+path/signature/subnet checks, off-screen form rendering, mocked lifecycle and
+backup-policy decisions, existing backup-schedule checks and parsing all 33
+PowerShell files passed. The actual Windows logon binding compiled, but no real
+account authentication or policy change was performed. Documentation formatting
+and diff whitespace checks passed. No dependency, tenant API or schema changes
+were needed. The staged snapshot was preserved; follow-up changes remain unstaged.
+Production Authenticode signing and disposable host/client acceptance remain
+external gates; local results do not establish full commercial completion.
+
+## Windows lifecycle interface — batch 5 (2026-11-12, core implemented; full scope open)
+
+Follow-up scope review: the earlier "local engineering complete" label was too
+broad. Comparing the implementation with inventory C1–C9 identified three partial
+engineering items: safe installation candidate discovery, guided backup-account/
+scheduler-policy preparation and validation, and a consolidated LAN connection/
+certificate-identity guide. The native task forms and existing engines are wired,
+but those forms still require manual deployment inputs. Updates support reviewed
+immediate execution; no future automatic update scheduler is implemented.
+Production signing and real host/client acceptance are additional external gates.
+The precise mapping is in [Windows maintenance](windows-maintenance.md#coverage-against-the-approved-plan).
+This follow-up reviewed the complete staged/unstaged/new-file set; no unrelated
+dependency, financial-rule, tenant-API or schema change was found. No production
+code was removed or changed during this review.
+
+Resumed the four staged draft files from the interrupted session. Reviewed the
+project architecture/decisions, all six operations batches, installer/repair,
+backup, certificate, update/recovery, publisher assembly and CI boundaries. The
+draft is not release-ready: native launch integrity, argument handling,
+installation preview, recovery and packaging need completion before verification.
+Preserve the staged snapshot while correcting working files. No deployment,
+service, firewall, trust-store or live database mutation is part of local checks.
+Production Authenticode credentials and disposable Windows acceptance remain the
+existing external inputs. Further checkpoints will record actual test results.
+
+Slice 1: replaced the incomplete draft with a fixed host facade and independent
+native maintenance runtime. Eight focused tests passed for strict action/path
+contracts, read-only previews, signing-key rejection, changed-plan rejection,
+maintenance exclusion, safe status, grant binding and saved maintenance recovery.
+The .NET Framework launcher compiled locally; pure path/argument checks,
+unsigned-Authenticode rejection and off-screen form construction passed. These
+checks did not elevate or execute a host action. Added publisher assembly with
+embedded inventory/signing identity, per-action runtime verification, sanitized
+child environments, bounded stdin/progress/results, approval digests, native
+credential/owner preparation and explicit CA trust. Manual backup uses the
+existing owned scheduled task so update stop checks observe the same job.
+At this checkpoint, final fault/regression checks and documentation remained.
+
+Final local scope: native forms now drive existing installation, signed license,
+owned scheduled backup, forward-copy update, certificate replacement, exact
+retained-data repair, preserving uninstall and interrupted maintenance/certificate/
+update recovery. Owner input and DPAPI backup credentials can be prepared through
+the native interface. The tool has no customer HTTP endpoint. Its separate signed
+runtime can run when the installed application/database is unavailable; missing
+identity or incomplete initial-install evidence still requires operator inspection.
+
+The final review tightened approval binding: execute the reviewed installation/
+grant snapshot, recheck retained identity and repair inputs, compare staged update
+inventory to the reviewed package, and preserve the reviewed recovery fingerprint.
+Certificate replacement accepts an optional exact key/chain pin before acquiring
+maintenance, preserving the existing CLI contract. CA import uses the exact checked
+bytes rather than reopening a replaceable file. Local status refuses a name that
+no longer resolves to the same private/loopback host. Native runtime checking
+rejects extra modules, unsafe ACLs and reparse paths, uses System32 signature
+verification, disposes identity handles and caches ancestor checks without skipping
+each directory's own write checks.
+
+Verification: the complete unit suite passed 323 tests. The final targeted
+packaging/TLS/facade sweep verified 27 distinct checks across the sweep and the
+corrected 10/10 facade rerun; its initial failure was incomplete PostgreSQL metadata
+in the new positive-update fixture, now fixed. The certificate test exercises real
+temporary HTTPS and rejects changed approved material before stopping a service.
+The publisher test builds a real native executable around an inert Node ZIP and
+ephemeral sealed release, checks the embedded inventory and refuses output reuse.
+All workspace/test type checks and all four application production builds passed.
+Final API/test type checking, repository lint/format and whitespace checks passed.
+
+Native compilation, pure argument/path and unsigned-signature rejection, off-screen
+form rendering, all 32 PowerShell syntax checks, mocked lifecycle/task decisions,
+existing update-service and full repair-flow decisions passed. A real ephemeral
+CA/fingerprint test passed with WhatIf and confirmed the Windows root store was
+unchanged. The off-screen launcher image was inspected. Initial sandbox child-
+process restrictions were resolved by rerunning the affected checks with approved
+process access; no runtime checks or project engine requirements were weakened.
+CI now includes native compilation and the safe lifecycle/CA tests; remote CI
+itself was not run in this session.
+
+No new dependencies, schema migrations, live database changes, runtime environment
+edits, real account creation, privileged service/task/firewall/trust changes,
+Git staging or commits were performed. The user's four-file staged draft remains
+intact in the index; stage the complete current working-tree set together for the
+finished implementation. Small ignored native build fixtures remain under .local
+for inspection. Separate browser/database integration suites were not rerun in
+this batch; customer/Admin web screens and database rules were not changed.
+
+The commercial Batch 5 acceptance condition remains OPEN: the user still needs
+the real code-signing certificate/authority and postponed disposable Windows host
+plus separate client to prove valid-signed execution, native installation/accounts/
+ACLs, task credentials, reboot/LAN, failure/recovery/update/repair and preserving
+uninstall. The unsigned local candidate refuses host execution. See
+[Windows Setup & Recovery](windows-maintenance.md); no production release or
+real Windows lifecycle acceptance is claimed by the local engineering result.
+
 ## Backup and recovery operations — batch 4 (2026-11-08)
 
 Started from a clean working tree. Reviewed customer encrypted backup/restore,

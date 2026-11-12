@@ -56,3 +56,13 @@ jobs:
         run: ./apps/windows-installer/scripts/Test-DeploymentChecks.ps1
       - shell: powershell
         run: ./apps/windows-installer/scripts/Test-UpdateService.ps1
+      - shell: powershell
+        run: ./apps/windows-installer/launcher/Test-WindowsLauncher.ps1
+      - shell: powershell
+        run: ./scripts/issuer/Test-InternalWindowsSigning.ps1
+      - shell: powershell
+        run: ./apps/windows-installer/scripts/Test-LifecycleHost.ps1
+      - shell: powershell
+        run: ./apps/windows-installer/scripts/Test-BackupCredential.ps1
+      - shell: powershell
+        run: ./apps/windows-installer/scripts/Test-LanTrust.ps1
