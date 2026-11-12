@@ -909,6 +909,11 @@ rollback preserve evidence and require the correct authority/approvals.
 
 ### Batch 5 — Windows lifecycle interface
 
+**VM acceptance postponed again (2026-11-12, owner decision):** temporary use of
+one VM was considered acceptable, but setup/testing is deferred for now. The
+hardware observations, internal-signing boundary and exact resume steps are in
+[Windows VM testing](windows-vm-testing.md). Do not treat this as a waived gate.
+
 Local engineering (2026-11-12): native .NET Framework launcher, protected isolated
 maintenance runtime and publisher assembly, fixed host facade, guided
 installation/owner/credential inputs, signed license import, owned scheduled

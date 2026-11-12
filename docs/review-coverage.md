@@ -1,5 +1,15 @@
 # Review coverage
 
+## VM testing deferred — 2026-11-12
+
+At the owner's request, preserved the VM discussion and resume checklist in
+[Windows VM testing](windows-vm-testing.md). Recorded measured hardware separately
+from the owner's estimated free RAM, the temporary-use decision, internal
+self-signing versus production signing, verified preview results and unperformed
+host/client acceptance. Linked it from the Batch 5 plan and maintenance guide.
+This is documentation only: no VM installation, key/trust creation, host changes
+or new acceptance claim. VM work remains postponed until the owner resumes it.
+
 ## Internal Windows code signing — 2026-11-12
 
 Added publisher/test-only certificate creation, fixed-launcher signing, explicit

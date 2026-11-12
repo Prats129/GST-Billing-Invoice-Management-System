@@ -193,6 +193,10 @@ pinned signing certificate changes.
 
 ## Verification and release boundary
 
+VM setup and real native acceptance are currently postponed by the owner. See
+[Windows VM testing](windows-vm-testing.md) for the discussion decisions, laptop
+constraints, verified preview/signing results and the steps to resume.
+
 Safe local checks:
 
 ```powershell
